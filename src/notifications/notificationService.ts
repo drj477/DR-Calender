@@ -60,23 +60,35 @@ export async function scheduleEventNotifications(entity: TemporalEntity): Promis
     rangeEnd: horizon + minutesBefore * 60_000,
     maxOccurrences: 80,
   });
+  const excluded = new Set(entity.metadata?.recurrence?.excludedStartsAt ?? []);
+  const overrides = entity.metadata?.recurrence?.overrides ?? {};
+  const candidates = occurrences
+    .filter(occurrence => !excluded.has(occurrence.startAt))
+    .map(occurrence => ({ originalStartAt: occurrence.startAt, startAt: overrides[String(occurrence.startAt)]?.startAt ?? occurrence.startAt, title: overrides[String(occurrence.startAt)]?.title ?? entity.title }));
+  const known = new Set(candidates.map(item => String(item.originalStartAt)));
+  for (const [key, override] of Object.entries(overrides)) {
+    const originalStartAt = Number(key);
+    const triggerAt = override.startAt - minutesBefore * 60_000;
+    if (!known.has(key) && !excluded.has(originalStartAt) && triggerAt > now && triggerAt <= horizon) {
+      candidates.push({ originalStartAt, startAt: override.startAt, title: override.title });
+    }
+  }
   const permitted = await requestNotificationPermission();
   if (!permitted) return [];
   const ids: string[] = [];
-  for (const occurrence of occurrences) {
+  for (const occurrence of candidates) {
     const triggerAt = occurrence.startAt - minutesBefore * 60_000;
     if (triggerAt <= now || triggerAt > horizon) continue;
     const id = await Notifications.scheduleNotificationAsync({
       content: {
-        title: entity.title,
-        body: minutesBefore === 0 ? "Your event starts now." : `Your event starts in ${minutesBefore >= 1440 ? `${minutesBefore / 1440} day(s)` : minutesBefore >= 60 ? `${minutesBefore / 60} hour(s)` : `${minutesBefore} minutes`}.`,
+        title: occurrence.title,
+        body: minutesBefore === 0 ? "Your event starts now." : "Your event starts in " + (minutesBefore >= 1440 ? (minutesBefore / 1440) + " day(s)" : minutesBefore >= 60 ? (minutesBefore / 60) + " hour(s)" : minutesBefore + " minutes") + ".",
         sound: "default",
         ...(Platform.OS === "android" ? { channelId: "reminders" } : {}),
-        data: { entityId: entity.id, itemType: "event", occurrenceStartAt: occurrence.startAt, deepLink: `drcalender://events/${entity.id}` },
+        data: { entityId: entity.id, itemType: "event", occurrenceStartAt: occurrence.originalStartAt, deepLink: "drcalender://events/" + entity.id },
       },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(triggerAt) },
     });
     ids.push(id);
-  }
-  return ids;
+  }  return ids;
 }
