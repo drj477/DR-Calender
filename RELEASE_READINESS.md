@@ -16,6 +16,8 @@ This document records source implementation and outstanding validation. It is **
 - [x] Supabase security-hardening migration and a source-level review/staging checklist.
 - [x] Android native alarm persistence and restoration receiver for reboot/time/time-zone/exact-alarm permission changes.
 - [x] iOS WidgetKit extension source is present.
+- [x] iOS WidgetKit target generation is configured with `@bacons/apple-targets`, an extension target folder, and a shared App Group entitlement.
+- [x] Sync and backup restore are coordinated through a shared operation gate; restore refreshes the active database workspace and in-memory stores before releasing the gate.
 
 - [x] Source-level rolling native alarm reconciliation for recurring event occurrences, moved overrides, exclusions, and stale alarm cancellation.
 - [x] App deep-link routing for task/event widget links and Android event alarm notification taps.
@@ -28,7 +30,7 @@ This document records source implementation and outstanding validation. It is **
 - [ ] Add and run automated unit/integration tests, especially restore validation/rollback, migration recovery, recurrence, DST, sync idempotency, and workspace isolation.
 - [ ] Build Android and iOS native apps; verify local module autolinking, generated manifests, and native dependency resolution.
 - [ ] Verify Android exact-alarm permission, notification permission denial, reboot/time-change recovery, widget refresh, and alarm cancellation on physical devices.
-- [ ] Create/configure the iOS WidgetKit extension target and matching App Group entitlement in Xcode/EAS; verify widget refresh and deep links on physical devices.
+- [ ] Run a clean iOS prebuild on supported macOS tooling; add the Apple Developer Team ID, verify the generated WidgetKit target and signed App Group entitlement, then verify widget refresh/deep links on physical devices.
 - [ ] Apply both Supabase migrations to a non-production project; verify effective grants, function owners/search paths, RLS behavior, workspace isolation, role matrix, payload rejection, and idempotency.
 - [ ] Run the security checklist in SUPABASE_SECURITY_REVIEW.md; source changes alone are not a live-project audit.
 - [ ] Exercise restore on a disposable database with malformed, truncated, duplicate, future-version, and foreign-key-invalid backups; prove rollback behavior and UI restart/reinitialization.
