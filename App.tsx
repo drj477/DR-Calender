@@ -125,16 +125,20 @@ function CalendarApp() {
           updatedAt: Date.now(),
         }));
         for (const entity of seed) {
-          await local.repository.upsert(entity, `seed-${entity.id}`);
+          const mutationId = `seed-${entity.id}`;
+          await local.repository.upsert(entity, mutationId);
+          useCalendarStore.getState().upsertEntity(entity, mutationId);
         }
         entities = await local.repository.queryRange(local.workspaceId, start, end);
       }
       if (!active) return;
+      const pending = await local.repository.listPendingMutations();
+      useCalendarStore.getState().hydrate(entities, pending);
       const persistedTasks = entities.filter(entity => entity.itemType === "task").map(entity => {
         const dueAt = entity.metadata?.task?.dueAt ?? entity.scheduledAt;
         const due = dueAt === null
           ? "Today · No time set"
-          : new Date(dueAt).toLocaleString(undefined, { weekday: dueAt < start + 24 * 60 * 60_000 ? undefined : "short", hour: "numeric", minute: "2-digit" });
+: new Date(dueAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
         return {
           id: entity.id,
           title: entity.title,
@@ -159,7 +163,10 @@ function CalendarApp() {
       database.repository.getById(id).then(entity => {
         if (!entity) return;
         const updated = { ...entity, isCompleted: completed, updatedAt: Date.now(), syncVersion: entity.syncVersion + 1 };
-        return database.repository.upsert(updated, `task-toggle-${id}-${updated.syncVersion}`);
+        const mutationId = `task-toggle-${id}-${updated.syncVersion}`;
+        return database.repository.upsert(updated, mutationId).then(() => {
+          useCalendarStore.getState().upsertEntity(updated, mutationId);
+        });
       }).catch(error => console.warn("Unable to persist task completion", error));
     }
   };
@@ -169,7 +176,10 @@ function CalendarApp() {
     setTasks(current => [{ id, title: "New task", due: "Today · No time set", assignee: "You", completed: false }, ...current]);
     if (database) {
       const entity = makeTaskEntity({ id, title: "New task", dueAt: null, workspaceId: database.workspaceId });
-      database.repository.upsert(entity, `task-create-${id}`).catch(error => console.warn("Unable to persist new task", error));
+      const mutationId = `task-create-${id}`;
+      database.repository.upsert(entity, mutationId).then(() => {
+        useCalendarStore.getState().upsertEntity(entity, mutationId);
+      }).catch(error => console.warn("Unable to persist new task", error));
     }
   };
 
