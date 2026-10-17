@@ -89,8 +89,9 @@ The calendar UI uses a midnight-navy and warm-amber palette inspired by the supp
 
 ## Phase 1 delivery notes
 
-- Added all-day event creation and editing. All-day events are stored using local-midnight start and next-local-midnight end boundaries, avoiding a fixed 24-hour assumption at creation across daylight-saving transitions.
+- Added all-day and multi-day event creation/editing. All-day events use local-midnight boundaries, and the editor accepts 1–365 calendar days. Recurring all-day instances calculate their end by local calendar-day count, preserving midnight boundaries across daylight-saving transitions.
 - Added a dedicated all-day lane to the day timeline and “All day” labels in week overview rows. All-day items are excluded from the timed overlap grid so they do not appear as midnight-sized appointments.
 - Added all-day state to occurrence overrides so an individual recurring occurrence can differ from its series event kind.
+- Kept schedule validation in the editor for required titles, valid 24-hour times, timed-event duration bounds, and all-day duration bounds.
 - Improved recurrence range fast-forwarding so an unbounded rule does not begin before DTSTART and accidentally shift its interval phase.
-- Monthly default recurrence repeats on the DTSTART day; months that do not contain that day are skipped. Full RFC 5545 support and exhaustive DST gap/fold disambiguation remain out of scope for this bounded engine.
+- Monthly default recurrence repeats on the DTSTART day; months that do not contain that day are skipped. Full RFC 5545 support, selectable per-event time zones, and exhaustive DST gap/fold disambiguation remain out of scope for this bounded engine.
