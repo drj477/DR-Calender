@@ -37,9 +37,9 @@ The project will be built in substantial, user-facing phases. Implementation com
 - **Implemented:** Supabase Auth email sign-up/sign-in, SecureStore-backed session persistence, refresh-token lifecycle, and sign-out.
 - **Implemented:** Supabase RPC sync transport, SQLite sync cursor/clock persistence, workspace-filtered outbox batches, idempotent mutation acknowledgements, retries/error recording, and HLC/LWW merge orchestration.
 - **Implemented:** SQL migration for workspace membership, server-side authorization checks, workspace listing/creation, revision-cursor pull, and mutation push.
-- **Implemented:** Account & sync UI, project configuration, manual sync, offline/error/success feedback, cloud workspace creation, local workspace activation, and workspace-scoped hydration.
+- **Implemented:** Account & sync UI, project configuration, manual sync, offline/error/success feedback, cloud workspace creation, local workspace activation, workspace-scoped hydration, and owner/admin addition of registered users as editors/viewers.
 - **Deployment required:** Apply `supabase/migrations/202610180001_phase4_sync_workspaces.sql` to a Supabase project and configure its URL/public key in the app. See `SUPABASE_SETUP.md`.
-- **Remaining:** Invite/manage workspace members, field-level conflict resolution, background sync, and push-based invalidation. The phase has not been tested or built yet by request.
+- **Remaining:** Pending email invitations, member removal/role changes, field-level conflict resolution, background sync, and push-based invalidation. The phase has not been tested or built yet by request.
 
 ## Phase 5 — Sharing and interoperability
 **Goal:** Make calendars portable and collaborative.
