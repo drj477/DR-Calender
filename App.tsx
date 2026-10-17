@@ -281,6 +281,31 @@ function CalendarApp() {
         };
       });
       setTasks(persistedTasks);
+      const permission = await Notifications.getPermissionsAsync();
+      setPermissionGranted(permission.granted);
+      if (permission.granted) {
+        for (const entity of entities) {
+          if (entity.deletedAt !== null) continue;
+          if (entity.itemType === "reminder" && entity.metadata?.reminder) {
+            const meta = entity.metadata.reminder;
+            const at = meta.snoozeUntil ?? (meta.trigger.kind === "time" ? meta.trigger.at : null);
+            if (at && at > Date.now()) {
+              await cancelNotificationIds(meta.notificationId ? [meta.notificationId] : []);
+              const notificationId = await scheduleReminderNotification(entity, at);
+              const updated = { ...entity, metadata: { ...entity.metadata, reminder: { ...meta, notificationId } } };
+              const mutationId = "reminder-reschedule-" + entity.id + "-" + Date.now();
+              await local.repository.upsert(updated, mutationId);
+              useCalendarStore.getState().upsertEntity(updated, mutationId);
+            }
+          } else if (entity.itemType === "event" && entity.metadata?.event?.reminderMinutesBefore != null) {
+            const notificationIds = await scheduleEventNotifications(entity);
+            const updated = { ...entity, metadata: { ...entity.metadata, event: { ...entity.metadata.event, notificationIds } } };
+            const mutationId = "event-notification-reschedule-" + entity.id + "-" + Date.now();
+            await local.repository.upsert(updated, mutationId);
+            useCalendarStore.getState().upsertEntity(updated, mutationId);
+          }
+        }
+      }
     }).catch(error => {
       console.warn("Local calendar database initialization failed", error);
     });
