@@ -40,8 +40,7 @@ export function escapeICSText(value: string): string {
 }
 
 export function unescapeICSText(value: string): string {
-  return value.replace(/\\[nN]/g, "
-").replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\\\/g, "\\");
+  return value.replace(/\\[nN]/g, "\r\n").replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\\\/g, "\\");
 }
 
 function utf8Length(value: string): number {
@@ -91,12 +90,9 @@ function statusToPartstat(status: RSVPStatus | undefined): string {
 
 function unfoldLines(ics: string): string[] {
   const normalized = ics.replace(/\r
-/g, "
-").replace(/\r/g, "
-");
+/g, "\r\n").replace(/\r/g, "\r\n");
   const unfolded: string[] = [];
-  for (const line of normalized.split("
-")) {
+  for (const line of normalized.split("\r\n")) {
     if (/^[ \t]/.test(line) && unfolded.length) {
       unfolded[unfolded.length - 1] += line.slice(1);
     } else {
@@ -122,7 +118,7 @@ function splitProperty(line: string): { name: string; params: Record<string, str
 
 function parseDateProperty(value: string): string | null {
   if (!value) return null;
-  const match = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?(Z)?)?$/.exec(value);
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/.exec(value);
   if (!match) return value;
   const [, year, month, day, hour = "00", minute = "00", second = "00", zulu] = match;
   return zulu
@@ -275,7 +271,7 @@ function formatICSLocal(timestamp: number, timeZone: string): string {
 }
 /** Convert a floating ICS local date-time into epoch milliseconds in its TZID. */
 export function parseICSDateTime(value: string, timeZone: string | null = null): number {
-  if (/Z$|[+-]\\d{2}:?\\d{2}$/.test(value)) {
+  if (/Z$|[+-]\d{2}:?\d{2}$/.test(value)) {
     const absolute = new Date(value).getTime();
     if (!Number.isFinite(absolute)) throw new Error("Invalid ICS date-time: " + value);
     return absolute;
@@ -360,6 +356,12 @@ export function parseICSCalendar(ics: string): ParsedICSEvent[] {
   if (!blocks.length) throw new Error("No events were found in this calendar.");
   if (blocks.length > 1000) throw new Error("Calendar contains too many events (maximum 1000 per import).");
   const method = unfolded.map(splitProperty).find(property => property?.name === "METHOD")?.value;
-  return blocks.map(block => parseICS(["BEGIN:VCALENDAR", ...(method ? [`METHOD:${method}`] : []), ...block, "END:VCALENDAR"].join("\r
+  const parsed = blocks.map(block => parseICS(["BEGIN:VCALENDAR", ...(method ? [`METHOD:${method}`] : []), ...block, "END:VEVENT", "END:VCALENDAR"].join("\r\n")));
+  for (const event of parsed) {
+    if (!event.start) throw new Error(`Event "${event.summary}" is missing DTSTART.`);
+    const start = parseICSDateTime(event.start,event.timeZone);
+    if (event.end) { const end = parseICSDateTime(event.end,event.timeZone); if (end <= start) throw new Error(`Event "${event.summary}" has an invalid end date.`); }
+  }
+  return parsed;
 ")));
 }
