@@ -51,8 +51,7 @@ export class SyncCoordinator {
 
   async syncWorkspace(workspaceId: string): Promise<SyncRunResult> {
     if (!workspaceId.trim()) throw new Error("workspaceId is required");
-    const pending = (await this.local.listPendingMutations(this.batchSize))
-      .filter(mutation => mutation.workspaceId === workspaceId);
+    const pending = await this.local.listPendingMutations(this.batchSize, workspaceId);
     let pushed = 0;
 
     if (pending.length) {
