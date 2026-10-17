@@ -491,11 +491,19 @@ function CalendarApp() {
     if (database) {
       database.repository.upsert(entity, mutationId).catch(error => console.warn("Unable to persist event", error));
     }
-    if (permissionGranted && draft.scope !== "occurrence") {
-      scheduleEventNotifications(entity).then(async notificationIds => {
-        const updated = { ...entity, syncVersion: entity.syncVersion + 1, updatedAt: Date.now(), metadata: { ...entity.metadata, event: { ...entity.metadata?.event!, notificationIds } } };
-        await persistReminderUpdate(updated, "event-reminder-schedule-" + entity.id + "-" + updated.syncVersion);
-      }).catch(error => console.warn("Unable to schedule event reminders", error));
+    if (draft.scope !== "occurrence") {
+      if (draft.reminderMinutesBefore === null) {
+        void cancelNotificationIds(existing?.metadata?.event?.notificationIds);
+      } else {
+        requestNotificationPermission().then(granted => {
+          setPermissionGranted(granted);
+          if (!granted) return;
+          return scheduleEventNotifications(entity).then(async notificationIds => {
+            const updated = { ...entity, syncVersion: entity.syncVersion + 1, updatedAt: Date.now(), metadata: { ...entity.metadata, event: { ...entity.metadata?.event!, notificationIds } } };
+            await persistReminderUpdate(updated, "event-reminder-schedule-" + entity.id + "-" + updated.syncVersion);
+          });
+        }).catch(error => console.warn("Unable to schedule event reminders", error));
+      }
     }
   };
 
@@ -675,7 +683,7 @@ function CalendarApp() {
           </View>
         </View>
         <View style={styles.syncNote}><View style={styles.syncDot} /><Text style={styles.syncText}>{pendingCount ? `${pendingCount} changes waiting to sync` : "Offline-first · Ready when you are"}</Text></View>
-      </ScrollView> : activeTab === "Reminders" ? <ReminderCenter reminders={reminders} permissionGranted={permissionGranted} onRequestPermission={handleRequestNotifications} onCreate={createReminder} onSnooze={snoozeReminder} onComplete={completeReminder} onDelete={deleteReminder} /> : <View style={styles.placeholderScreen}><Text style={styles.placeholderTitle}>{activeTab}</Text><Text style={styles.placeholderText}>{activeTab === "Tasks" ? "Task workspace is queued for the next phase." : "Shared spaces will be available in a later phase."}</Text></View>}
+      </ScrollView></> : activeTab === "Reminders" ? <ReminderCenter reminders={reminders} permissionGranted={permissionGranted} onRequestPermission={handleRequestNotifications} onCreate={createReminder} onSnooze={snoozeReminder} onComplete={completeReminder} onDelete={deleteReminder} /> : <View style={styles.placeholderScreen}><Text style={styles.placeholderTitle}>{activeTab}</Text><Text style={styles.placeholderText}>{activeTab === "Tasks" ? "Task workspace is queued for the next phase." : "Shared spaces will be available in a later phase."}</Text></View>}
 
       <EventEditor
         visible={activeTab === "Calendar" && eventEditorVisible}
