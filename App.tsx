@@ -886,7 +886,7 @@ function CalendarApp() {
     const now = Date.now();
     const day = new Date();
     const startOfDay = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime();
-    const endOfDay = startOfDay + 86400000;
+    const endOfDay = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1).getTime();
     const busy = storedEntities
       .filter(entity => entity.deletedAt === null && !entity.isCompleted && entity.id !== "" && (entity.itemType === "event" || entity.itemType === "task") && entity.scheduledAt !== null && entity.scheduledAt < endOfDay && (entity.endAt ?? entity.scheduledAt + 30 * 60_000) > startOfDay)
       .map(entity => ({ start: Math.max(startOfDay, entity.scheduledAt!), end: Math.min(endOfDay, entity.endAt ?? entity.scheduledAt! + 30 * 60_000) }));
