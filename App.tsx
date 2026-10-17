@@ -465,8 +465,12 @@ function CalendarApp() {
               }
             }
           } else if (entity.itemType === "event" && entity.metadata?.event?.reminderMinutesBefore != null) {
-            const notificationIds = await scheduleEventNotifications(entity);
-            const updated = { ...entity, metadata: { ...entity.metadata, event: { ...entity.metadata.event, notificationIds } } };
+            const eventMeta = entity.metadata.event;
+            const useNativeAndroidAlarm = Platform.OS === "android" && isNativeBridgeAvailable() && await isExactAlarmAllowed();
+            const notificationIds = useNativeAndroidAlarm
+              ? (await cancelNotificationIds(eventMeta.notificationIds), [])
+              : await scheduleEventNotifications(entity);
+            const updated = { ...entity, metadata: { ...entity.metadata, event: { ...eventMeta, notificationIds } } };
             const mutationId = "event-notification-reschedule-" + entity.id + "-" + Date.now();
             await local.repository.upsert(updated, mutationId);
             useCalendarStore.getState().upsertEntity(updated, mutationId);
