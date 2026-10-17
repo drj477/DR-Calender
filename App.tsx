@@ -268,7 +268,7 @@ function CalendarApp() {
         entities = await local.repository.queryRange(local.workspaceId, start, end);
       }
       if (!active) return;
-      const pending = await local.repository.listPendingMutations();
+      const pending = await local.repository.listPendingMutations(1000, local.workspaceId);
       useCalendarStore.getState().hydrate(entities, pending);
       const persistedTasks = entities.filter(entity => entity.itemType === "task").map(entity => {
         const dueAt = entity.metadata?.task?.dueAt ?? entity.scheduledAt;
@@ -400,7 +400,7 @@ function CalendarApp() {
     const start = new Date(now.getFullYear() - 1, now.getMonth(), 1).getTime();
     const end = new Date(now.getFullYear() + 5, now.getMonth() + 1, 1).getTime();
     const entities = await nextDatabase.repository.queryRange(nextDatabase.workspaceId, start, end);
-    const pending = await nextDatabase.repository.listPendingMutations();
+    const pending = await nextDatabase.repository.listPendingMutations(1000, nextDatabase.workspaceId);
     useCalendarStore.getState().hydrate(entities, pending);
     setTasks(entities.filter(entity => entity.itemType === "task").map(entity => {
       const dueAt = entity.metadata?.task?.dueAt ?? entity.scheduledAt;
@@ -415,7 +415,7 @@ function CalendarApp() {
     const start = new Date(now.getFullYear() - 1, now.getMonth(), 1).getTime();
     const end = new Date(now.getFullYear() + 5, now.getMonth() + 1, 1).getTime();
     const entities = await database.repository.queryRange(database.workspaceId, start, end);
-    const pending = await database.repository.listPendingMutations();
+    const pending = await database.repository.listPendingMutations(1000, database.workspaceId);
     useCalendarStore.getState().hydrate(entities, pending);
     setTasks(entities.filter(entity => entity.itemType === "task").map(entity => {
       const dueAt = entity.metadata?.task?.dueAt ?? entity.scheduledAt;
