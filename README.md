@@ -10,6 +10,7 @@ A premium, offline-first calendar and scheduling application for iOS and Android
 - Dark, thumb-friendly calendar UI with Day / Week / Month mode controls, horizontal date selection, agenda cards, task completion micro-animation, and quick task creation.
 - React Native Reanimated 3 spring presets and Gesture Handler root integration.
 - Zustand state store with optimistic entity mutations and a pending-sync outbox model.
+- Expo SQLite bootstrap creates a local personal workspace; task creation and completion persist locally and are recorded in the sync outbox.
 
 ### Temporal engine
 
@@ -55,7 +56,7 @@ npx expo start
 
 ## Important implementation boundaries
 
-- The calendar UI currently uses sample agenda/task data; connecting screens to the SQLite repository and real event creation is still required.
+- The calendar UI currently uses sample agenda blocks and seeds starter tasks into SQLite on first launch. Event creation/editing UI and fully data-driven calendar grid rendering remain to be implemented.
 - The RRULE expander is intentionally bounded and is not a complete RFC 5545 recurrence implementation. Timezone/DST-sensitive recurrence should be expanded with a timezone-aware engine.
 - The free-slot finder uses a fixed offset, not a full IANA timezone database.
 - The sync coordinator requires a real transport and transactional local adapter before multiplayer behavior is production-ready.
