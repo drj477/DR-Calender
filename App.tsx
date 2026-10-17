@@ -154,7 +154,7 @@ function CalendarApp() {
               ...entity.metadata,
               event: {
                 ...entity.metadata?.event,
-                kind: entity.metadata?.event?.kind ?? "standard",
+                kind: override?.isAllDay ? "all-day" : entity.metadata?.event?.kind ?? "standard",
                 commitment: entity.metadata?.event?.commitment ?? (entity.isElastic ? "elastic" : "hard"),
                 location: override?.location ?? entity.metadata?.event?.location ?? null,
                 meetingUrl: entity.metadata?.event?.meetingUrl ?? null,
@@ -325,7 +325,7 @@ function CalendarApp() {
         metadata: { ...existing.metadata, recurrence: {
           ...current,
           excludedStartsAt: current.excludedStartsAt.filter(startAt => startAt !== draft.occurrenceStartAt),
-          overrides: { ...current.overrides, [occurrenceKey]: { startAt: draft.startAt, endAt: draft.endAt, title: draft.title, location: draft.location, isShielded: draft.isShielded, isElastic: draft.isElastic } },
+          overrides: { ...current.overrides, [occurrenceKey]: { startAt: draft.startAt, endAt: draft.endAt, title: draft.title, location: draft.location, isShielded: draft.isShielded, isElastic: draft.isElastic, isAllDay: draft.isAllDay } },
         } },
       };
       const mutationId = "event-occurrence-upsert-" + existing.id + "-" + draft.occurrenceStartAt + "-" + entity.syncVersion;
