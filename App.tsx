@@ -482,8 +482,8 @@ function CalendarApp() {
             } else {
               notificationIds = await scheduleEventNotifications(entity);
             }
-            const updated = { ...entity, metadata: { ...entity.metadata, event: { ...eventMeta, notificationIds } } };
-            const mutationId = "event-notification-reschedule-" + entity.id + "-" + Date.now();
+            const updated = { ...entity, updatedAt: Date.now(), syncVersion: entity.syncVersion + 1, metadata: { ...entity.metadata, event: { ...eventMeta, notificationIds } } };
+            const mutationId = "event-notification-reschedule-" + entity.id + "-" + updated.syncVersion;
             await local.repository.upsert(updated, mutationId);
             useCalendarStore.getState().upsertEntity(updated, mutationId);
           }
