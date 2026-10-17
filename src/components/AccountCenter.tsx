@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
 import { activateLocalWorkspace, type LocalCalendarDatabase } from "../persistence/localDatabase";
 import { acquireSyncLease } from "../persistence/recoveryGate";
 import { getValidSession, loadSession, loadSupabaseConfig, saveSupabaseConfig, signIn, signOut, signUp, type AuthSession, type SupabaseConfig } from "../sync/authService";
-import { addRemoteWorkspaceMember, createRemoteWorkspace, listRemoteWorkspaces, SupabaseSyncTransport, type RemoteWorkspace } from "../sync/supabaseTransport";
+import { acceptRemoteWorkspaceInvite, createRemoteWorkspace, createRemoteWorkspaceInvite, listRemoteWorkspaceInvites, listRemoteWorkspaceMembers, listRemoteWorkspaces, removeRemoteWorkspaceMember, revokeRemoteWorkspaceInvite, updateRemoteWorkspaceMemberRole, SupabaseSyncTransport, type RemoteWorkspace, type RemoteWorkspaceInvite, type RemoteWorkspaceMember } from "../sync/supabaseTransport";
 import { SyncCoordinator } from "../sync/syncCoordinator";
 import { useCalendarStore } from "../store/calendarStore";
 
@@ -21,6 +21,9 @@ export function AccountCenter({ database, onSynced, onWorkspaceChanged }: Props)
   const [workspaceName, setWorkspaceName] = useState("");
   const [memberEmail, setMemberEmail] = useState("");
   const [memberRole, setMemberRole] = useState<"editor" | "viewer">("editor");
+  const [members, setMembers] = useState<RemoteWorkspaceMember[]>([]);
+  const [invites, setInvites] = useState<RemoteWorkspaceInvite[]>([]);
+  const [inviteId, setInviteId] = useState("");
   const [workspaceType, setWorkspaceType] = useState<"personal" | "family" | "team" | "project">("team");
   const [status, setStatus] = useState<SyncStatus>("idle");
   const [message, setMessage] = useState("");
@@ -124,6 +127,57 @@ export function AccountCenter({ database, onSynced, onWorkspaceChanged }: Props)
     } catch (error) { setMessage(error instanceof Error ? error.message : String(error)); }
     finally { setBusy(false); }
   };
+  const reloadAccess = async () => {
+    if (!config || !database) return;
+    const nextMembers = await listRemoteWorkspaceMembers(config, database.workspaceId);
+    const nextInvites = await listRemoteWorkspaceInvites(config, database.workspaceId).catch(() => [] as RemoteWorkspaceInvite[]);
+    setMembers(nextMembers); setInvites(nextInvites);
+  };
+  const addMember = async () => {
+    if (!config || !database) return;
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(memberEmail.trim())) { setMessage("Enter a valid invitation email."); return; }
+    setBusy(true); setMessage("");
+    try {
+      const invite = await createRemoteWorkspaceInvite(config, database.workspaceId, memberEmail, memberRole);
+      await Share.share({ title: "DR-Calender workspace invitation", message: "You have been invited to " + (workspaces.find(item => item.id === database.workspaceId)?.name ?? database.workspaceId) + " as " + invite.role + ". Sign in with " + invite.email + " and enter this invitation ID in Account & sync: " + invite.id + ". Expires " + new Date(invite.expires_at).toLocaleString() });
+      await reloadAccess(); setMessage("Invitation created. Share the invitation ID with the recipient; they must sign in using the invited email and accept it in Account & sync."); setMemberEmail("");
+    } catch (error) { setMessage(error instanceof Error ? error.message : String(error)); }
+    finally { setBusy(false); }
+  };
+  const changeMemberRole = async (member: RemoteWorkspaceMember, role: "admin" | "editor" | "viewer") => {
+    if (!config || !database) return;
+    setBusy(true); setMessage("");
+    try { await updateRemoteWorkspaceMemberRole(config, database.workspaceId, member.user_id, role); await reloadAccess(); setMessage("Workspace member role updated."); }
+    catch (error) { setMessage(error instanceof Error ? error.message : String(error)); }
+    finally { setBusy(false); }
+  };
+  const removeMember = async (member: RemoteWorkspaceMember) => {
+    if (!config || !database || member.role === "owner") return;
+    setBusy(true); setMessage("");
+    try { await removeRemoteWorkspaceMember(config, database.workspaceId, member.user_id); await reloadAccess(); setMessage("Member removed from this workspace. Their device-local data is not deleted."); }
+    catch (error) { setMessage(error instanceof Error ? error.message : String(error)); }
+    finally { setBusy(false); }
+  };
+  const revokeInvite = async (invite: RemoteWorkspaceInvite) => {
+    if (!config) return;
+    setBusy(true); setMessage("");
+    try { await revokeRemoteWorkspaceInvite(config, invite.id); await reloadAccess(); setMessage("Invitation revoked."); }
+    catch (error) { setMessage(error instanceof Error ? error.message : String(error)); }
+    finally { setBusy(false); }
+  };
+  const acceptInvite = async () => {
+    if (!config || !inviteId.trim()) { setMessage("Enter the invitation ID you received."); return; }
+    setBusy(true); setMessage("");
+    try {
+      const workspace = await acceptRemoteWorkspaceInvite(config, inviteId.trim());
+      setInviteId(""); await reloadWorkspaces(config);
+      setMessage("Invitation accepted for " + workspace.name + ". Select that workspace to activate its local mirror, then sync.");
+    } catch (error) { setMessage(error instanceof Error ? error.message : String(error)); }
+    finally { setBusy(false); }
+  };
+  useEffect(() => {
+    if (config && session && database) reloadAccess().catch(() => { setMembers([]); setInvites([]); });
+  }, [config, session?.user.id, database?.workspaceId]);
   const createWorkspace = async () => {
     if (!config || !session) return;
     if (!workspaceName.trim()) { setMessage("Enter a workspace name."); return; }
