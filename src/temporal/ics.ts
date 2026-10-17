@@ -273,7 +273,7 @@ function buildEntityLines(entity: TemporalEntity, uid: string, sequence: number,
   const title = override?.title ?? entity.title;
   const location = override?.location ?? entity.metadata?.event?.location;
   const lines = ["BEGIN:VEVENT", `UID:${escapeICSText(uid)}`, `SEQUENCE:${Math.max(0, sequence)}`, `DTSTAMP:${formatICSUTC(Date.now())}`];
-  if (recurrenceId !== undefined) lines.push(`RECURRENCE-ID:${allDay ? `VALUE=DATE:${formatICSDate(recurrenceId)}` : formatICSUTC(recurrenceId)}`);
+  if (recurrenceId !== undefined) lines.push(allDay ? `RECURRENCE-ID;VALUE=DATE:${formatICSDate(recurrenceId)}` : `RECURRENCE-ID:${formatICSUTC(recurrenceId)}`);
   if (allDay) {
     lines.push(`DTSTART;VALUE=DATE:${formatICSDate(start)}`, `DTEND;VALUE=DATE:${formatICSDate(end)}`);
   } else {
