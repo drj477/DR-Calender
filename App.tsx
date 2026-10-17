@@ -31,6 +31,7 @@ import { SharingCenter } from "./src/components/SharingCenter";
 import { NativeExperienceCenter } from "./src/components/NativeExperienceCenter";
 import { publishNativeWidgetSnapshot } from "./src/native/nativeExperience";
 import { DataSafetyCenter } from "./src/components/DataSafetyCenter";
+import { AppErrorBoundary } from "./src/components/AppErrorBoundary";
 import { parseICSDateTime, type ParsedICSEvent } from "./src/temporal/ics";
 import type { RSVPStatus } from "./src/temporal/types";
 import { cancelNotificationIds, requestNotificationPermission, scheduleEventNotifications, scheduleReminderNotification } from "./src/notifications/notificationService";
@@ -1035,7 +1036,7 @@ function CalendarApp() {
 export default function App() {
   return (
     <GestureHandlerRootView style={styles.root}>
-      <SafeAreaProvider><CalendarApp /></SafeAreaProvider>
+      <SafeAreaProvider><AppErrorBoundary><CalendarApp /></AppErrorBoundary></SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
