@@ -101,7 +101,9 @@ export function expandRecurrence(
   const overlapDays = Math.ceil((duration ?? 0) / DAY_MS) + 2;
   const scanFromDate = rangeDate - overlapDays * DAY_MS;
   if (count === Infinity && scanFromDate > cursor.getTime()) {
-    cursor.setTime(scanFromDate);
+    // Keep recurrence phase anchored to DTSTART while avoiding years of scans.
+    // Never start before DTSTART: negative modulo changes weekly interval phase.
+    cursor.setTime(Math.max(startDate.getTime(), scanFromDate));
   }
   const stopWall = getWallClockParts(options.rangeEnd, timeZone);
   const stopDate = Date.UTC(stopWall.year, stopWall.month - 1, stopWall.day) + DAY_MS;
