@@ -1,15 +1,16 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
-import type { LocalCalendarDatabase } from "../persistence/localDatabase";
+import { refreshLocalDatabaseAfterRestore, type LocalCalendarDatabase } from "../persistence/localDatabase";
+import { isSyncOperationActive } from "../persistence/recoveryGate";
 import { createBackup, exportBackupToFile, restoreBackupFromFile } from "../persistence/backupService";
 
 const C={bg:"#10141D",surface:"#171C28",raised:"#202838",border:"#30394B",text:"#F4F6FC",muted:"#9BA7BA",accent:"#FFC247",wash:"#322817",green:"#72D6A1",danger:"#FF9A63"};
 type Diagnostics={workspaceCount:number;entityCount:number;liveEntityCount:number;pendingMutations:number;failedMutations:number;checklistCount:number;invalidSchedules:number;orphanedChecklistItems:number;foreignKeyIssues:number;activeWorkspace:string;checkedAt:number};
-type Props={database:LocalCalendarDatabase|null};
+type Props={database:LocalCalendarDatabase|null;onRestored:(database:LocalCalendarDatabase)=>Promise<void>};
 type Busy="diagnostics"|"export"|"file-export"|"restore"|null;
 function safeError(error:unknown):string{return error instanceof Error?error.message:String(error);}
 
-export function DataSafetyCenter({database}:Props){
+export function DataSafetyCenter({database,onRestored}:Props){
  const [diagnostics,setDiagnostics]=useState<Diagnostics|null>(null);
  const [busy,setBusy]=useState<Busy>(null);
  const [message,setMessage]=useState("");
@@ -62,14 +63,17 @@ export function DataSafetyCenter({database}:Props){
  };
  const restore=()=>{
   if(!database)return;
-  Alert.alert("Replace local app data?","Restore replaces the local workspaces, events, tasks, checklists, sync queue, and local settings with the selected backup. Export a backup of the current device first. Authentication sessions are not restored. Do not proceed while a sync is running.",[
+  if(isSyncOperationActive()){setMessage("Restore is blocked while sync is running. Wait for sync to finish, then try again.");return;}
+  Alert.alert("Replace local app data?","Restore replaces the local workspaces, events, tasks, checklists, sync queue, and local settings with the selected backup. Export a backup of the current device first. Authentication sessions are not restored. Sync is locked out during the database replacement.",[
    {text:"Cancel",style:"cancel"},
    {text:"Replace local data",style:"destructive",onPress:()=>{void (async()=>{
     setBusy("restore");setMessage("");
     try{
      const result=await restoreBackupFromFile(database.db);
+     const refreshedDatabase=await refreshLocalDatabaseAfterRestore(database);
+     await onRestored(refreshedDatabase);
      setDiagnostics(null);
-     setMessage("Restore committed and integrity checks passed for "+result.rowCount+" rows. The active workspace was restored as '"+result.activeWorkspaceId+"'. Fully close and reopen DR Calender so all in-memory views and sync services reload before continuing.");
+     setMessage("Restore committed and integrity checks passed for "+result.rowCount+" rows. In-memory calendar/task state and the active workspace were reloaded immediately. Sync is available again.");
     }catch(error){setMessage("Restore was not completed. The transaction should have rolled back; preserve the original database and backup before trying again. Details: "+safeError(error));}
     finally{setBusy(null);}
    })()}}
