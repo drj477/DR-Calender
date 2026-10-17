@@ -504,8 +504,7 @@ function CalendarApp() {
       cursor = slot + 30 * 60_000;
       planned += 1;
     }
-    if (planned > 0) setActiveTab("Calendar");
-    else setActiveTab("Tasks");
+    setActiveTab("Tasks");
   };
 
   const openNewEvent = () => {
