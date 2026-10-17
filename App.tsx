@@ -102,6 +102,12 @@ function CalendarApp() {
   const storedEntities = useCalendarStore(state => Object.values(state.entitiesById));
   const today = useMemo(() => new Date(), []);
   const selectedDate = useMemo(() => new Date(today.getFullYear(), today.getMonth(), selectedDay), [today, selectedDay]);
+  const eventEditorDate = useMemo(
+    () => editingEvent?.scheduledAt !== null && editingEvent?.scheduledAt !== undefined
+      ? new Date(editingEvent.scheduledAt)
+      : selectedDate,
+    [editingEvent, selectedDate],
+  );
   const dayStart = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()).getTime();
   const dayEnd = dayStart + 24 * 60 * 60_000;
   const visibleEvents = storedEntities
@@ -256,7 +262,7 @@ function CalendarApp() {
     setEditingEvent(null);
     if (database) {
       database.repository.softDelete(event.id, mutationId).then(tombstone => {
-        if (tombstone) useCalendarStore.getState().upsertEntity(tombstone, mutationId);
+        if (tombstone) useCalendarStore.getState().deleteEntity(event.id, mutationId, event.workspaceId, "event");
       }).catch(error => console.warn("Unable to delete event", error));
     } else {
       useCalendarStore.getState().deleteEntity(event.id, mutationId, event.workspaceId, "event");
@@ -351,7 +357,7 @@ function CalendarApp() {
 
       <EventEditor
         visible={eventEditorVisible}
-        selectedDate={editingEvent?.scheduledAt ? new Date(editingEvent.scheduledAt) : selectedDate}
+        selectedDate={eventEditorDate}
         event={editingEvent}
         onClose={() => { setEventEditorVisible(false); setEditingEvent(null); }}
         onSave={saveEvent}
