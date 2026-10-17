@@ -115,8 +115,13 @@ export function expandRecurrence(
       frequency === "WEEKLY" ? Math.floor(elapsedDays / 7) % interval === 0 :
       elapsedMonths % interval === 0;
     const weekday = WEEKDAY_CODES[cursor.getUTCDay()];
-    const matchesDay = (!byDay || byDay.includes(weekday)) &&
-      (!byMonthDay || byMonthDay.includes(cursor.getUTCDate()));
+    // A plain MONTHLY rule defaults to the DTSTART day-of-month (for example,
+    // the 31st), rather than matching every day in each eligible month. If a
+    // month lacks that day, it is skipped; we do not clamp to month-end.
+    const matchesDay = frequency === "MONTHLY" && !byDay && !byMonthDay
+      ? cursor.getUTCDate() === startWall.day
+      : (!byDay || byDay.includes(weekday)) &&
+        (!byMonthDay || byMonthDay.includes(cursor.getUTCDate()));
 
     if (matchesFrequency && matchesDay) {
       const wall: WallClockParts = {
