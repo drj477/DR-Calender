@@ -132,6 +132,7 @@ function CalendarApp() {
   const selectedDay = selectedDate.getDate();
   const [tasks, setTasks] = useState(INITIAL_TASKS);
   const [database, setDatabase] = useState<LocalCalendarDatabase | null>(null);
+  const [calendarHydrated, setCalendarHydrated] = useState(false);
   const [eventEditorVisible, setEventEditorVisible] = useState(false);
   const [editingEvent, setEditingEvent] = useState<TemporalEntity | null>(null);
   const [editingOccurrenceStartAt, setEditingOccurrenceStartAt] = useState<number | null>(null);
@@ -168,7 +169,7 @@ function CalendarApp() {
   // Keep native OS alarms aligned with the active workspace. The native module
   // removes obsolete alarms after edits, moves, exclusions, completion and deletion.
   useEffect(() => {
-    if (!database) return;
+    if (!database || !calendarHydrated) return;
     let active = true;
     const timer = setTimeout(() => {
       void (async () => {
@@ -205,7 +206,7 @@ function CalendarApp() {
       })().catch(error => console.warn("Native alarm reconciliation failed", error));
     }, 350);
     return () => { active = false; clearTimeout(timer); };
-  }, [storedEntities, database, appForegroundRevision]);
+  }, [storedEntities, database, calendarHydrated, appForegroundRevision]);
 
   // Widgets and alarm notifications open the app through the drcalender:// scheme.
   // Resolve event IDs after hydration so cold-start links are not lost.
@@ -413,6 +414,7 @@ function CalendarApp() {
       if (!active) return;
       const pending = await local.repository.listPendingMutations(1000, local.workspaceId);
       useCalendarStore.getState().hydrate(entities, pending);
+      setCalendarHydrated(true);
       const persistedTasks = entities.filter(entity => entity.itemType === "task").map(entity => {
         const dueAt = entity.metadata?.task?.dueAt ?? entity.scheduledAt;
         const due = dueAt === null
@@ -538,6 +540,7 @@ function CalendarApp() {
   };
 
   const refreshWorkspaceData = async (nextDatabase: LocalCalendarDatabase) => {
+    setCalendarHydrated(false);
     setDatabase(nextDatabase);
     const now = new Date();
     const start = new Date(now.getFullYear() - 1, now.getMonth(), 1).getTime();
@@ -545,6 +548,7 @@ function CalendarApp() {
     const entities = await nextDatabase.repository.queryRange(nextDatabase.workspaceId, start, end);
     const pending = await nextDatabase.repository.listPendingMutations(1000, nextDatabase.workspaceId);
     useCalendarStore.getState().hydrate(entities, pending);
+    setCalendarHydrated(true);
     setTasks(entities.filter(entity => entity.itemType === "task").map(entity => {
       const dueAt = entity.metadata?.task?.dueAt ?? entity.scheduledAt;
       return { id: entity.id, title: entity.title, due: dueAt === null ? "No due date" : new Date(dueAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }), assignee: entity.metadata?.task?.assignee?.name ?? "You", completed: entity.isCompleted, dueAt, hasReminder: entity.metadata?.task?.reminderMinutesBefore != null };
