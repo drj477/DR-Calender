@@ -66,6 +66,9 @@ begin
       if coalesce((v_payload->>'syncVersion')::integer,0)<1 then
         raise exception 'Entity syncVersion must be positive';
       end if;
+      if (v_payload->>'syncVersion')::integer <> v_version then
+        raise exception 'Mutation and entity sync versions must match';
+      end if;
       if v_payload->>'scheduledAt' is not null and v_payload->>'endAt' is not null then
         begin
           v_scheduled := (v_payload->>'scheduledAt')::numeric;
