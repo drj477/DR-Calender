@@ -54,10 +54,13 @@ The project will be built in substantial, user-facing phases. Implementation com
 ## Phase 6 — Native experience and widgets
 **Goal:** Make DR-Calender feel integrated with the operating system.
 
-- Register iOS WidgetKit and Android Glance implementations in generated native targets.
-- Add Expo config/plugin setup, permissions, deep links, and widget refresh/update flows.
-- Connect native alarm/notification sources to the shared event model.
-- Add useful home-screen task and upcoming-event widgets with privacy-conscious preview settings.
+- **Implemented in source:** Local Expo module under `modules/dr-calender-native`, configured for Android and Apple autolinking, plus a config plugin for Android exact-alarm permission and the iOS App Group entitlement.
+- **Implemented for Android:** AlarmManager `setAlarmClock` scheduling, exact-alarm permission request/status, native broadcast receiver, high-priority alarm notification, Glance home-screen widget, widget provider metadata, and explicit widget snapshot refresh.
+- **Implemented for iOS app integration:** Native Expo module schedules/cancels standard local notifications and publishes shared widget snapshots through the App Group, then requests WidgetKit timeline refresh.
+- **Implemented in the app:** Native tab exposes bridge/permission state and lets the user schedule/cancel a native alarm for upcoming events. Calendar/task changes publish the next task or event to the native widget snapshot bridge.
+- **Deep links:** Widget tap targets use the registered `drcalender://` scheme.
+- **Important platform boundary:** Android widget receiver and resources are declared in the local native module. The iOS WidgetKit extension target and its separate App Group entitlement still require Xcode/EAS native-target setup; iOS uses standard notifications, not critical alerts. Native modules require a rebuilt development/production app and are unavailable in Expo Go.
+- **Remaining:** Automatically reconcile native alarm IDs when events are edited/deleted, recurring-event native alarm expansion, Android boot/time-change rescheduling, native alarm receiver integration with app deep-link routing, and automatic iOS WidgetKit extension target generation. No tests/build/type checks have been run by request.
 
 ## Phase 7 — Hardening and release readiness
 **Goal:** Validate the integrated product after feature implementation is complete.
