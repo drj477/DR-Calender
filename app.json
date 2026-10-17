@@ -27,7 +27,8 @@
           "color": "#FFC247"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "./plugins/withDRCalenderNative"
     ]
   }
 }
