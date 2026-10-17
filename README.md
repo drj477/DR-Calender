@@ -43,6 +43,15 @@ A premium, offline-first calendar and scheduling application for iOS and Android
 - App-level entity changes publish the next task/event snapshot for widgets. Widget taps use the `drcalender://` URL scheme.
 - The native bridge is unavailable in Expo Go; a rebuilt development/production app is required. The iOS WidgetKit extension target and its own App Group entitlement still need Xcode/EAS native-target setup. Critical-alert privileges are not included.
 
+### Data safety and recovery
+
+- The **Data** tab performs read-only local SQLite diagnostics for entity/workspace counts, pending/failed sync mutations, invalid schedules, orphan checklist rows, and foreign-key issues.
+- JSON backup export includes local workspace and calendar/task data, tombstones, checklists, and sync bookkeeping; SecureStore authentication tokens are excluded.
+- In-app export is capped at 2 MB and displays a privacy warning because backup contents may include private event/task details and pending mutation payloads.
+- A root React error boundary provides a local recovery screen when rendering fails.
+- Backup export is not a restore workflow. Restore/import, large file-based exports, and schema migration/rollback policies remain incomplete.
+- As requested, no test/build/typecheck/device-validation pass has been run. The project is not yet release-certified.
+
 ## Project structure
 
 - `App.tsx` — mobile application entry screen.
