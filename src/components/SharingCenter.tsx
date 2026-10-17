@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import type { TemporalEntity, RSVPStatus } from "../temporal/types";
-import { buildICSCalendar, parseICSCalendar, type ParsedICSEvent } from "../temporal/ics";
+import { buildICSCalendar, escapeICSText, parseICSCalendar, type ParsedICSEvent } from "../temporal/ics";
 
 const C = { bg:"#10141D", surface:"#171C28", raised:"#202838", border:"#30394B", text:"#F4F6FC", muted:"#9BA7BA", accent:"#FFC247", wash:"#322817", green:"#72D6A1", danger:"#FF9A63" };
 const SUBSCRIPTIONS_KEY = "dr-calender.ics-subscriptions.v1";
@@ -99,11 +99,9 @@ export function SharingCenter({events,onImport,onRSVP,onAddAttendee}:Props) {
     const start=selectedEvent.scheduledAt,end=selectedEvent.endAt;
     if(start===null||end===null){setMessage("Only scheduled events can be shared as invitations.");return;}
     const allDay=selectedEvent.metadata?.event?.kind==="all-day";
-    const date=(value:number)=>new Date(value).toISOString().slice(0,10).replace(/-/g,"");
+    const date=(value:number)=>{const d=new Date(value);return String(d.getFullYear()).padStart(4,"0")+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0")};
     const utc=(value:number)=>new Date(value).toISOString().replace(/[-:]/g,"").replace(/\.\d{3}Z$/,"Z");
-    const lines=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//DR-Calender//Temporal Engine//EN","METHOD:REQUEST","CALSCALE:GREGORIAN","BEGIN:VEVENT","UID:"+eventUID(selectedEvent),"SEQUENCE:"+selectedEvent.syncVersion,"DTSTAMP:"+utc(Date.now()),allDay?"DTSTART;VALUE=DATE:"+date(start):"DTSTART:"+utc(start),allDay?"DTEND;VALUE=DATE:"+date(end):"DTEND:"+utc(end),"SUMMARY:"+selectedEvent.title.replace(/[\\,;]/g,"\\$&").replace(/
-/g,"\
-"),"ORGANIZER:mailto:"+organizerEmail.trim()];
+    const lines=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//DR-Calender//Temporal Engine//EN","METHOD:REQUEST","CALSCALE:GREGORIAN","BEGIN:VEVENT","UID:"+eventUID(selectedEvent),"SEQUENCE:"+selectedEvent.syncVersion,"DTSTAMP:"+utc(Date.now()),allDay?"DTSTART;VALUE=DATE:"+date(start):"DTSTART:"+utc(start),allDay?"DTEND;VALUE=DATE:"+date(end):"DTEND:"+utc(end),"SUMMARY:"+escapeICSText(selectedEvent.title),"ORGANIZER:mailto:"+organizerEmail.trim()];
     for(const attendee of selectedEvent.metadata?.invite?.attendeeList??[])lines.push("ATTENDEE;RSVP=TRUE;PARTSTAT="+(attendee.rsvpStatus==="accepted"?"ACCEPTED":attendee.rsvpStatus==="declined"?"DECLINED":attendee.rsvpStatus==="tentative"?"TENTATIVE":"NEEDS-ACTION")+":mailto:"+attendee.email);
     lines.push("END:VEVENT","END:VCALENDAR");
     await Share.share({title:"Event invitation",message:lines.join("\r
