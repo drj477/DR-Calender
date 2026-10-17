@@ -87,6 +87,29 @@ class DRCalenderNativeModule : Module() {
       true
     }
 
+    AsyncFunction("cancelExactAlarmsExcept") { keepIds: List<String> ->
+      val context = requireNotNull(appContext.reactContext)
+      val prefs = context.getSharedPreferences("drcalender_native_alarms", Context.MODE_PRIVATE)
+      val ids = (prefs.getStringSet("alarm_ids", emptySet()) ?: emptySet()).toMutableSet()
+      val keep = keepIds.toSet()
+      val stale = ids.filter { it.startsWith("native-event-") && it !in keep }
+      val manager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+      stale.forEach { id ->
+        val alarmIntent = Intent(context, CalendarAlarmReceiver::class.java).apply {
+          action = "com.drj477.drcalender.ALARM.$id"
+        }
+        val pending = PendingIntent.getBroadcast(context, id.hashCode(), alarmIntent,
+          PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE)
+        if (pending != null) {
+          manager.cancel(pending)
+          pending.cancel()
+        }
+        prefs.edit().remove("alarm.$id.trigger").remove("alarm.$id.title").remove("alarm.$id.body").apply()
+      }
+      prefs.edit().putStringSet("alarm_ids", ids.apply { removeAll(stale.toSet()) }).apply()
+      stale.size
+    }
+
     AsyncFunction("publishWidgetSnapshot") { title: String, dueLabel: String, assignee: String, deepLink: String ->
       val context = requireNotNull(appContext.reactContext)
       context.getSharedPreferences("drcalender_widget", Context.MODE_PRIVATE).edit()
