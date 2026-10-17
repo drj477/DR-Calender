@@ -133,6 +133,34 @@ export class SQLiteTemporalRepository {
     });
   }
 
+  async softDelete(id: string, mutationId: string): Promise<TemporalEntity | null> {
+    const existing = await this.getById(id);
+    if (!existing) return null;
+    const now = Date.now();
+    const tombstone: TemporalEntity = {
+      ...existing,
+      deletedAt: now,
+      updatedAt: now,
+      syncVersion: existing.syncVersion + 1,
+    };
+    await this.db.withTransactionAsync(async () => {
+      await this.db.runAsync(
+        "UPDATE temporal_entities SET deleted_at = ?, updated_at = ?, sync_version = ? WHERE id = ?",
+        now, now, tombstone.syncVersion, id,
+      );
+      await this.db.runAsync(
+        `INSERT INTO sync_outbox (
+          mutation_id, workspace_id, entity_id, entity_type, operation, payload_json,
+          sync_version, created_at, retry_count
+        ) VALUES (?, ?, ?, ?, 'delete', ?, ?, ?, 0)
+        ON CONFLICT(mutation_id) DO NOTHING`,
+        mutationId, existing.workspaceId, existing.id, existing.itemType,
+        JSON.stringify({ deletedAt: now }), tombstone.syncVersion, now,
+      );
+    });
+    return tombstone;
+  }
+
   async getById(id: string): Promise<TemporalEntity | null> {
     const row = await this.db.getFirstAsync<TemporalRow>(
       "SELECT * FROM temporal_entities WHERE id = ? AND deleted_at IS NULL LIMIT 1",
