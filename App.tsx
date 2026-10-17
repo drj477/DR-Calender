@@ -214,7 +214,10 @@ function CalendarApp() {
   useEffect(() => {
     const openNotificationRoute = (response: Notifications.NotificationResponse | null) => {
       const value = response?.notification.request.content.data?.deepLink;
-      if (typeof value === "string" && value.startsWith("drcalender://")) setPendingDeepLink(value);
+      if (typeof value === "string" && value.startsWith("drcalender://")) {
+        setPendingDeepLink(value);
+        void Notifications.clearLastNotificationResponseAsync().catch(() => undefined);
+      }
     };
     void Notifications.getLastNotificationResponseAsync().then(openNotificationRoute).catch(() => undefined);
     const subscription = Notifications.addNotificationResponseReceivedListener(openNotificationRoute);
