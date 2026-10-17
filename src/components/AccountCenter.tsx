@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { activateLocalWorkspace, type LocalCalendarDatabase } from "../persistence/localDatabase";
-import { clearSupabaseConfig, getValidSession, loadSession, loadSupabaseConfig, saveSupabaseConfig, signIn, signOut, signUp, type AuthSession, type SupabaseConfig } from "../sync/authService";
+import { getValidSession, loadSession, loadSupabaseConfig, saveSupabaseConfig, signIn, signOut, signUp, type AuthSession, type SupabaseConfig } from "../sync/authService";
 import { createRemoteWorkspace, listRemoteWorkspaces, SupabaseSyncTransport, type RemoteWorkspace } from "../sync/supabaseTransport";
 import { SyncCoordinator } from "../sync/syncCoordinator";
 import { useCalendarStore } from "../store/calendarStore";
