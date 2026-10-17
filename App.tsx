@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
   content: { flex: 1 },
   contentContainer: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 28 },
   sectionHeading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 18 },
-  sectionTitle: { color: COLORS.text, fontSize: 18, fontWeight: "750", letterSpacing: -0.4 },
+  sectionTitle: { color: COLORS.text, fontSize: 18, fontWeight: "700", letterSpacing: -0.4 },
   sectionCaption: { color: COLORS.muted, fontSize: 11, marginTop: 5 },
   addButton: { height: 38, width: 38, borderRadius: 13, backgroundColor: COLORS.accent, alignItems: "center", justifyContent: "center" },
   addGlyph: { color: COLORS.background, fontSize: 25, fontWeight: "400", marginTop: -2 },
