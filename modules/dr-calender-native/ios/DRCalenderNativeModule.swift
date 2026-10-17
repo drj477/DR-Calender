@@ -32,14 +32,23 @@ public final class DRCalenderNativeModule: Module {
       content.body = body
       content.sound = .default
       content.categoryIdentifier = "DR_CALENDER_ALARM"
+      let routeID: String?
       if id.hasPrefix("native-event-auto-") {
         let payload = String(id.dropFirst("native-event-auto-".count))
         if let separator = payload.lastIndex(of: "-") {
           let eventID = String(payload[..<separator])
           let occurrenceStart = String(payload[payload.index(after: separator)...])
-          let routeID = eventID + "::" + occurrenceStart
-          content.userInfo["deepLink"] = "drcalender://events/" + routeID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)!.replacingOccurrences(of: "/", with: "%2F")
+          routeID = eventID + "::" + occurrenceStart
+        } else {
+          routeID = nil
         }
+      } else if id.hasPrefix("native-event-manual-") {
+        routeID = String(id.dropFirst("native-event-manual-".count))
+      } else {
+        routeID = nil
+      }
+      if let routeID {
+        content.userInfo["deepLink"] = "drcalender://events/" + routeID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)!.replacingOccurrences(of: "/", with: "%2F")
       }
       let trigger = UNCalendarNotificationTrigger(dateMatching: Calendar.current.dateComponents(
         [.year, .month, .day, .hour, .minute, .second], from: fireDate), repeats: false)
