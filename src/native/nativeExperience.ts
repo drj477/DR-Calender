@@ -12,6 +12,7 @@ type DRCalenderNativeModule = {
   requestExactAlarmPermission(): Promise<boolean>;
   scheduleExactAlarm(id: string, title: string, body: string, triggerAtMillis: number): Promise<boolean>;
   cancelExactAlarm(id: string): Promise<boolean>;
+  isExactAlarmScheduled(id: string): Promise<boolean>;
   cancelExactAlarmsExcept(keepIds: string[]): Promise<number>;
   cancelAllManualAlarms(): Promise<number>;
   publishWidgetSnapshot(title: string, dueLabel: string, assignee: string, deepLink: string): Promise<boolean>;
@@ -34,6 +35,11 @@ export async function requestExactAlarmPermission(): Promise<boolean> {
 export async function scheduleNativeAlarm(alarm: NativeAlarm): Promise<boolean> {
   if (!native) return false;
   return native.scheduleExactAlarm(alarm.id, alarm.title, alarm.body, alarm.triggerAt);
+}
+
+export async function isNativeAlarmScheduled(id: string): Promise<boolean> {
+  if (!native) return false;
+  return native.isExactAlarmScheduled(id);
 }
 
 export async function cancelNativeAlarm(id: string): Promise<boolean> {
