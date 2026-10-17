@@ -6,11 +6,11 @@ Phase 4 uses Supabase Auth for account sessions and PostgreSQL RPC functions for
 
 Open the Supabase project SQL Editor and run the complete migration:
 
-`supabase/migrations/202610180001_phase4_sync_workspaces.sql`
+`supabase/migrations/202610180001_phase4_sync_workspaces.sql`\n`supabase/migrations/202610180002_phase7_security_hardening.sql`\n`supabase/migrations/202610180003_phase9_workspace_lifecycle.sql`
 
 It creates workspace and membership tables, an idempotency ledger, versioned temporal entity storage, row-level security, and server-side RPC functions for workspace listing/creation and sync push/pull.
 
-The RPCs are `dr_list_workspaces`, `dr_create_workspace`, `dr_add_workspace_member`, `dr_sync_push`, and `dr_sync_pull`. They validate the signed-in user and membership on the server. Write operations require owner/admin/editor membership; viewers can read and sync down.
+The RPCs validate the signed-in user and workspace membership on the server. Write operations require owner/admin/editor membership; viewers can read and sync down. The Phase 9 migration adds member listing, role changes, removal, pending invitations, revocation, and acceptance.
 
 ## 2. Configure authentication
 
@@ -34,7 +34,7 @@ Create a family, team, or project workspace from the Workspaces section. Use the
 
 - The migration must be applied before sync can succeed.
 - A project URL and public key are required; this repository does not provide a hosted Supabase project.
-- Workspace creation establishes the creator as owner. Owners/admins can add an existing registered account as editor or viewer from Account & sync; pending email invitations, member removal, and role changes are not implemented.
+- Workspace creation establishes the creator as owner. Owners/admins can invite by email, change eligible member roles, remove members, revoke pending invitations, and accept invitations from Account & sync. Invitation records expire after 14 days. The mobile app creates and shares an invitation ID but does not send email itself; trusted email delivery remains a deployment integration.
 - Conflict handling is deterministic LWW/HLC, not field-level collaborative merge.
 - The current sync client is foreground/manual; background sync scheduling and push-based invalidation remain future work.
 - Offline mutations remain in SQLite’s outbox until the server acknowledges them. Errors are surfaced in Account & sync.
