@@ -20,6 +20,7 @@ import { useCalendarStore } from "./src/store/calendarStore";
 import { initializeLocalDatabase, makeTaskEntity, type LocalCalendarDatabase } from "./src/persistence/localDatabase";
 import { EventEditor, type EventDraft } from "./src/components/EventEditor";
 import { DayTimeline } from "./src/components/DayTimeline";
+import { CalendarOverview } from "./src/components/CalendarOverview";
 import type { TemporalEntity } from "./src/temporal/types";
 
 type ScreenMode = "Day" | "Week" | "Month";
@@ -94,15 +95,15 @@ function EventCard({ event, index, onPress }: { event: TemporalEntity; index: nu
 
 function CalendarApp() {
   const [mode, setMode] = useState<ScreenMode>("Day");
-  const [selectedDay, setSelectedDay] = useState(new Date().getDate());
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const selectedDay = selectedDate.getDate();
   const [tasks, setTasks] = useState(INITIAL_TASKS);
   const [database, setDatabase] = useState<LocalCalendarDatabase | null>(null);
   const [eventEditorVisible, setEventEditorVisible] = useState(false);
   const [editingEvent, setEditingEvent] = useState<TemporalEntity | null>(null);
   const pendingCount = useCalendarStore(state => state.pendingMutations.length);
   const storedEntities = useCalendarStore(state => Object.values(state.entitiesById));
-  const today = useMemo(() => new Date(), []);
-  const selectedDate = useMemo(() => new Date(today.getFullYear(), today.getMonth(), selectedDay), [today, selectedDay]);
+
   const eventEditorDate = useMemo(
     () => editingEvent?.scheduledAt !== null && editingEvent?.scheduledAt !== undefined
       ? new Date(editingEvent.scheduledAt)
@@ -115,15 +116,14 @@ function CalendarApp() {
     .filter(entity => entity.itemType === "event" && entity.deletedAt === null && entity.scheduledAt !== null)
     .filter(entity => entity.scheduledAt! < dayEnd && (entity.endAt ?? entity.scheduledAt!) >= dayStart)
     .sort((a, b) => (a.scheduledAt ?? 0) - (b.scheduledAt ?? 0));
-  const monthLabel = today.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  const monthLabel = selectedDate.toLocaleDateString(undefined, { month: "long", year: "numeric" });
   const days = useMemo(() => {
-    const first = new Date(today.getFullYear(), today.getMonth(), 1);
-    const count = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const count = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate();
     return Array.from({ length: count }, (_, i) => ({
       day: i + 1,
-      weekday: new Date(today.getFullYear(), today.getMonth(), i + 1).toLocaleDateString(undefined, { weekday: "short" }).slice(0, 1),
+      weekday: new Date(selectedDate.getFullYear(), selectedDate.getMonth(), i + 1).toLocaleDateString(undefined, { weekday: "short" }).slice(0, 1),
     }));
-  }, [today]);
+  }, [selectedDate]);
 
   useEffect(() => {
     let active = true;
@@ -316,7 +316,7 @@ function CalendarApp() {
       <View style={styles.weekStrip}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.daysContent}>
           {days.map(({ day, weekday }) => (
-            <Pressable key={day} onPress={() => setSelectedDay(day)} style={[styles.dayItem, selectedDay === day && styles.dayItemActive]}>
+            <Pressable key={day} onPress={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), day))} style={[styles.dayItem, selectedDay === day && styles.dayItemActive]}>
               <Text style={[styles.dayWeekday, selectedDay === day && styles.dayWeekdayActive]}>{weekday}</Text>
               <Text style={[styles.dayNumber, selectedDay === day && styles.dayNumberActive]}>{day}</Text>
               {[5, 9, 14, 18, 23, 27].includes(day) ? <View style={[styles.dayDot, selectedDay === day && styles.dayDotActive]} /> : <View style={styles.dayDotPlaceholder} />}
@@ -331,13 +331,8 @@ function CalendarApp() {
           <Pressable onPress={openNewEvent} style={styles.addButton} accessibilityRole="button" accessibilityLabel="Create event"><Text style={styles.addGlyph}>＋</Text></Pressable>
         </View>
 
-        {mode === "Month" ? (
-          <View style={styles.monthPlaceholder}>
-            <Text style={styles.monthPlaceholderTitle}>Monthly overview</Text>
-            <Text style={styles.sectionCaption}>Choose a day above to view its schedule.</Text>
-          </View>
-        ) : (
-          {visibleEvents.length ? (
+        {mode === "Day" ? (
+          visibleEvents.length ? (
             <DayTimeline
               date={selectedDate}
               events={visibleEvents}
@@ -353,7 +348,17 @@ function CalendarApp() {
               <Text style={styles.sectionCaption}>Add an event to start shaping this day.</Text>
               <Pressable onPress={openNewEvent} style={styles.emptyAdd}><Text style={styles.emptyAddText}>＋ Create event</Text></Pressable>
             </View>
-          )}
+          )
+        ) : (
+          <CalendarOverview
+            mode={mode}
+            date={selectedDate}
+            events={storedEntities.filter(entity => entity.itemType === "event" && entity.deletedAt === null)}
+            onSelectDate={date => {
+              setSelectedDate(date);
+              if (mode === "Month") setMode("Day");
+            }}
+          />
         )}
 
         <View style={styles.tasksSection}>
