@@ -1,5 +1,5 @@
 import React, { useMemo, useRef } from "react";
-import { PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Animated, PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { TemporalEntity } from "../temporal/types";
 import { calculateOverlappingLayout } from "../temporal/overlap";
 
@@ -48,14 +48,15 @@ function DraggableEvent({
   onPress: () => void;
   onMove: (event: TemporalEntity, startAt: number, endAt: number) => void;
 }) {
-  const originY = useRef(0);
+  const dragY = useRef(new Animated.Value(0)).current;
   const duration = Math.max(5 * 60_000, (event.endAt ?? (event.scheduledAt ?? 0) + 30 * 60_000) - (event.scheduledAt ?? 0));
   const responder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => false,
     onMoveShouldSetPanResponder: (_event, gesture) => Math.abs(gesture.dy) > 7 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
-    onPanResponderGrant: () => { originY.current = top; },
-    onPanResponderMove: () => undefined,
+    onPanResponderGrant: () => { dragY.setValue(0); },
+    onPanResponderMove: (_event, gesture) => { dragY.setValue(gesture.dy); },
     onPanResponderRelease: (_event, gesture) => {
+      Animated.spring(dragY, { toValue: 0, useNativeDriver: false, damping: 20, stiffness: 220 }).start();
       const deltaMinutes = Math.round((gesture.dy / MINUTE_HEIGHT) / GRID_MINUTES) * GRID_MINUTES;
       if (!deltaMinutes || event.scheduledAt === null) return;
       const dayStart = new Date(event.scheduledAt);
@@ -82,6 +83,7 @@ function DraggableEvent({
           width,
           borderLeftColor: color,
         },
+        { transform: [{ translateY: dragY }] },
       ]}
     >
       <Pressable onPress={onPress} style={styles.eventPressable} accessibilityRole="button" accessibilityLabel={`Edit ${event.title}`}>
@@ -126,7 +128,6 @@ export function DayTimeline({ date, events, onEventPress, onEventMove }: DayTime
             if (!position) return null;
             const top = (position.startAt - timelineStart) * MINUTE_HEIGHT / 60_000;
             const height = Math.max(34, (position.endAt - position.startAt) * MINUTE_HEIGHT / 60_000);
-            const inset = 3;
             const left = `${position.leftFraction * 100}%`;
             const width = `${position.widthFraction * 100}%`;
             return (
