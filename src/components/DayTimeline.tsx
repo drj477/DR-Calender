@@ -14,6 +14,8 @@ const COLORS = {
   coral: "#FF9A63",
 };
 
+const EVENT_SHADOW = { shadowColor: "#000000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.28, shadowRadius: 8, elevation: 4 };
+
 const START_HOUR = 6;
 const END_HOUR = 22;
 const HOUR_HEIGHT = 64;
@@ -201,13 +203,13 @@ const styles = StyleSheet.create({
   hourText: { color: COLORS.muted, fontSize: 9, fontWeight: "600" },
   grid: { flex: 1, position: "relative", borderLeftWidth: 1, borderLeftColor: COLORS.border },
   gridLine: { position: "absolute", left: 0, right: 0, borderTopWidth: 1, borderTopColor: COLORS.border },
-  eventBlock: { position: "absolute", borderLeftWidth: 3, borderRadius: 9, backgroundColor: COLORS.surface, borderTopWidth: 1, borderRightWidth: 1, borderBottomWidth: 1, borderTopColor: COLORS.border, borderRightColor: COLORS.border, borderBottomColor: COLORS.border, overflow: "hidden" },
+  eventBlock: { position: "absolute", borderLeftWidth: 3, borderRadius: 11, backgroundColor: COLORS.surface, borderTopWidth: 1, borderRightWidth: 1, borderBottomWidth: 1, borderTopColor: COLORS.border, borderRightColor: COLORS.border, borderBottomColor: COLORS.border, overflow: "hidden", ...EVENT_SHADOW },
   resizeStart: { height: 9, alignItems: "center", justifyContent: "center", zIndex: 2 },
   resizeEnd: { height: 9, alignItems: "center", justifyContent: "center", zIndex: 2 },
-  resizeGrip: { width: 22, height: 3, borderRadius: 2, backgroundColor: COLORS.accent, opacity: 0.9 },
+  resizeGrip: { width: 24, height: 4, borderRadius: 2, backgroundColor: COLORS.accent, opacity: 0.95 },
   eventPressable: { flex: 1, paddingHorizontal: 6, paddingVertical: 1, gap: 2 },
   eventTime: { color: COLORS.muted, fontSize: 8, fontWeight: "700" },
-  eventTitle: { color: COLORS.text, fontSize: 10, fontWeight: "700" },
+  eventTitle: { color: COLORS.text, fontSize: 10, fontWeight: "800", letterSpacing: 0.1 },
   eventLocation: { color: COLORS.muted, fontSize: 8 },
   hint: { color: COLORS.muted, fontSize: 10, paddingTop: 10, paddingLeft: LABEL_WIDTH + 8 },
 });
