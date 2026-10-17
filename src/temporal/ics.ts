@@ -327,12 +327,12 @@ function timezoneTransitions(timeZone:string,firstYear:number,lastYear:number):s
       const current=Math.min(sample,Date.UTC(year+1,0,1));
       const currentOffset=zoneOffsetMinutes(current,timeZone);
       if(currentOffset!==previousOffset){
-        let low=previous,high=current;
-        while(high-low>60_000){
-          const middle=Math.floor((low+high)/120_000)*60_000;
-          if(zoneOffsetMinutes(middle,timeZone)===previousOffset)low=middle;else high=middle;
+        let low=Math.floor(previous/60_000),high=Math.floor(current/60_000);
+        while(high-low>1){
+          const middle=Math.floor((low+high)/2);
+          if(zoneOffsetMinutes(middle*60_000,timeZone)===previousOffset)low=middle;else high=middle;
         }
-        const transition=Math.ceil(high/60_000)*60_000;
+        const transition=high*60_000;
         const toOffset=zoneOffsetMinutes(transition,timeZone);
         if(toOffset!==previousOffset){
           found=true;
