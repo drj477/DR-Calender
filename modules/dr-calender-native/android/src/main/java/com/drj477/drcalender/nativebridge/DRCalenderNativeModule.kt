@@ -17,7 +17,7 @@ class DRCalenderNativeModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("DRCalenderNative")
 
-    Function("isExactAlarmAllowed") {
+    AsyncFunction("isExactAlarmAllowed") {
       val context = requireNotNull(appContext.reactContext)
       val manager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
       Build.VERSION.SDK_INT < Build.VERSION_CODES.S || manager.canScheduleExactAlarms()
