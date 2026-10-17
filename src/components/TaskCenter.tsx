@@ -4,7 +4,7 @@ import type { ChecklistItem, TemporalEntity, TemporalPriority } from "../tempora
 
 const C = { bg: "#10141D", surface: "#171C28", raised: "#202838", border: "#30394B", text: "#F4F6FC", muted: "#9BA7BA", accent: "#FFC247", danger: "#FF9A63", green: "#72D6A1", wash: "#322817" };
 type Filter = "Inbox" | "Today" | "Upcoming" | "Overdue" | "Completed";
-export type TaskDraft = { id?: string; title: string; dueAt: number | null; priority: TemporalPriority; checklist: ChecklistItem[] };
+export type TaskDraft = { id?: string; title: string; dueAt: number | null; durationMinutes: number; priority: TemporalPriority; checklist: ChecklistItem[] };
 
 type Props = {
   tasks: TemporalEntity[];
@@ -33,6 +33,7 @@ export function TaskCenter({ tasks, onSave, onToggle, onDelete, onPlanDay, onRol
   const [date, setDate] = useState(dateValue(Date.now() + 60 * 60_000));
   const [time, setTime] = useState(timeValue(Date.now() + 60 * 60_000));
   const [hasDue, setHasDue] = useState(true);
+  const [durationMinutes, setDurationMinutes] = useState(30);
   const [priority, setPriority] = useState<TemporalPriority>("normal");
   const [checklistText, setChecklistText] = useState("");
   const [error, setError] = useState("");
@@ -63,7 +64,7 @@ export function TaskCenter({ tasks, onSave, onToggle, onDelete, onPlanDay, onRol
   const openEditor = (task: TemporalEntity | null = null) => {
     setEditing(task); setTitle(task?.title ?? ""); setHasDue((task?.metadata?.task?.dueAt ?? task?.scheduledAt ?? null) !== null);
     const due = task?.metadata?.task?.dueAt ?? task?.scheduledAt ?? Date.now() + 60 * 60_000;
-    setDate(dateValue(due)); setTime(timeValue(due)); setPriority(task?.priority ?? "normal");
+    setDate(dateValue(due)); setTime(timeValue(due)); setPriority(task?.priority ?? "normal"); setDurationMinutes(task?.metadata?.task?.durationMinutes ?? (task?.endAt && task?.scheduledAt ? Math.max(15,Math.round((task.endAt-task.scheduledAt)/60000)) : 30));
     setChecklistText((task?.metadata?.task?.checklist ?? []).map(item => item.title).join("\n")); setError(""); setEditorOpen(true);
   };
   const save = () => {
@@ -83,12 +84,12 @@ export function TaskCenter({ tasks, onSave, onToggle, onDelete, onPlanDay, onRol
       const match = existing.find(item => item.title === line);
       return match ?? { id: `check-${Date.now()}-${index}`, title: line, isCompleted: false, assignedUserId: null, updatedAt: Date.now() };
     });
-    onSave({ id: editing?.id, title: title.trim(), dueAt, priority, checklist });
+    onSave({ id: editing?.id, title: title.trim(), dueAt, durationMinutes, priority, checklist });
     setEditorOpen(false);
   };
   const toggleChecklistItem = (task: TemporalEntity, item: ChecklistItem) => {
     const current = task.metadata?.task?.checklist ?? [];
-    onSave({ id: task.id, title: task.title, dueAt: task.metadata?.task?.dueAt ?? task.scheduledAt, priority: task.priority, checklist: current.map(entry => entry.id === item.id ? { ...entry, isCompleted: !entry.isCompleted, updatedAt: Date.now() } : entry) });
+    onSave({ id: task.id, title: task.title, dueAt: task.metadata?.task?.dueAt ?? task.scheduledAt, durationMinutes: task.metadata?.task?.durationMinutes ?? (task.endAt && task.scheduledAt ? Math.max(15,Math.round((task.endAt-task.scheduledAt)/60000)) : 30), priority: task.priority, checklist: current.map(entry => entry.id === item.id ? { ...entry, isCompleted: !entry.isCompleted, updatedAt: Date.now() } : entry) });
   };
 
   return <View style={s.root}>
@@ -125,6 +126,7 @@ export function TaskCenter({ tasks, onSave, onToggle, onDelete, onPlanDay, onRol
           <Text style={s.label}>TASK</Text><TextInput value={title} onChangeText={setTitle} placeholder="What needs doing?" placeholderTextColor={C.muted} style={s.input} autoFocus={!editing} />
           <Pressable onPress={() => setHasDue(value => !value)} style={s.dueToggle} accessibilityRole="checkbox" accessibilityState={{ checked: hasDue }}><Text style={s.formTitle}>Due date and time</Text><Text style={s.toggleValue}>{hasDue ? "On ✓" : "No due date"}</Text></Pressable>
           {hasDue ? <View style={s.row}><View style={s.field}><Text style={s.label}>DATE</Text><TextInput value={date} onChangeText={setDate} style={s.input} placeholder="YYYY-MM-DD" placeholderTextColor={C.muted} /></View><View style={s.field}><Text style={s.label}>TIME (24H)</Text><TextInput value={time} onChangeText={setTime} style={s.input} placeholder="HH:MM" placeholderTextColor={C.muted} /></View></View> : null}
+          <Text style={s.label}>ESTIMATED WORK DURATION</Text><View style={s.priorityChoices}>{([15,30,45,60,90,120] as const).map(value => <Pressable key={value} onPress={() => setDurationMinutes(value)} style={[s.priorityChoice,durationMinutes===value&&s.priorityChoiceActive]}><Text style={[s.priorityText,durationMinutes===value&&s.prioritySelected]}>{value<60?value+" min":value/60+" hr"+(value===60?"":"s")}</Text></Pressable>)}</View>
           <Text style={s.label}>PRIORITY</Text><View style={s.priorityChoices}>{(["low", "normal", "high", "critical"] as TemporalPriority[]).map(value => <Pressable key={value} onPress={() => setPriority(value)} style={[s.priorityChoice, priority === value && s.priorityChoiceActive]}><Text style={[s.priorityText, priority === value && s.prioritySelected]}>{priorityLabel[value]}</Text></Pressable>)}</View>
           <Text style={s.label}>CHECKLIST</Text><Text style={s.helper}>One step per line. Completed steps are preserved when you edit a task.</Text><TextInput multiline value={checklistText} onChangeText={setChecklistText} placeholder={"Prepare notes\nReview details\nSend it"} placeholderTextColor={C.muted} style={[s.input, s.multiline]} />
           {error ? <Text style={s.error}>{error}</Text> : null}
