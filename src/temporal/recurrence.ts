@@ -201,17 +201,34 @@ function getWallClockParts(epochMs: number, timeZone: string): WallClockParts {
 
 function wallClockToEpoch(wall: WallClockParts, timeZone: string): number {
   const targetUtc = Date.UTC(wall.year, wall.month - 1, wall.day, wall.hour, wall.minute, wall.second, wall.millisecond);
-  let candidate = targetUtc;
-  // Iteratively correct the candidate by the difference between desired wall time
-  // and the wall time represented by the candidate in the requested zone.
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    const actual = getWallClockParts(candidate, timeZone);
-    const actualAsUtc = Date.UTC(actual.year, actual.month - 1, actual.day, actual.hour, actual.minute, actual.second, actual.millisecond);
-    const delta = targetUtc - actualAsUtc;
-    if (delta === 0) return candidate;
-    candidate += delta;
+  const matchesWall = (epoch:number, target:number) => {
+    const actual=getWallClockParts(epoch,timeZone);
+    const expected=new Date(target);
+    return actual.year===expected.getUTCFullYear()&&actual.month===expected.getUTCMonth()+1&&actual.day===expected.getUTCDate()&&actual.hour===expected.getUTCHours()&&actual.minute===expected.getUTCMinutes()&&actual.second===expected.getUTCSeconds()&&actual.millisecond===expected.getUTCMilliseconds();
+  };
+  const exactCandidates = (target:number) => {
+    const offsets=new Set<number>();
+    for(const delta of [-36,-12,0,12,36]){
+      const sample=target+delta*60*60_000;
+      const actual=getWallClockParts(sample,timeZone);
+      const represented=Date.UTC(actual.year,actual.month-1,actual.day,actual.hour,actual.minute,actual.second,actual.millisecond);
+      offsets.add(represented-sample);
+    }
+    const candidates=[...offsets].map(offset=>target-offset).filter(candidate=>matchesWall(candidate,target));
+    return [...new Set(candidates)].sort((a,b)=>a-b);
+  };
+  const candidates=exactCandidates(targetUtc);
+  // In a fall-back fold, choose the earlier instant so repeated local wall times
+  // remain deterministic across platforms.
+  if(candidates.length)return candidates[0];
+  // A spring-forward gap has no exact instant. Advance the requested wall clock
+  // minute-by-minute to the first valid local time after the gap.
+  for(let minute=1;minute<=180;minute++){
+    const shifted=targetUtc+minute*60_000;
+    const resolved=exactCandidates(shifted);
+    if(resolved.length)return resolved[0];
   }
-  return candidate;
+  throw new RangeError(`Could not resolve local time in ${timeZone}`);
 }
 
 function parseUntil(value: string): number {
