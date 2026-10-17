@@ -12,7 +12,12 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.drj477.drcalender"
+      "bundleIdentifier": "com.drj477.drcalender",
+      "entitlements": {
+        "com.apple.security.application-groups": [
+          "group.com.drj477.drcalender"
+        ]
+      }
     },
     "android": {
       "package": "com.drj477.drcalender",
@@ -28,7 +33,8 @@
         }
       ],
       "expo-secure-store",
-      "./plugins/withDRCalenderNative"
+      "./plugins/withDRCalenderNative",
+      "@bacons/apple-targets"
     ]
   }
 }
