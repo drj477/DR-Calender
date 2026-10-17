@@ -286,7 +286,7 @@ function CalendarApp() {
       if (permission.granted) {
         for (const entity of entities) {
           if (entity.deletedAt !== null) continue;
-          if (entity.itemType === "reminder" && entity.metadata?.reminder) {
+          if (entity.itemType === "reminder" && !entity.isCompleted && entity.metadata?.reminder) 
             const meta = entity.metadata.reminder;
             const at = meta.snoozeUntil ?? (meta.trigger.kind === "time" ? meta.trigger.at : null);
             if (at && at > Date.now()) {
@@ -360,7 +360,7 @@ function CalendarApp() {
     const all = await database.repository.queryRange(database.workspaceId, 0, 4102444800000);
     for (const entity of all) {
       if (entity.deletedAt !== null) continue;
-      if (entity.itemType === "reminder" && entity.metadata?.reminder) {
+      if (entity.itemType === "reminder" && !entity.isCompleted && entity.metadata?.reminder) {
         const meta = entity.metadata.reminder;
         const at = meta.snoozeUntil ?? (meta.trigger.kind === "time" ? meta.trigger.at : null);
         if (at && at > Date.now()) {
@@ -520,6 +520,12 @@ function CalendarApp() {
     useCalendarStore.getState().upsertEntity(updated, mutationId);
     if (database) {
       database.repository.upsert(updated, mutationId).catch(error => console.warn("Unable to persist moved event", error));
+    }
+    if (permissionGranted && updated.metadata?.event?.reminderMinutesBefore != null) {
+      scheduleEventNotifications(updated).then(async notificationIds => {
+        const withNotifications = { ...updated, syncVersion: updated.syncVersion + 1, updatedAt: Date.now(), metadata: { ...updated.metadata, event: { ...updated.metadata?.event!, notificationIds } } };
+        await persistReminderUpdate(withNotifications, "event-reminder-move-" + event.id + "-" + withNotifications.syncVersion);
+      }).catch(error => console.warn("Unable to reschedule moved event reminder", error));
     }
   };
 
