@@ -93,3 +93,50 @@ export async function addRemoteWorkspaceMember(config: SupabaseConfig, workspace
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.message ?? `Could not add workspace member (${response.status}).`);
 }
+
+export interface RemoteWorkspaceMember {
+  user_id: string;
+  email: string;
+  role: "owner" | "admin" | "editor" | "viewer";
+  created_at: string;
+}
+export interface RemoteWorkspaceInvite {
+  id: string;
+  email: string;
+  role: "editor" | "viewer";
+  created_at: string;
+  expires_at: string;
+}
+async function workspaceRpc<T>(config: SupabaseConfig, name: string, body: Record<string, unknown>): Promise<T> {
+  const session = await getValidSession(config);
+  if (!session) throw new Error("Sign in to manage workspace access.");
+  const response = await fetch(`${config.url.replace(/\\/+$/, "")}/rest/v1/rpc/${name}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: config.anonKey, Authorization: `Bearer ${session.accessToken}` },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.message ?? data.details ?? `Workspace request failed (${response.status}).`);
+  return data as T;
+}
+export function listRemoteWorkspaceMembers(config: SupabaseConfig, workspaceId: string): Promise<RemoteWorkspaceMember[]> {
+  return workspaceRpc(config, "dr_list_workspace_members", { p_workspace_id: workspaceId });
+}
+export function listRemoteWorkspaceInvites(config: SupabaseConfig, workspaceId: string): Promise<RemoteWorkspaceInvite[]> {
+  return workspaceRpc(config, "dr_list_workspace_invites", { p_workspace_id: workspaceId });
+}
+export function createRemoteWorkspaceInvite(config: SupabaseConfig, workspaceId: string, email: string, role: "editor" | "viewer"): Promise<RemoteWorkspaceInvite> {
+  return workspaceRpc(config, "dr_create_workspace_invite", { p_workspace_id: workspaceId, p_email: email.trim().toLowerCase(), p_role: role });
+}
+export function updateRemoteWorkspaceMemberRole(config: SupabaseConfig, workspaceId: string, userId: string, role: "admin" | "editor" | "viewer"): Promise<{ role: string }> {
+  return workspaceRpc(config, "dr_set_workspace_member_role", { p_workspace_id: workspaceId, p_user_id: userId, p_role: role });
+}
+export function removeRemoteWorkspaceMember(config: SupabaseConfig, workspaceId: string, userId: string): Promise<{ removed_user_id: string }> {
+  return workspaceRpc(config, "dr_remove_workspace_member", { p_workspace_id: workspaceId, p_user_id: userId });
+}
+export function revokeRemoteWorkspaceInvite(config: SupabaseConfig, inviteId: string): Promise<{ revoked: boolean }> {
+  return workspaceRpc(config, "dr_revoke_workspace_invite", { p_invite_id: inviteId });
+}
+export function acceptRemoteWorkspaceInvite(config: SupabaseConfig, inviteId: string): Promise<RemoteWorkspace> {
+  return workspaceRpc(config, "dr_accept_workspace_invite", { p_invite_id: inviteId });
+}
