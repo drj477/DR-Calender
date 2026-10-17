@@ -6,7 +6,8 @@ This is a source-level review of the SQL migrations in this repository. It is **
 
 ## Changes added
 
-- `202610180003_phase9_workspace_lifecycle.sql` adds authenticated, membership-checked RPCs for listing members/invitations, role changes, member removal, invitation creation/revocation, and acceptance tied to the signed-in email. Direct access to the invitation table is revoked.\n- `202610180002_phase7_security_hardening.sql` revokes direct table privileges from `anon` and `authenticated`; the mobile app is intended to use the authenticated RPC surface.
+- `202610180003_phase9_workspace_lifecycle.sql` adds authenticated, membership-checked RPCs for listing members/invitations, role changes, member removal, invitation creation/revocation, and acceptance tied to the signed-in email. Direct access to the invitation table is revoked.
+- `202610180002_phase7_security_hardening.sql` revokes direct table privileges from `anon` and `authenticated`; the mobile app is intended to use the authenticated RPC surface.
 - The hardened push RPC validates authentication, workspace membership and editor-level write role, batch shape/size, mutation identity, supported entity types/operations, title length, positive versions, and scheduled time ranges.
 - Reused mutation IDs are acknowledged only for the actor that originally submitted them; a different actor is rejected.
 - All security-definer RPCs have explicit authenticated-only execute grants and a fixed `search_path`.
