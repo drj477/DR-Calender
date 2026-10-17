@@ -1,0 +1,7 @@
+{
+  "name": "dr-calender-native",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local Expo module for DR Calender native alarms and widget snapshots",
+  "main": "index.js"
+}
