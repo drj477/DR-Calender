@@ -65,3 +65,8 @@ npx expo start
 - The sync coordinator requires a real transport and transactional local adapter before multiplayer behavior is production-ready.
 - iOS critical alerts require Apple's entitlement and user authorization. Android exact alarms and full-screen intents are subject to OS permissions and user settings; neither platform can guarantee overriding all silent/focus states.
 - Build/typecheck/device tests have intentionally not been run yet; implementation is being built first as requested.
+
+
+## Visual theme
+
+The calendar UI uses a midnight-navy and warm-amber palette inspired by the supplied references: deep navy backgrounds, layered blue-charcoal surfaces, subtle slate borders, warm gold highlights, soft off-white text, and muted slate secondary text. Event states use restrained amber/orange accents instead of the previous lime/lavender palette. This theme is applied consistently across the main calendar, day timeline, week/month overview, and event editor.
