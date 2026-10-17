@@ -357,7 +357,12 @@ export function parseICSCalendar(ics: string): ParsedICSEvent[] {
     ...block,
     "END:VCALENDAR",
   ].join("\r\n")));
+  const masterUIDs = new Set<string>();
   for (const event of parsed) {
+    if (event.method !== "REPLY" && event.recurrenceId === null) {
+      if (masterUIDs.has(event.uid)) throw new Error("Calendar contains duplicate master events with UID " + event.uid + ".");
+      masterUIDs.add(event.uid);
+    }
     if (event.method === "REPLY" && !event.start) continue;
     if (!event.start) throw new Error('Event "' + event.summary + '" is missing DTSTART.');
     const start = parseICSDateTime(event.start, event.timeZone);
