@@ -36,7 +36,7 @@ import { reconcileNativeEventAlarms } from "./src/native/alarmReconciliation";
 import { cancelNativeAlarm, isExactAlarmAllowed, isNativeBridgeAvailable } from "./src/native/nativeExperience";
 import { DataSafetyCenter } from "./src/components/DataSafetyCenter";
 import { AppErrorBoundary } from "./src/components/AppErrorBoundary";
-import { parseICSDateTime, type ParsedICSEvent } from "./src/temporal/ics";
+import { isSupportedTimeZone, parseICSDateTime, type ParsedICSEvent } from "./src/temporal/ics";
 import type { RSVPStatus } from "./src/temporal/types";
 import { cancelNotificationIds, requestNotificationPermission, scheduleEventNotifications, scheduleReminderNotification } from "./src/notifications/notificationService";
 import * as Notifications from "expo-notifications";
@@ -760,7 +760,7 @@ function CalendarApp() {
         scheduledAt:startAt, endAt, isCompleted:false, priority:existing?.priority??"normal",
         isShielded:existing?.isShielded??false, isElastic:existing?.isElastic??false, isGhost:false, ghostClusterId:null,
         assignedUserIds:existing?.assignedUserIds??["local-user"], rrule:item.recurrenceRule, syncVersion:(existing?.syncVersion??0)+1,
-        createdAt:existing?.createdAt??now, updatedAt:now, deletedAt:item.status==="CANCELLED"?now:null, timeZone:item.timeZone??Intl.DateTimeFormat().resolvedOptions().timeZone??"UTC",
+        createdAt:existing?.createdAt??now, updatedAt:now, deletedAt:item.status==="CANCELLED"?now:null, timeZone:isSupportedTimeZone(item.timeZone)?item.timeZone!:Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC",
         metadata:{
           ...existing?.metadata,
           recurrence: { excludedStartsAt, overrides:{ ...(existing?.metadata?.recurrence?.overrides??{}), ...overrides } },
