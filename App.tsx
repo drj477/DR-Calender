@@ -499,6 +499,7 @@ function CalendarApp() {
       useCalendarStore.getState().upsertEntity(entity, mutationId);
       setEventEditorVisible(false); setEditingEvent(null); setEditingOccurrenceStartAt(null);
       if (database) database.repository.upsert(entity, mutationId).catch(error => console.warn("Unable to persist event occurrence", error));
+      refreshEventNotifications(entity).catch(error => console.warn("Unable to refresh occurrence reminders", error));
       return;
     }
     const id = existing?.id ?? `event-${now}`;
@@ -553,18 +554,7 @@ function CalendarApp() {
       database.repository.upsert(entity, mutationId).catch(error => console.warn("Unable to persist event", error));
     }
     if (draft.scope !== "occurrence") {
-      if (draft.reminderMinutesBefore === null) {
-        void cancelNotificationIds(existing?.metadata?.event?.notificationIds);
-      } else {
-        requestNotificationPermission().then(granted => {
-          setPermissionGranted(granted);
-          if (!granted) return;
-          return scheduleEventNotifications(entity).then(async notificationIds => {
-            const updated = { ...entity, syncVersion: entity.syncVersion + 1, updatedAt: Date.now(), metadata: { ...entity.metadata, event: { ...entity.metadata?.event!, notificationIds } } };
-            await persistReminderUpdate(updated, "event-reminder-schedule-" + entity.id + "-" + updated.syncVersion);
-          });
-        }).catch(error => console.warn("Unable to schedule event reminders", error));
-      }
+      refreshEventNotifications(entity).catch(error => console.warn("Unable to schedule event reminders", error));
     }
   };
 
@@ -582,13 +572,7 @@ function CalendarApp() {
     if (database) {
       database.repository.upsert(updated, mutationId).catch(error => console.warn("Unable to persist moved event", error));
     }
-    if (permissionGranted && updated.metadata?.event?.reminderMinutesBefore != null) {
-      scheduleEventNotifications(updated).then(async notificationIds => {
-        const withNotifications = { ...updated, syncVersion: updated.syncVersion + 1, updatedAt: Date.now(), metadata: { ...updated.metadata, event: { ...updated.metadata?.event!, notificationIds } } };
-        await persistReminderUpdate(withNotifications, "event-reminder-move-" + event.id + "-" + withNotifications.syncVersion);
-      }).catch(error => console.warn("Unable to reschedule moved event reminder", error));
-    }
-  };
+    refreshEventNotifications(updated).catch(error => console.warn("Unable to reschedule moved event reminder", error));  };
 
   const deleteEvent = (event: TemporalEntity, scope: "occurrence" | "series" = "series", occurrenceStartAt: number | null = null) => {
     if (scope === "occurrence" && occurrenceStartAt !== null) {
@@ -612,6 +596,7 @@ function CalendarApp() {
       setEditingEvent(null);
       setEditingOccurrenceStartAt(null);
       if (database) database.repository.upsert(updated, mutationId).catch(error => console.warn("Unable to persist occurrence deletion", error));
+      refreshEventNotifications(updated).catch(error => console.warn("Unable to refresh occurrence reminders", error));
       return;
     }
     void cancelNotificationIds(event.metadata?.event?.notificationIds);
