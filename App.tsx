@@ -482,7 +482,7 @@ function CalendarApp() {
       .filter(entity => entity.deletedAt === null && !entity.isCompleted && entity.id !== "" && (entity.itemType === "event" || entity.itemType === "task") && entity.scheduledAt !== null && entity.scheduledAt < endOfDay && (entity.endAt ?? entity.scheduledAt + 30 * 60_000) > startOfDay)
       .map(entity => ({ start: Math.max(startOfDay, entity.scheduledAt!), end: Math.min(endOfDay, entity.endAt ?? entity.scheduledAt! + 30 * 60_000) }));
     const pending = taskEntities.filter(task => !task.isCompleted && (task.metadata?.task?.dueAt ?? task.scheduledAt) === null || (!task.isCompleted && (task.metadata?.task?.dueAt ?? task.scheduledAt) !== null && (task.metadata?.task?.dueAt ?? task.scheduledAt)! < startOfDay))
-      .sort((a, b) => ({ critical: 0, high: 1, normal: 2, low: 3 }[a.priority] - { critical: 0, high: 1, normal: 2, low: 3 }[b.priority] || a.createdAt - b.createdAt);
+      .sort((a, b) => ({ critical: 0, high: 1, normal: 2, low: 3 }[a.priority] - { critical: 0, high: 1, normal: 2, low: 3 }[b.priority] || a.createdAt - b.createdAt));
     let cursor = Math.max(now, new Date(day.getFullYear(), day.getMonth(), day.getDate(), 9, 0).getTime());
     const workdayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 18, 0).getTime();
     let planned = 0;
