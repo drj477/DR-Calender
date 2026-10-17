@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS sync_outbox (
   last_error TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_sync_outbox_created ON sync_outbox (created_at, mutation_id);
-CREATE TABLE IF NOT EXISTS sync_cursors (
+CREATE TABLE IF NOT EXISTS sync_entity_clocks (\n  entity_id TEXT PRIMARY KEY NOT NULL,\n  clock_json TEXT NOT NULL,\n  updated_at INTEGER NOT NULL\n);\nCREATE TABLE IF NOT EXISTS sync_cursors (
   workspace_id TEXT PRIMARY KEY NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
   cursor TEXT,
   last_synced_at INTEGER,
