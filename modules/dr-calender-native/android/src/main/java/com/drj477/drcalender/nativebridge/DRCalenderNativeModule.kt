@@ -34,7 +34,7 @@ class DRCalenderNativeModule : Module() {
           context.startActivity(intent)
         }
       }
-      true
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) manager.canScheduleExactAlarms() else true
     }
 
     AsyncFunction("scheduleExactAlarm") { id: String, title: String, body: String, triggerAtMillis: Double ->
@@ -58,6 +58,12 @@ class DRCalenderNativeModule : Module() {
       val show = PendingIntent.getActivity(context, requestCode, launchIntent,
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
       manager.setAlarmClock(AlarmManager.AlarmClockInfo(trigger, show), pending)
+      val prefs = context.getSharedPreferences("drcalender_native_alarms", Context.MODE_PRIVATE)
+      val ids = (prefs.getStringSet("alarm_ids", emptySet()) ?: emptySet()).toMutableSet()
+      ids.add(id)
+      prefs.edit().putStringSet("alarm_ids", ids)
+        .putLong("alarm.$id.trigger", trigger).putString("alarm.$id.title", title)
+        .putString("alarm.$id.body", body).apply()
       true
     }
 
@@ -72,6 +78,11 @@ class DRCalenderNativeModule : Module() {
         (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).cancel(pending)
         pending.cancel()
       }
+      val prefs = context.getSharedPreferences("drcalender_native_alarms", Context.MODE_PRIVATE)
+      val ids = (prefs.getStringSet("alarm_ids", emptySet()) ?: emptySet()).toMutableSet()
+      ids.remove(id)
+      prefs.edit().putStringSet("alarm_ids", ids).remove("alarm.$id.trigger")
+        .remove("alarm.$id.title").remove("alarm.$id.body").apply()
       true
     }
 
