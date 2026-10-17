@@ -403,6 +403,16 @@ function CalendarApp() {
     if (database) await database.repository.upsert(entity, mutationId);
   };
 
+  const refreshEventNotifications = async (entity: TemporalEntity) => {
+    const eventMeta = entity.metadata?.event;
+    if (!eventMeta || (eventMeta.reminderMinutesBefore == null && !eventMeta.notificationIds?.length)) return;
+    const notificationIds = await scheduleEventNotifications(entity);
+    const updated = { ...entity, syncVersion: entity.syncVersion + 1, updatedAt: Date.now(), metadata: { ...entity.metadata, event: { ...eventMeta, notificationIds } } };
+    await persistReminderUpdate(updated, "event-notifications-refresh-" + entity.id + "-" + updated.syncVersion);
+    const permission = await Notifications.getPermissionsAsync();
+    setPermissionGranted(permission.granted);
+  };
+
   const handleRequestNotifications = async () => {
     const granted = await requestNotificationPermission();
     setPermissionGranted(granted);
