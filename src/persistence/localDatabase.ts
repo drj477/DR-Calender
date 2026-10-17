@@ -153,6 +153,33 @@ export function initializeLocalDatabase(): Promise<LocalCalendarDatabase> {
   return initialization;
 }
 
+/**
+ * Re-read the persisted active workspace after an in-place restore. The SQLite
+ * handle remains valid; replacing the cached initialization result makes future
+ * callers resolve to the restored workspace instead of stale pre-restore state.
+ */
+export async function refreshLocalDatabaseAfterRestore(
+  current: LocalCalendarDatabase,
+): Promise<LocalCalendarDatabase> {
+  const setting = await current.db.getFirstAsync<{ value: string }>(
+    "SELECT value FROM app_settings WHERE key = 'active_workspace_id' LIMIT 1",
+  );
+  const requestedId = setting?.value ?? DEFAULT_WORKSPACE_ID;
+  const workspace = await current.db.getFirstAsync<{ id: string }>(
+    "SELECT id FROM workspaces WHERE id = ? LIMIT 1",
+    requestedId,
+  );
+  const fallback = await current.db.getFirstAsync<{ id: string }>(
+    "SELECT id FROM workspaces WHERE id = ? LIMIT 1",
+    DEFAULT_WORKSPACE_ID,
+  );
+  const workspaceId = workspace?.id ?? fallback?.id;
+  if (!workspaceId) throw new Error("Restored database contains no usable workspace.");
+  const refreshed = { ...current, workspaceId };
+  initialization = Promise.resolve(refreshed);
+  return refreshed;
+}
+
 export function makeTaskEntity(input: {
   id: string;
   title: string;
