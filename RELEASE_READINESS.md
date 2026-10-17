@@ -17,7 +17,7 @@ This document records source implementation and outstanding validation. It is **
 - [x] Android native alarm persistence and restoration receiver for reboot/time/time-zone/exact-alarm permission changes.
 - [x] iOS WidgetKit extension source is present.
 - [x] iOS WidgetKit target generation is configured with `@bacons/apple-targets`, an extension target folder, and a shared App Group entitlement.
-- [x] Sync and backup restore are coordinated through a shared operation gate; restore refreshes the active database workspace and in-memory stores before releasing the gate.
+- [x] Sync and backup restore are coordinated through a shared operation gate; restore refreshes the active database workspace and in-memory stores before releasing the gate.\n- [x] Event editor supports an explicit IANA time zone; event wall-clock values are resolved in that zone, and recurring occurrences use deterministic DST fold/gap handling.\n- [x] ICS export includes `VTIMEZONE` observances for exported IANA time zones across the event-year range.\n- [x] Workspace lifecycle migration adds member listing, role changes, removal, invitation expiry, revocation, and email-bound acceptance through authenticated RPCs.
 
 - [x] Source-level rolling native alarm reconciliation for recurring event occurrences, moved overrides, exclusions, and stale alarm cancellation.
 - [x] App deep-link routing for task/event widget links and Android/iOS event notification taps.
@@ -33,14 +33,14 @@ This document records source implementation and outstanding validation. It is **
 - [ ] Build Android and iOS native apps; verify local module autolinking, generated manifests, and native dependency resolution.
 - [ ] Verify Android exact-alarm permission, notification permission denial, reboot/time-change recovery, widget refresh, and alarm cancellation on physical devices.
 - [ ] Run a clean iOS prebuild on supported macOS tooling; add the Apple Developer Team ID, verify the generated WidgetKit target and signed App Group entitlement, then verify widget refresh/deep links on physical devices.
-- [ ] Apply both Supabase migrations to a non-production project; verify effective grants, function owners/search paths, RLS behavior, workspace isolation, role matrix, payload rejection, and idempotency.
+- [ ] Apply all three Supabase migrations to a non-production project; verify effective grants, function owners/search paths, RLS behavior, workspace isolation, membership role matrix, invitation expiry/revocation/email binding, payload rejection, and idempotency.
 - [ ] Run the security checklist in SUPABASE_SECURITY_REVIEW.md; source changes alone are not a live-project audit.
 - [ ] Exercise restore on a disposable database with malformed, truncated, duplicate, future-version, and foreign-key-invalid backups; prove rollback behavior and UI restart/reinitialization.
 - [ ] Confirm Expo share behavior for large files on Android and iOS; platform share providers can impose their own limits.
 - [ ] Define a backup compatibility policy before future schema changes, including how old backups are upgraded or rejected.
 - [ ] Review accessibility labels/focus order, dynamic type, color contrast, long lists, and low-memory behavior.
 - [ ] Review local logs and define privacy-reviewed telemetry before adding remote crash reporting.
-- [ ] Verify store metadata, privacy disclosures, permissions, and platform policy compliance.
+- [ ] Verify store metadata, privacy disclosures, permissions, and platform policy compliance.\n- [ ] Configure trusted email delivery for workspace invitations if automated delivery is required; the mobile share-sheet flow alone does not send email.\n- [ ] Validate ICS imports from providers that embed custom VTIMEZONE definitions or Windows-style TZID aliases.
 
 ## Backup format
 
