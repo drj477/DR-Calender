@@ -7,7 +7,7 @@ import { buildICSCalendar, parseICSCalendar, type ParsedICSEvent } from "../temp
 const C = { bg:"#10141D", surface:"#171C28", raised:"#202838", border:"#30394B", text:"#F4F6FC", muted:"#9BA7BA", accent:"#FFC247", wash:"#322817", green:"#72D6A1", danger:"#FF9A63" };
 const SUBSCRIPTIONS_KEY = "dr-calender.ics-subscriptions.v1";
 type Subscription = { id:string; url:string; name:string; lastChecked:number|null; eventCount:number; error:string|null };
-type Props = { events: TemporalEntity[]; onImport:(items: ParsedICSEvent[], strategy:"skip"|"update")=>Promise<void>; onRSVP:(event:TemporalEntity,status:Exclude<RSVPStatus,"needs-action">)=>Promise<void> };
+type Props = { events: TemporalEntity[]; onImport:(items: ParsedICSEvent[], strategy:"skip"|"update")=>Promise<void>; onRSVP:(event:TemporalEntity,email:string,status:Exclude<RSVPStatus,"needs-action">)=>Promise<void> };
 const fmt = (value:number|null) => value === null ? "Unscheduled" : new Date(value).toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
 const eventUID = (event:TemporalEntity) => event.metadata?.invite?.icsUid ?? event.id + "@dr-calender.local";
 
@@ -77,10 +77,9 @@ export function SharingCenter({events,onImport,onRSVP}:Props) {
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rsvpEmail.trim())){setMessage("Enter a valid attendee email address.");return;}
     setBusy(true);
     try {
-      const uid=eventUID(selectedEvent);
       const match=selectedEvent.metadata?.invite?.attendeeList.find(a=>a.email.toLowerCase()===rsvpEmail.trim().toLowerCase());
       if(!match){setMessage("That email is not on this event’s attendee list. Add attendees through an invitation import first.");return;}
-      await onRSVP(selectedEvent,rsvpStatus);
+      await onRSVP(selectedEvent,rsvpEmail,rsvpStatus);
       setMessage("RSVP updated locally and queued for sync. Export the event to send the updated response.");
     } catch(error){setMessage(error instanceof Error?error.message:String(error));}
     finally{setBusy(false);}
