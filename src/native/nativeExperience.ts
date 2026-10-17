@@ -13,6 +13,7 @@ type DRCalenderNativeModule = {
   scheduleExactAlarm(id: string, title: string, body: string, triggerAtMillis: number): Promise<boolean>;
   cancelExactAlarm(id: string): Promise<boolean>;
   cancelExactAlarmsExcept(keepIds: string[]): Promise<number>;
+  cancelAllManualAlarms(): Promise<number>;
   publishWidgetSnapshot(title: string, dueLabel: string, assignee: string, deepLink: string): Promise<boolean>;
 };
 
@@ -48,6 +49,12 @@ export async function publishNativeWidgetSnapshot(input: {
 }): Promise<boolean> {
   if (!native) return false;
   return native.publishWidgetSnapshot(input.title, input.dueLabel, input.assignee, input.deepLink);
+}
+
+/** Cancels user-managed native event alarms, for example after a full backup restore. */
+export async function cancelAllManualNativeAlarms(): Promise<number> {
+  if (!native) return 0;
+  return native.cancelAllManualAlarms();
 }
 
 /** Removes app-managed native alarms that are no longer part of the desired schedule. */
