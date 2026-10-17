@@ -70,6 +70,24 @@ begin
   return jsonb_build_object('id',v_id,'name',v_name,'workspace_type',p_workspace_type,'role','owner');
 end $$;
 
+create or replace function public.dr_add_workspace_member(p_workspace_id text,p_email text,p_role text default 'editor')
+returns jsonb language plpgsql security definer set search_path = public, auth
+as $
+declare v_actor_role text; v_user_id uuid;
+begin
+  if auth.uid() is null then raise exception 'Authentication required' using errcode='42501'; end if;
+  select role into v_actor_role from public.dr_workspace_members where workspace_id=p_workspace_id and user_id=auth.uid();
+  if v_actor_role not in ('owner','admin') or v_actor_role is null then raise exception 'Workspace administration access denied' using errcode='42501'; end if;
+  if p_role not in ('editor','viewer') then raise exception 'Member role must be editor or viewer'; end if;
+  if length(trim(coalesce(p_email,'')))<3 or length(trim(p_email))>254 then raise exception 'Enter a valid member email'; end if;
+  select id into v_user_id from auth.users where lower(email)=lower(trim(p_email)) limit 1;
+  if v_user_id is null then raise exception 'No registered account was found for that email. The member must create an account first.'; end if;
+  insert into public.dr_workspace_members(workspace_id,user_id,role)
+    values(p_workspace_id,v_user_id,p_role)
+    on conflict(workspace_id,user_id) do update set role=excluded.role;
+  return jsonb_build_object('workspace_id',p_workspace_id,'user_id',v_user_id,'role',p_role);
+end $;
+
 create or replace function public.dr_sync_push(p_workspace_id text,p_mutations jsonb)
 returns jsonb language plpgsql security definer set search_path = public, auth
 as $$
@@ -90,7 +108,7 @@ begin
     if not found then v_acked := v_acked || jsonb_build_array(v_mutation_id); continue; end if;
     if v_op='upsert' then
       v_payload := v_item->'payload';
-      if jsonb_typeof(v_payload)<>'object' or coalesce(v_payload->>'id','')<>v_id or coalesce(v_payload->>'workspaceId','')<>p_workspace_id then
+      if jsonb_typeof(v_payload)<>'object' or coalesce(v_payload->>'id','')<>v_id or coalesce(v_payload->>'workspaceId','')<>p_workspace_id or coalesce(v_payload->>'itemType','')<>v_type or coalesce(v_payload->>'title','')='' then
         raise exception 'Entity payload identity does not match mutation';
       end if;
     else
@@ -132,9 +150,9 @@ end $$;
 
 revoke all on function public.dr_list_workspaces() from public, anon;
 revoke all on function public.dr_create_workspace(text,text,text) from public, anon;
-revoke all on function public.dr_sync_push(text,jsonb) from public, anon;
+revoke all on function public.dr_add_workspace_member(text,text,text) from public, anon;\nrevoke all on function public.dr_sync_push(text,jsonb) from public, anon;
 revoke all on function public.dr_sync_pull(text,bigint,integer) from public, anon;
 grant execute on function public.dr_list_workspaces() to authenticated;
 grant execute on function public.dr_create_workspace(text,text,text) to authenticated;
-grant execute on function public.dr_sync_push(text,jsonb) to authenticated;
+grant execute on function public.dr_add_workspace_member(text,text,text) to authenticated;\ngrant execute on function public.dr_sync_push(text,jsonb) to authenticated;
 grant execute on function public.dr_sync_pull(text,bigint,integer) to authenticated;
