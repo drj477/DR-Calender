@@ -84,4 +84,4 @@ The calendar UI uses a midnight-navy and warm-amber palette inspired by the supp
 
 - Calendar views use the bounded RRULE expander to generate event instances within the visible date range; the stored series remains the source of truth.
 - Unsupported or malformed recurrence rules are logged and skipped rather than crashing the calendar render.
-- Per-occurrence overrides/exceptions and separate “this occurrence / entire series” editing flows are not implemented yet; current recurring-event interactions are deliberately series-only.
+- Recurring events support persisted per-occurrence overrides and exclusions. The editor offers “This occurrence” versus “Entire series” when opened from a generated instance; overrides are keyed by the original occurrence start timestamp so moving an occurrence does not change its identity. The RRULE engine remains bounded and timezone/DST-sensitive recurrence requires a timezone-aware engine.
