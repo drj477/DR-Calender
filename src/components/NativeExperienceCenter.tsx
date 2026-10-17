@@ -29,9 +29,9 @@ export function NativeExperienceCenter({entities}:Props){
     try{
       const currentNotifications=await Notifications.getPermissionsAsync();
       const notificationsGranted=currentNotifications.granted || (await Notifications.requestPermissionsAsync()).granted;
-      const result=await requestExactAlarmPermission();
+      const result=Platform.OS==="ios"?true:await requestExactAlarmPermission();
       setNotificationAllowed(notificationsGranted);
-      setMessage(result&&notificationsGranted?"Native alarm and notification permissions are available.": "Return from system Settings and reopen this screen to refresh permission status.");
+      setMessage(result&&notificationsGranted?"Native alarm and notification permissions are available.": Platform.OS==="ios"?"Enable notifications in system Settings, then reopen this screen.":"Return from system Settings and reopen this screen to refresh permission status.");
     }
     catch(error){setMessage(error instanceof Error?error.message:String(error))}
     finally{
