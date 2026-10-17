@@ -121,6 +121,7 @@ function parseDateProperty(value: string): string | null {
 /** Parses the first VEVENT in an ICS payload, including common RSVP fields. */
 export function parseICS(ics: string): ParsedICSEvent {
   const lines = unfoldLines(ics);
+  loadCustomTimeZones(lines);
   let inEvent = false;
   let foundEvent = false;
   const properties: ReturnType<typeof splitProperty>[] = [];
@@ -366,13 +367,23 @@ function parseICSDateTime(value: string, timeZone: string | null = null): number
   const target = Date.UTC(Number(y),Number(mo)-1,Number(d),Number(h),Number(mi),Number(se));
   if (!timeZone) return new Date(Number(y),Number(mo)-1,Number(d),Number(h),Number(mi),Number(se)).getTime();
   let guess = target;
-  for (let i=0;i<4;i++) {
-    const p = partsInZone(guess,timeZone);
-    const represented = Date.UTC(Number(p.year),Number(p.month)-1,Number(p.day),Number(p.hour),Number(p.minute),Number(p.second));
-    const delta = target-represented;
-    guess += delta;
-    if (delta===0) break;
+  try {
+    for (let i=0;i<6;i++) {
+      const p = partsInZone(guess,timeZone);
+      const represented = Date.UTC(Number(p.year),Number(p.month)-1,Number(p.day),Number(p.hour),Number(p.minute),Number(p.second));
+      const delta = target-represented;
+      guess += delta;
+      if (delta===0) break;
+    }
+    const p=partsInZone(guess,timeZone);
+    if(Date.UTC(Number(p.year),Number(p.month)-1,Number(p.day),Number(p.hour),Number(p.minute),Number(p.second))===target)return guess;
+  } catch {
+    const custom=parseCustomWallTime(value,timeZone);
+    if(custom!==null)return custom;
+    throw new Error("Unsupported ICS time zone: "+timeZone);
   }
+  const custom=parseCustomWallTime(value,timeZone);
+  if(custom!==null)return custom;
   return guess;
 }
 function buildEntityLines(entity: TemporalEntity, uid: string, sequence: number, override?: RecurrenceOverride, recurrenceId?: number): string[] {
@@ -504,9 +515,16 @@ export function parseICSCalendar(ics: string): ParsedICSEvent[] {
   if (!blocks.length) throw new Error("No events were found in this calendar.");
   if (blocks.length > 1000) throw new Error("Calendar contains too many events (maximum 1000 per import).");
   const method = unfolded.map(splitProperty).find(property => property?.name === "METHOD")?.value;
+  const timeZoneLines:string[]=[];
+  let inTimeZone=false;
+  for(const line of unfolded){
+    if(line.toUpperCase()==="BEGIN:VTIMEZONE"){inTimeZone=true;timeZoneLines.push(line);continue;}
+    if(inTimeZone){timeZoneLines.push(line);if(line.toUpperCase()==="END:VTIMEZONE")inTimeZone=false;}
+  }
   const parsed = blocks.map(block => parseICS([
     "BEGIN:VCALENDAR",
     ...(method ? ["METHOD:" + method] : []),
+    ...timeZoneLines,
     ...block,
     "END:VCALENDAR",
   ].join("\r\n")));
