@@ -30,6 +30,7 @@ export interface EventDraft {
   location: string | null;
   isShielded: boolean;
   isElastic: boolean;
+  rrule: string | null;
 }
 
 interface EventEditorProps {
@@ -45,6 +46,23 @@ function formatClock(date: Date): string {
   return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
+function ruleFromRecurrence(value: string): string | null {
+  if (value === "daily") return "FREQ=DAILY";
+  if (value === "weekdays") return "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR";
+  if (value === "weekly") return "FREQ=WEEKLY";
+  if (value === "monthly") return "FREQ=MONTHLY";
+  return null;
+}
+
+function recurrenceFromRule(rule: string): string {
+  const normalized = rule.replace(/^RRULE:/i, "").toUpperCase();
+  if (normalized === "FREQ=DAILY") return "daily";
+  if (normalized === "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR") return "weekdays";
+  if (normalized === "FREQ=WEEKLY") return "weekly";
+  if (normalized === "FREQ=MONTHLY") return "monthly";
+  return "custom";
+}
+
 export function EventEditor({ visible, selectedDate, event, onClose, onSave, onDelete }: EventEditorProps) {
   const [title, setTitle] = useState("");
   const [startClock, setStartClock] = useState("09:00");
@@ -52,6 +70,7 @@ export function EventEditor({ visible, selectedDate, event, onClose, onSave, onD
   const [location, setLocation] = useState("");
   const [shielded, setShielded] = useState(false);
   const [elastic, setElastic] = useState(false);
+  const [recurrence, setRecurrence] = useState("none");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -66,6 +85,7 @@ export function EventEditor({ visible, selectedDate, event, onClose, onSave, onD
     setLocation(event?.metadata?.event?.location ?? "");
     setShielded(event?.isShielded ?? false);
     setElastic(event?.isElastic ?? false);
+    setRecurrence(event?.rrule ? recurrenceFromRule(event.rrule) : "none");
     setError("");
   }, [visible, selectedDate, event]);
 
@@ -97,6 +117,7 @@ export function EventEditor({ visible, selectedDate, event, onClose, onSave, onD
       location: location.trim() || null,
       isShielded: shielded,
       isElastic: elastic,
+      rrule: ruleFromRecurrence(recurrence),
     });
   };
 
@@ -139,6 +160,28 @@ export function EventEditor({ visible, selectedDate, event, onClose, onSave, onD
           <Text style={styles.label}>LOCATION (OPTIONAL)</Text>
           <TextInput value={location} onChangeText={setLocation} placeholder="Add a room or address" placeholderTextColor={palette.muted} style={styles.input} />
 
+          <Text style={styles.label}>REPEAT</Text>
+          <View style={styles.recurrenceOptions}>
+            {[
+              { label: "Never", value: "none" },
+              { label: "Daily", value: "daily" },
+              { label: "Weekdays", value: "weekdays" },
+              { label: "Weekly", value: "weekly" },
+              { label: "Monthly", value: "monthly" },
+            ].map(option => (
+              <Pressable
+                key={option.value}
+                accessibilityRole="button"
+                accessibilityState={{ selected: recurrence === option.value }}
+                onPress={() => setRecurrence(option.value)}
+                style={[styles.recurrenceOption, recurrence === option.value && styles.recurrenceOptionActive]}
+              >
+                <Text style={[styles.recurrenceText, recurrence === option.value && styles.recurrenceTextActive]}>{option.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+          {recurrence === "custom" ? <Text style={styles.optionHint}>This event has a custom recurrence rule. Choose a preset to replace it.</Text> : null}
+
           <Text style={styles.label}>EVENT BEHAVIOUR</Text>
           <Pressable onPress={() => setShielded(value => !value)} style={styles.optionRow}>
             <View style={styles.optionCopy}><Text style={styles.optionTitle}>Focus shield</Text><Text style={styles.optionHint}>Mark this event as protected focus time.</Text></View>
@@ -175,6 +218,11 @@ const styles = StyleSheet.create({
   twoColumns: { flexDirection: "row", gap: 12 },
   column: { flex: 1 },
   input: { color: palette.text, fontSize: 14, paddingHorizontal: 13, paddingVertical: 13, backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.border, borderRadius: 13 },
+  recurrenceOptions: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
+  recurrenceOption: { paddingHorizontal: 11, paddingVertical: 9, borderRadius: 10, backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.border },
+  recurrenceOptionActive: { backgroundColor: "#322817", borderColor: palette.accent },
+  recurrenceText: { color: palette.muted, fontSize: 11, fontWeight: "700" },
+  recurrenceTextActive: { color: palette.accent },
   optionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: palette.border, gap: 16 },
   optionCopy: { flex: 1, gap: 4 },
   optionTitle: { color: palette.text, fontSize: 13, fontWeight: "700" },
