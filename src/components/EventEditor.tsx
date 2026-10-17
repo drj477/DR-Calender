@@ -34,6 +34,7 @@ export interface EventDraft {
   location: string | null;
   isShielded: boolean;
   isElastic: boolean;
+  isAllDay: boolean;
   rrule: string | null;
   scope: "occurrence" | "series";
   occurrenceStartAt: number | null;
@@ -77,6 +78,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
   const [location, setLocation] = useState("");
   const [shielded, setShielded] = useState(false);
   const [elastic, setElastic] = useState(false);
+  const [allDay, setAllDay] = useState(false);
   const [recurrence, setRecurrence] = useState("none");
   const [scope, setScope] = useState<"occurrence" | "series">("series");
   const [error, setError] = useState("");
@@ -95,6 +97,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
     setLocation(override?.location ?? event?.metadata?.event?.location ?? "");
     setShielded(override?.isShielded ?? event?.isShielded ?? false);
     setElastic(override?.isElastic ?? event?.isElastic ?? false);
+    setAllDay(event?.metadata?.event?.kind === "all-day");
     if (override?.title) setTitle(override.title);
     setRecurrence(event?.rrule ? recurrenceFromRule(event.rrule) : "none");
     setError("");
@@ -120,6 +123,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
       : override?.location ?? event.metadata?.event?.location ?? "");
     setShielded(nextScope === "series" ? event.isShielded : override?.isShielded ?? event.isShielded);
     setElastic(nextScope === "series" ? event.isElastic : override?.isElastic ?? event.isElastic);
+    setAllDay(event.metadata?.event?.kind === "all-day");
     setRecurrence(event.rrule ? recurrenceFromRule(event.rrule) : "none");
     setError("");
   };
@@ -132,11 +136,11 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
       setError("Give your event a title.");
       return;
     }
-    if (!timeMatch || Number(timeMatch[1]) > 23 || Number(timeMatch[2]) > 59) {
+    if (!allDay && (!timeMatch || Number(timeMatch[1]) > 23 || Number(timeMatch[2]) > 59)) {
       setError("Enter a valid 24-hour time, such as 09:30.");
       return;
     }
-    if (!Number.isInteger(minutes) || minutes < 5 || minutes > 1440) {
+    if (!allDay && (!Number.isInteger(minutes) || minutes < 5 || minutes > 1440)) {
       setError("Duration must be between 5 and 1440 minutes.");
       return;
     }
@@ -144,17 +148,18 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
     const dateForSave = scope === "series" && occurrenceStartAt !== null && event?.scheduledAt !== null && event?.scheduledAt !== undefined
       ? new Date(event.scheduledAt)
       : selectedDate;
-    const startAt = new Date(
-      dateForSave.getFullYear(), dateForSave.getMonth(), dateForSave.getDate(),
-      Number(timeMatch[1]), Number(timeMatch[2]), 0, 0,
-    ).getTime();
+    const startAt = allDay
+      ? new Date(dateForSave.getFullYear(), dateForSave.getMonth(), dateForSave.getDate()).getTime()
+      : new Date(dateForSave.getFullYear(), dateForSave.getMonth(), dateForSave.getDate(), Number(timeMatch![1]), Number(timeMatch![2]), 0, 0).getTime();
+    const allDayEnd = new Date(dateForSave.getFullYear(), dateForSave.getMonth(), dateForSave.getDate() + 1).getTime();
     onSave({
       title: cleanTitle,
       startAt,
-      endAt: startAt + minutes * 60_000,
+      endAt: allDay ? allDayEnd : startAt + minutes * 60_000,
       location: location.trim() || null,
       isShielded: shielded,
       isElastic: elastic,
+      isAllDay: allDay,
       rrule: ruleFromRecurrence(recurrence),
       scope: event?.rrule && occurrenceStartAt !== null ? scope : "series",
       occurrenceStartAt: event?.rrule && occurrenceStartAt !== null ? occurrenceStartAt : null,
@@ -208,7 +213,12 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
             <Text style={styles.fieldText}>{(scope === "series" && occurrenceStartAt !== null && event?.scheduledAt !== null && event?.scheduledAt !== undefined ? new Date(event.scheduledAt) : selectedDate).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}</Text>
           </View>
 
-          <View style={styles.twoColumns}>
+          <Pressable onPress={() => setAllDay(value => !value)} accessibilityRole="checkbox" accessibilityState={{ checked: allDay }} style={styles.optionRow}>
+            <View style={styles.optionCopy}><Text style={styles.optionTitle}>All-day event</Text><Text style={styles.optionHint}>Reserve the whole local calendar day without a start time.</Text></View>
+            <View style={[styles.toggle, allDay && styles.toggleOn]}><View style={[styles.toggleThumb, allDay && styles.toggleThumbOn]} /></View>
+          </Pressable>
+
+          {!allDay ? <View style={styles.twoColumns}>
             <View style={styles.column}>
               <Text style={styles.label}>START TIME (24H)</Text>
               <TextInput value={startClock} onChangeText={setStartClock} placeholder="09:00" placeholderTextColor={palette.muted} keyboardType="numbers-and-punctuation" maxLength={5} style={[styles.input, editorShadow]} />
@@ -217,7 +227,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
               <Text style={styles.label}>DURATION (MIN)</Text>
               <TextInput value={duration} onChangeText={setDuration} placeholder="60" placeholderTextColor={palette.muted} keyboardType="number-pad" maxLength={4} style={styles.input} />
             </View>
-          </View>
+          </View> : <View style={styles.seriesNotice}><Text style={styles.optionHint}>This event runs from local midnight to the next local midnight.</Text></View>}
 
           <Text style={styles.label}>LOCATION (OPTIONAL)</Text>
           <TextInput value={location} onChangeText={setLocation} placeholder="Add a room or address" placeholderTextColor={palette.muted} style={styles.input} />
