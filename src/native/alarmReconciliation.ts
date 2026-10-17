@@ -1,4 +1,5 @@
 import { Platform } from "react-native";
+import * as Notifications from "expo-notifications";
 import type { TemporalEntity } from "../temporal/types";
 import { expandRecurrence } from "../temporal/recurrence";
 import { cancelNativeAlarm, cancelNativeAlarmsExcept, isExactAlarmAllowed, isNativeBridgeAvailable, scheduleNativeAlarm } from "./nativeExperience";
@@ -13,10 +14,11 @@ const MAX_ALARMS = 120;
  */
 export async function reconcileNativeEventAlarms(entities: TemporalEntity[]): Promise<{scheduled:number;cancelled:number;skipped:boolean}> {
   if (Platform.OS !== "android" || !isNativeBridgeAvailable()) return {scheduled:0,cancelled:0,skipped:true};
-  if (!await isExactAlarmAllowed()) {
+  const notificationPermission = await Notifications.getPermissionsAsync();
+  if (!await isExactAlarmAllowed() || !notificationPermission.granted) {
     let cancelled = 0;
     try { cancelled = await cancelNativeAlarmsExcept([]); }
-    catch (error) { console.warn("Unable to clear native alarms while exact-alarm access is unavailable",error); }
+    catch (error) { console.warn("Unable to clear native alarms while alarm/notification access is unavailable",error); }
     return {scheduled:0,cancelled,skipped:true};
   }
 
