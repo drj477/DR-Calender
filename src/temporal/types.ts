@@ -127,6 +127,7 @@ export interface RecurrenceOverride {
   location: string | null;
   isShielded: boolean;
   isElastic: boolean;
+  isAllDay?: boolean;
 }
 
 export interface RecurrenceExceptions {
