@@ -78,8 +78,9 @@ The project will be built in substantial, user-facing phases. Implementation com
 - **Implemented in source:** Android and iOS native bridges expose stale-alarm cancellation; Android retains alarm persistence and boot/time/time-zone restoration. Native alarms use stable occurrence IDs to make rescheduling idempotent.
 - **Implemented in source:** Widget task/event deep links are handled on cold and warm app launch. Android native event alarm notifications route to the associated event editor.
 - **Implemented in source:** Native integration docs describe the bridge contract and platform boundaries. Expo Go remains unsupported for the custom native module.
-- **Still open:** iOS Widget Extension target generation and signing, automatic workspace-switch reconciliation verification, recurring alarm delivery verification, and source-level review of native alarm IDs for unusual entity IDs.
-- **Still open:** End-to-end restore/sync exclusion and automatic in-memory database reinitialization after restore. Current restore UI still asks for a full app restart; restore must not run during sync.
+- **Implemented in source:** iOS WidgetKit extension target generation is configured through `@bacons/apple-targets`, with a dedicated target folder, shared App Group entitlement, and widget source. A clean iOS prebuild on supported macOS tooling should generate the Xcode target.
+- **Implemented in source:** A shared recovery gate prevents a sync run from overlapping a restore transaction and keeps sync locked until active workspace/store rehydration completes. Restore now refreshes the cached local database workspace, calendar store, task view, and dependent alarm reconciliation without requiring a manual app restart.
+- **Still open:** Add the real Apple Developer Team ID for signing; verify widget target generation, signing, alarm lifecycle, workspace changes, reboot/time-zone recovery, and deep links on actual Android/iOS devices. Native IDs and alarm restore behavior still require source review during the validation pass.
 - **Validation deferred:** No tests, type checks, builds, native compilation, or device validation were run. This phase is source implementation, not proof of platform behavior.
 
 ## Delivery rule
