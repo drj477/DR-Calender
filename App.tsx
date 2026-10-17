@@ -30,6 +30,7 @@ import { AccountCenter } from "./src/components/AccountCenter";
 import { SharingCenter } from "./src/components/SharingCenter";
 import { NativeExperienceCenter } from "./src/components/NativeExperienceCenter";
 import { publishNativeWidgetSnapshot } from "./src/native/nativeExperience";
+import { reconcileNativeEventAlarms } from "./src/native/alarmReconciliation";
 import { DataSafetyCenter } from "./src/components/DataSafetyCenter";
 import { AppErrorBoundary } from "./src/components/AppErrorBoundary";
 import { parseICSDateTime, type ParsedICSEvent } from "./src/temporal/ics";
@@ -152,7 +153,64 @@ function CalendarApp() {
     }).catch(() => undefined);
   }, [storedEntities]);
 
+  // Keep native OS alarms aligned with the active workspace. The native module
+  // removes obsolete alarms after edits, moves, exclusions, completion and deletion.
+  useEffect(() => {
+    let active = true;
+    const timer = setTimeout(() => {
+      void reconcileNativeEventAlarms(storedEntities).catch(error =>
+        console.warn("Native alarm reconciliation failed", error),
+      );
+    }, 350);
+    return () => { active = false; clearTimeout(timer); };
+  }, [storedEntities]);
 
+  // Widgets and alarm notifications open the app through the drcalender:// scheme.
+  // Resolve event IDs after hydration so cold-start links are not lost.
+  const [pendingDeepLink, setPendingDeepLink] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    const receiveUrl = (url: string | null) => {
+      if (active && url) setPendingDeepLink(url);
+    };
+    void Linking.getInitialURL().then(receiveUrl).catch(() => undefined);
+    const subscription = Linking.addEventListener("url", event => receiveUrl(event.url));
+    return () => { active = false; subscription.remove(); };
+  }, []);
+  useEffect(() => {
+    if (!pendingDeepLink) return;
+    let parsed: URL;
+    try { parsed = new URL(pendingDeepLink); } catch { setPendingDeepLink(null); return; }
+    const route = parsed.hostname || parsed.pathname.replace(/^\\//, "");
+    if (route === "tasks" || parsed.pathname === "/tasks") {
+      setActiveTab("Tasks");
+      setPendingDeepLink(null);
+      return;
+    }
+    if (route === "events" || parsed.pathname.startsWith("/events/")) {
+      const rawId = parsed.pathname.replace(/^\\/+/, "").startsWith("events/")
+        ? parsed.pathname.replace(/^\\/+/, "").slice("events/".length)
+        : parsed.pathname.replace(/^\\/+/, "");
+      const eventId = decodeURIComponent(rawId);
+      const event = storedEntities.find(item =>
+        item.itemType === "event" && item.deletedAt === null &&
+        (item.id === eventId || eventId.startsWith(item.id + "::"))
+      );
+      if (event) {
+        setActiveTab("Calendar");
+        setSelectedDate(new Date(event.scheduledAt ?? Date.now()));
+        setEditingEvent(event);
+        setEventEditorVisible(true);
+        setPendingDeepLink(null);
+      } else if (database) {
+        // Database is hydrated; the target is missing/deleted, so avoid an endless retry.
+        setActiveTab("Calendar");
+        setPendingDeepLink(null);
+      }
+    } else {
+      setPendingDeepLink(null);
+    }
+  }, [pendingDeepLink, storedEntities, database]);
 
   const eventEditorDate = useMemo(
     () => editingOccurrenceStartAt !== null
