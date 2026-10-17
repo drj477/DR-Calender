@@ -68,6 +68,12 @@ class DRCalenderNativeModule : Module() {
       true
     }
 
+    AsyncFunction("isExactAlarmScheduled") { id: String ->
+      val context = requireNotNull(appContext.reactContext)
+      val prefs = context.getSharedPreferences("drcalender_native_alarms", Context.MODE_PRIVATE)
+      (prefs.getStringSet("alarm_ids", emptySet()) ?: emptySet()).contains(id)
+    }
+
     AsyncFunction("cancelExactAlarm") { id: String ->
       val context = requireNotNull(appContext.reactContext)
       val intent = Intent(context, CalendarAlarmReceiver::class.java).apply {
