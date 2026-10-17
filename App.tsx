@@ -572,7 +572,8 @@ function CalendarApp() {
     if (database) {
       database.repository.upsert(updated, mutationId).catch(error => console.warn("Unable to persist moved event", error));
     }
-    refreshEventNotifications(updated).catch(error => console.warn("Unable to reschedule moved event reminder", error));  };
+    refreshEventNotifications(updated).catch(error => console.warn("Unable to reschedule moved event reminder", error));
+  };
 
   const deleteEvent = (event: TemporalEntity, scope: "occurrence" | "series" = "series", occurrenceStartAt: number | null = null) => {
     if (scope === "occurrence" && occurrenceStartAt !== null) {
