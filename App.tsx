@@ -394,6 +394,21 @@ function CalendarApp() {
     }
   };
 
+  const refreshWorkspaceData = async (nextDatabase: LocalCalendarDatabase) => {
+    setDatabase(nextDatabase);
+    const now = new Date();
+    const start = new Date(now.getFullYear() - 1, now.getMonth(), 1).getTime();
+    const end = new Date(now.getFullYear() + 5, now.getMonth() + 1, 1).getTime();
+    const entities = await nextDatabase.repository.queryRange(nextDatabase.workspaceId, start, end);
+    const pending = await nextDatabase.repository.listPendingMutations();
+    useCalendarStore.getState().hydrate(entities, pending);
+    setTasks(entities.filter(entity => entity.itemType === "task").map(entity => {
+      const dueAt = entity.metadata?.task?.dueAt ?? entity.scheduledAt;
+      return { id: entity.id, title: entity.title, due: dueAt === null ? "No due date" : new Date(dueAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }), assignee: entity.metadata?.task?.assignee?.name ?? "You", completed: entity.isCompleted, dueAt, hasReminder: entity.metadata?.task?.reminderMinutesBefore != null };
+    }));
+    setSelectedDate(new Date());
+  };
+
   const refreshAfterSync = async () => {
     if (!database) return;
     const now = new Date();
@@ -865,7 +880,7 @@ function CalendarApp() {
           </View>
         </View>
         <View style={styles.syncNote}><View style={styles.syncDot} /><Text style={styles.syncText}>{pendingCount ? `${pendingCount} changes waiting to sync` : "Offline-first · Ready when you are"}</Text></View>
-      </ScrollView></> : activeTab === "Tasks" ? <TaskCenter tasks={taskEntities} onSave={draft => { void saveTask(draft).catch(error => console.warn("Unable to save task", error)); }} onToggle={task => { void toggleTaskEntity(task).catch(error => console.warn("Unable to update task", error)); }} onDelete={task => { void deleteTaskEntity(task).catch(error => console.warn("Unable to delete task", error)); }} onPlanDay={() => { void planMyDay().catch(error => console.warn("Unable to plan day", error)); }} onRollover={task => { void rolloverTask(task).catch(error => console.warn("Unable to roll task forward", error)); }} /> : activeTab === "Reminders" ? <ReminderCenter reminders={reminders} permissionGranted={permissionGranted} onRequestPermission={handleRequestNotifications} onCreate={createReminder} onSnooze={snoozeReminder} onComplete={completeReminder} onDelete={deleteReminder} /> : <AccountCenter database={database} onSynced={refreshAfterSync} />}
+      </ScrollView></> : activeTab === "Tasks" ? <TaskCenter tasks={taskEntities} onSave={draft => { void saveTask(draft).catch(error => console.warn("Unable to save task", error)); }} onToggle={task => { void toggleTaskEntity(task).catch(error => console.warn("Unable to update task", error)); }} onDelete={task => { void deleteTaskEntity(task).catch(error => console.warn("Unable to delete task", error)); }} onPlanDay={() => { void planMyDay().catch(error => console.warn("Unable to plan day", error)); }} onRollover={task => { void rolloverTask(task).catch(error => console.warn("Unable to roll task forward", error)); }} /> : activeTab === "Reminders" ? <ReminderCenter reminders={reminders} permissionGranted={permissionGranted} onRequestPermission={handleRequestNotifications} onCreate={createReminder} onSnooze={snoozeReminder} onComplete={completeReminder} onDelete={deleteReminder} /> : <AccountCenter database={database} onSynced={refreshAfterSync} onWorkspaceChanged={refreshWorkspaceData} />}
 
       <EventEditor
         visible={activeTab === "Calendar" && eventEditorVisible}
