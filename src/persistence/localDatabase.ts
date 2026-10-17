@@ -7,7 +7,12 @@ export const DEFAULT_WORKSPACE_ID = "workspace-personal";
 
 const LOCAL_SCHEMA = `
 PRAGMA foreign_keys = ON;
-CREATE TABLE IF NOT EXISTS app_settings (\n  key TEXT PRIMARY KEY NOT NULL,\n  value TEXT NOT NULL,\n  updated_at INTEGER NOT NULL\n);\nCREATE TABLE IF NOT EXISTS workspaces (
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY NOT NULL,
+  value TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS workspaces (
   id TEXT PRIMARY KEY NOT NULL,
   name TEXT NOT NULL,
   workspace_type TEXT NOT NULL CHECK (workspace_type IN ('personal', 'family', 'team', 'project')),
@@ -92,7 +97,12 @@ CREATE TABLE IF NOT EXISTS sync_outbox (
   last_error TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_sync_outbox_created ON sync_outbox (created_at, mutation_id);
-CREATE TABLE IF NOT EXISTS sync_entity_clocks (\n  entity_id TEXT PRIMARY KEY NOT NULL,\n  clock_json TEXT NOT NULL,\n  updated_at INTEGER NOT NULL\n);\nCREATE TABLE IF NOT EXISTS sync_cursors (
+CREATE TABLE IF NOT EXISTS sync_entity_clocks (
+  entity_id TEXT PRIMARY KEY NOT NULL,
+  clock_json TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS sync_cursors (
   workspace_id TEXT PRIMARY KEY NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
   cursor TEXT,
   last_synced_at INTEGER,
