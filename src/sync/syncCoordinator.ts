@@ -21,7 +21,7 @@ export interface SyncLocalStore {
   recordMutationFailure(mutationId: string, error: string): Promise<void>;
   getCursor(workspaceId: string): Promise<string | null>;
   saveCursor(workspaceId: string, cursor: string | null): Promise<void>;
-  getVersionedEntity(id: string): Promise<RemoteTemporalRecord | null>;
+  getVersionedEntity(id: string, workspaceId?: string): Promise<RemoteTemporalRecord | null>;
   applyRemoteEntity(record: RemoteTemporalRecord): Promise<void>;
 }
 
@@ -78,7 +78,7 @@ export class SyncCoordinator {
     let conflicts = 0;
 
     for (const remoteRecord of remote.records) {
-      const localRecord = await this.local.getVersionedEntity(remoteRecord.entity.id);
+      const localRecord = await this.local.getVersionedEntity(remoteRecord.entity.id, workspaceId);
       if (!localRecord) {
         await this.local.applyRemoteEntity(remoteRecord);
         merged += 1;
