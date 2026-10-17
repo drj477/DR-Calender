@@ -1,4 +1,6 @@
-import type { SyncMutation, TemporalEntity } from "../temporal/types";\nimport type { HybridLogicalClock } from "../sync/hlc";\nimport type { RemoteTemporalRecord, SyncLocalStore } from "../sync/syncCoordinator";
+import type { SyncMutation, TemporalEntity } from "../temporal/types";
+import type { HybridLogicalClock } from "../sync/hlc";
+import type { RemoteTemporalRecord, SyncLocalStore } from "../sync/syncCoordinator";
 
 export interface SQLiteRunResult {
   changes: number;
