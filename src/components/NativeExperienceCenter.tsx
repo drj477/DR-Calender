@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import * as Notifications from "expo-notifications";
 import type { TemporalEntity } from "../temporal/types";
-import { cancelNativeAlarm, isExactAlarmAllowed, isNativeBridgeAvailable, requestExactAlarmPermission, scheduleNativeAlarm } from "../native/nativeExperience";
+import { cancelNativeAlarm, isExactAlarmAllowed, isNativeAlarmScheduled, isNativeBridgeAvailable, requestExactAlarmPermission, scheduleNativeAlarm } from "../native/nativeExperience";
 
 const C={bg:"#10141D",surface:"#171C28",raised:"#202838",border:"#30394B",text:"#F4F6FC",muted:"#9BA7BA",accent:"#FFC247",wash:"#322817",green:"#72D6A1",danger:"#FF9A63"};
 type Props={entities:TemporalEntity[]};
@@ -16,6 +16,13 @@ export function NativeExperienceCenter({entities}:Props){
   const [message,setMessage]=useState("");
   const upcoming=useMemo(()=>entities.filter(e=>e.itemType==="event"&&e.deletedAt===null&&!e.isCompleted&&e.scheduledAt!==null&&e.scheduledAt>Date.now()).sort((a,b)=>(a.scheduledAt??0)-(b.scheduledAt??0)).slice(0,12),[entities]);
   useEffect(()=>{let active=true;setBridgeAvailable(isNativeBridgeAvailable());void isExactAlarmAllowed().then(value=>{if(active)setExactAllowed(value)}).catch(()=>{if(active)setExactAllowed(false)});void Notifications.getPermissionsAsync().then(value=>{if(active)setNotificationAllowed(value.granted)}).catch(()=>{if(active)setNotificationAllowed(false)});return()=>{active=false}},[]);
+  useEffect(()=> {
+    let active = true;
+    Promise.all(upcoming.map(async event => [event.id, await isNativeAlarmScheduled("native-event-manual-" + event.id)] as const))
+      .then(entries => { if (active) setScheduled(Object.fromEntries(entries)); })
+      .catch(error => console.warn("Unable to load scheduled native alarms", error));
+    return () => { active = false; };
+  }, [upcoming]);
   const requestPermission=async()=>{
     setMessage("");setBusyId("permission");
     try{
