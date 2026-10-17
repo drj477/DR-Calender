@@ -103,7 +103,10 @@ export async function exportBackupToFile(db:SQLiteDatabase,activeWorkspaceId:str
   return {uri,bytes:serialized.length*2};
 }
 
-export async function restoreBackupFromFile(db:SQLiteDatabase):Promise<{activeWorkspaceId:string;rowCount:number}>{
+export async function restoreBackupFromFile(
+  db:SQLiteDatabase,
+  onCommitted?: (result:{activeWorkspaceId:string;rowCount:number})=>Promise<void>,
+):Promise<{activeWorkspaceId:string;rowCount:number}>{
   const picked=await DocumentPicker.getDocumentAsync({type:["application/json","text/json","public.json"],copyToCacheDirectory:true,multiple:false});
   if(picked.canceled || !picked.assets?.[0]) throw new Error("Backup import was cancelled.");
   const asset=picked.assets[0];
@@ -137,7 +140,15 @@ export async function restoreBackupFromFile(db:SQLiteDatabase):Promise<{activeWo
     assert(fkIssues.length===0,"Restore failed integrity validation: foreign-key violations were found.");
     await db.runAsync("INSERT INTO app_settings(key,value,updated_at) VALUES('active_workspace_id',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at",backup.activeWorkspaceId,Date.now());
   });
-  return {activeWorkspaceId:backup.activeWorkspaceId,rowCount};
+  const result={activeWorkspaceId:backup.activeWorkspaceId,rowCount};
+  if(onCommitted){
+    try { await onCommitted(result); }
+    catch(error) {
+      const detail=error instanceof Error?error.message:String(error);
+      throw new Error("Backup data was committed, but the app could not refresh its in-memory state: "+detail);
+    }
+  }
+  return result;
   } finally {
     releaseMaintenance();
   }
