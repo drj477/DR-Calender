@@ -13,7 +13,8 @@ A premium, offline-first calendar and scheduling application for iOS and Android
 - Proportional day timeline with overlap-aware columns, 15-minute drag-to-move, horizontal cross-date shifting, draggable start/end resize grips, a seven-day week overview, and a 42-cell month grid with event indicators.
 - React Native Reanimated 3 spring presets and Gesture Handler root integration.
 - Zustand state store with optimistic entity mutations and a pending-sync outbox model.
-- Expo SQLite bootstrap creates a local personal workspace; task creation and completion persist locally and are recorded in the sync outbox.
+- Expo SQLite bootstrap creates a local personal workspace; task creation, editing, completion, checklist changes, rollover, and deletion persist locally and are recorded in the sync outbox.
+- Dedicated task workspace with Inbox / Today / Upcoming / Overdue / Completed views, task detail editing, due date/time, four priority levels, persisted checklists, overdue rollover, and a “Plan my day” action that allocates 30-minute slots around existing scheduled items.
 
 ### Temporal engine
 
@@ -106,3 +107,12 @@ The calendar UI uses a midnight-navy and warm-amber palette inspired by the supp
 - Local reminder records and notification identifiers are stored in the existing temporal entity metadata, so reminders remain visible offline.
 
 **Native alarm boundary:** the iOS and Android exact-alarm source files remain templates and are not yet registered as a native Expo module. Phase 2 uses standard OS local notifications; exact Android alarm scheduling, alarm receiver/full-screen behavior, and iOS critical-alert entitlements still require native-target integration and platform-specific permission handling. Standard notifications cannot guarantee bypassing silent mode or Focus.
+
+
+## Phase 3 delivery notes
+
+- Replaced the Tasks placeholder with a persistent task inbox and task editor. Tasks can be captured without a due date or assigned a local date/time, priority, and multi-step checklist.
+- Added Inbox, Today, Upcoming, Overdue, and Completed filters, priority/due-date ordering, completion controls, checklist progress, and a one-tap overdue rollover action.
+- Added “Plan my day”: unscheduled and overdue tasks are placed into free 30-minute slots between 9 AM and 6 PM, ordered by priority and respecting existing timed events and tasks. The planner uses the device’s local time zone and writes every placement through the local repository/outbox.
+- Task checklist items are persisted inside task metadata, avoiding a separate migration for existing installations.
+- Configurable task durations, advanced recurring task rules, and richer day-agenda summaries remain future improvements.
