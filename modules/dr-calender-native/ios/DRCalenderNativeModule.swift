@@ -7,10 +7,9 @@ public final class DRCalenderNativeModule: Module {
   public func definition() -> ModuleDefinition {
     Name("DRCalenderNative")
 
-    Function("isExactAlarmAllowed") { () -> Bool in
-      // iOS does not expose Android-style exact-alarm access. Standard local
-      // notifications are scheduled at the requested date subject to OS policy.
-      return true
+    AsyncFunction("isExactAlarmAllowed") { () async -> Bool in
+      let settings = await UNUserNotificationCenter.current().notificationSettings()
+      return settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional
     }
 
     AsyncFunction("requestExactAlarmPermission") { () -> Bool in
