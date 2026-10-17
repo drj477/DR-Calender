@@ -811,7 +811,7 @@ function CalendarApp() {
     if (oldTaskMeta?.notificationId) await cancelNotificationIds([oldTaskMeta.notificationId]);
     const entity: TemporalEntity = {
       id, workspaceId: database.workspaceId, itemType: "task", title: draft.title,
-      scheduledAt: draft.dueAt, endAt: existing?.endAt ?? null, isCompleted: existing?.isCompleted ?? false,
+      scheduledAt: draft.dueAt, endAt: draft.dueAt === null ? null : draft.dueAt + (draft.durationMinutes ?? oldTaskMeta?.durationMinutes ?? 30) * 60_000, isCompleted: existing?.isCompleted ?? false,
       priority: draft.priority, isShielded: false, isElastic: false, isGhost: false, ghostClusterId: null,
       assignedUserIds: existing?.assignedUserIds ?? ["local-user"], rrule: null,
       syncVersion: (existing?.syncVersion ?? 0) + 1, createdAt: existing?.createdAt ?? now, updatedAt: now,
