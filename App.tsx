@@ -113,10 +113,12 @@ function CalendarApp() {
   const storedEntities = useCalendarStore(state => Object.values(state.entitiesById));
 
   const eventEditorDate = useMemo(
-    () => editingEvent?.scheduledAt !== null && editingEvent?.scheduledAt !== undefined
-      ? new Date(editingEvent.scheduledAt)
-      : selectedDate,
-    [editingEvent, selectedDate],
+    () => editingOccurrenceStartAt !== null
+      ? new Date(editingEvent?.metadata?.recurrence?.overrides[String(editingOccurrenceStartAt)]?.startAt ?? editingOccurrenceStartAt)
+      : editingEvent?.scheduledAt !== null && editingEvent?.scheduledAt !== undefined
+        ? new Date(editingEvent.scheduledAt)
+        : selectedDate,
+    [editingEvent, editingOccurrenceStartAt, selectedDate],
   );
   const dayStart = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()).getTime();
   const dayEnd = dayStart + 24 * 60 * 60_000;
@@ -130,18 +132,27 @@ function CalendarApp() {
       try {
         const occurrences = expandRecurrence(entity, { rangeStart, rangeEnd, maxOccurrences: 500 });
         for (const occurrence of occurrences) {
+          const exceptions = entity.metadata?.recurrence;
+          if (exceptions?.excludedStartsAt.includes(occurrence.startAt)) continue;
+          const override = exceptions?.overrides[String(occurrence.startAt)];
+          const visibleStartAt = override?.startAt ?? occurrence.startAt;
+          const visibleEndAt = override?.endAt ?? occurrence.endAt;
+          if (visibleStartAt >= rangeEnd || (visibleEndAt ?? visibleStartAt) < rangeStart) continue;
           expanded.push({
             ...entity,
             id: entity.id,
-            scheduledAt: occurrence.startAt,
-            endAt: occurrence.endAt,
+            title: override?.title ?? entity.title,
+            scheduledAt: visibleStartAt,
+            endAt: visibleEndAt,
+            isShielded: override?.isShielded ?? entity.isShielded,
+            isElastic: override?.isElastic ?? entity.isElastic,
             metadata: {
               ...entity.metadata,
               event: {
                 ...entity.metadata?.event,
                 kind: entity.metadata?.event?.kind ?? "standard",
                 commitment: entity.metadata?.event?.commitment ?? (entity.isElastic ? "elastic" : "hard"),
-                location: entity.metadata?.event?.location ?? null,
+                location: override?.location ?? entity.metadata?.event?.location ?? null,
                 meetingUrl: entity.metadata?.event?.meetingUrl ?? null,
                 organizerUserId: entity.metadata?.event?.organizerUserId ?? null,
                 attendeeUserIds: entity.metadata?.event?.attendeeUserIds ?? [],
@@ -266,12 +277,30 @@ function CalendarApp() {
 
   const openNewEvent = () => {
     setEditingEvent(null);
+    setEditingOccurrenceStartAt(null);
     setEventEditorVisible(true);
   };
 
   const saveEvent = (draft: EventDraft) => {
     const now = Date.now();
     const existing = editingEvent;
+    if (existing && draft.scope === "occurrence" && draft.occurrenceStartAt !== null) {
+      const occurrenceKey = String(draft.occurrenceStartAt);
+      const current = existing.metadata?.recurrence ?? { excludedStartsAt: [], overrides: {} };
+      const entity: TemporalEntity = {
+        ...existing, updatedAt: now, syncVersion: existing.syncVersion + 1,
+        metadata: { ...existing.metadata, recurrence: {
+          ...current,
+          excludedStartsAt: current.excludedStartsAt.filter(startAt => startAt !== draft.occurrenceStartAt),
+          overrides: { ...current.overrides, [occurrenceKey]: { startAt: draft.startAt, endAt: draft.endAt, title: draft.title, location: draft.location, isShielded: draft.isShielded, isElastic: draft.isElastic } },
+        } },
+      };
+      const mutationId = "event-occurrence-upsert-" + existing.id + "-" + draft.occurrenceStartAt + "-" + entity.syncVersion;
+      useCalendarStore.getState().upsertEntity(entity, mutationId);
+      setEventEditorVisible(false); setEditingEvent(null); setEditingOccurrenceStartAt(null);
+      if (database) database.repository.upsert(entity, mutationId).catch(error => console.warn("Unable to persist event occurrence", error));
+      return;
+    }
     const id = existing?.id ?? `event-${now}`;
     const entity: TemporalEntity = {
       id,
@@ -311,6 +340,7 @@ function CalendarApp() {
     useCalendarStore.getState().upsertEntity(entity, mutationId);
     setEventEditorVisible(false);
     setEditingEvent(null);
+    setEditingOccurrenceStartAt(null);
     if (database) {
       database.repository.upsert(entity, mutationId).catch(error => console.warn("Unable to persist event", error));
     }
