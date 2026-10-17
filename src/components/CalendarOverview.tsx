@@ -13,6 +13,8 @@ const COLORS = {
   coral: "#FF9A63",
 };
 
+const SURFACE_SHADOW = { shadowColor: "#000000", shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.2, shadowRadius: 11, elevation: 4 };
+
 type OverviewMode = "Week" | "Month";
 
 interface CalendarOverviewProps {
@@ -127,8 +129,8 @@ const styles = StyleSheet.create({
   weekHeader: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4 },
   overviewTitle: { color: COLORS.text, fontSize: 14, fontWeight: "800" },
   overviewSubtitle: { color: COLORS.muted, fontSize: 10, marginTop: 5 },
-  weekDay: { flexDirection: "row", gap: 12, padding: 11, borderRadius: 13, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, minHeight: 74 },
-  weekDaySelected: { borderColor: COLORS.accent, backgroundColor: COLORS.raised },
+  weekDay: { flexDirection: "row", gap: 12, padding: 12, borderRadius: 15, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, minHeight: 74, ...SURFACE_SHADOW },
+  weekDaySelected: { borderColor: COLORS.accent, backgroundColor: "#242A32" },
   weekDayDate: { width: 44, alignItems: "center", justifyContent: "center", gap: 5 },
   weekdayName: { color: COLORS.muted, fontSize: 10, fontWeight: "700" },
   weekdayNumber: { color: COLORS.text, fontSize: 17, fontWeight: "800" },
@@ -139,18 +141,18 @@ const styles = StyleSheet.create({
   weekEventTime: { color: COLORS.muted, fontSize: 9 },
   noEvents: { color: COLORS.muted, fontSize: 10 },
   moreEvents: { color: COLORS.accent, fontSize: 9, fontWeight: "700" },
-  monthContainer: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: 17, padding: 12 },
+  monthContainer: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: 19, padding: 13, ...SURFACE_SHADOW },
   monthHeader: { flexDirection: "row", marginBottom: 8 },
   monthWeekday: { width: "14.2857%", textAlign: "center", color: COLORS.muted, fontSize: 10, fontWeight: "800", paddingVertical: 8 },
   monthGrid: { flexDirection: "row", flexWrap: "wrap" },
   monthDay: { width: "14.2857%", height: 49, alignItems: "center", paddingTop: 7, borderRadius: 9 },
-  monthDaySelected: { backgroundColor: COLORS.raised, borderWidth: 1, borderColor: COLORS.accent },
+  monthDaySelected: { backgroundColor: "#322817", borderWidth: 1, borderColor: COLORS.accent },
   monthDayNumber: { color: COLORS.text, fontSize: 12, fontWeight: "600" },
   outsideMonth: { color: "#596274" },
   monthDots: { flexDirection: "row", gap: 3, marginTop: 5, height: 4 },
   monthDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: COLORS.lavender },
   monthDotSelected: { backgroundColor: COLORS.accent },
   monthFooter: { borderTopWidth: 1, borderTopColor: COLORS.border, marginTop: 10, paddingTop: 13 },
-  openDayButton: { alignSelf: "flex-start", marginTop: 10, backgroundColor: COLORS.raised, paddingVertical: 9, paddingHorizontal: 12, borderRadius: 9 },
+  openDayButton: { alignSelf: "flex-start", marginTop: 10, backgroundColor: "#322817", borderWidth: 1, borderColor: "#72551C", paddingVertical: 10, paddingHorizontal: 13, borderRadius: 11 },
   openDayText: { color: COLORS.accent, fontSize: 11, fontWeight: "700" },
 });
