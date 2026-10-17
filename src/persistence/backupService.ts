@@ -2,6 +2,7 @@ import type { SQLiteDatabase } from "expo-sqlite";
 import * as FileSystem from "expo-file-system/legacy";
 import * as DocumentPicker from "expo-document-picker";
 import * as Sharing from "expo-sharing";
+import { acquireDataMaintenanceLease } from "./recoveryGate";
 
 export const BACKUP_FORMAT = "dr-calender-backup";
 export const BACKUP_SCHEMA_VERSION = 2;
@@ -114,6 +115,10 @@ export async function restoreBackupFromFile(db:SQLiteDatabase):Promise<{activeWo
   const mapping:Record<TableKey,string>={workspaces:"workspaces",members:"workspace_members",entities:"temporal_entities",checklists:"checklist_items",ghostClusters:"ghost_clusters",outbox:"sync_outbox",cursors:"sync_cursors",clocks:"sync_entity_clocks",settings:"app_settings"};
   const deleteOrder=["sync_outbox","sync_cursors","checklist_items","ghost_clusters","temporal_entities","workspace_members","sync_entity_clocks","workspaces","app_settings"];
   let rowCount=0;
+  // File selection and validation happen before acquiring the exclusive gate;
+  // the lock covers the destructive transaction so sync cannot race the restore.
+  const releaseMaintenance = acquireDataMaintenanceLease();
+  try {
   await db.withTransactionAsync(async()=>{
     await db.execAsync("PRAGMA defer_foreign_keys = ON;");
     for(const table of deleteOrder) await db.runAsync("DELETE FROM "+table);
@@ -133,4 +138,7 @@ export async function restoreBackupFromFile(db:SQLiteDatabase):Promise<{activeWo
     await db.runAsync("INSERT INTO app_settings(key,value,updated_at) VALUES('active_workspace_id',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at",backup.activeWorkspaceId,Date.now());
   });
   return {activeWorkspaceId:backup.activeWorkspaceId,rowCount};
+  } finally {
+    releaseMaintenance();
+  }
 }
