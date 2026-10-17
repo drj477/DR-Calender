@@ -90,7 +90,7 @@ begin
     if not found then v_acked := v_acked || jsonb_build_array(v_mutation_id); continue; end if;
     if v_op='upsert' then
       v_payload := v_item->'payload';
-      if jsonb_typeof(v_payload)<>'object' or v_payload->>'id'<>v_id or v_payload->>'workspaceId'<>p_workspace_id then
+      if jsonb_typeof(v_payload)<>'object' or coalesce(v_payload->>'id','')<>v_id or coalesce(v_payload->>'workspaceId','')<>p_workspace_id then
         raise exception 'Entity payload identity does not match mutation';
       end if;
     else
