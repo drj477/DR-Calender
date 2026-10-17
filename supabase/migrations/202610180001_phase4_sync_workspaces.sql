@@ -55,7 +55,7 @@ as $$
   order by w.created_at,w.name;
 $$;
 
-create or replace function public.dr_create_workspace(p_name text,p_workspace_type text default 'personal')
+drop function if exists public.dr_create_workspace(text,text);\ncreate or replace function public.dr_create_workspace(p_name text,p_workspace_type text default 'personal',p_workspace_id text default null)
 returns jsonb language plpgsql security definer set search_path = public, auth
 as $$
 declare v_id text; v_name text;
@@ -64,7 +64,7 @@ begin
   v_name := trim(coalesce(p_name,''));
   if length(v_name)<1 or length(v_name)>80 then raise exception 'Workspace name must be 1–80 characters'; end if;
   if p_workspace_type not in ('personal','family','team','project') then raise exception 'Invalid workspace type'; end if;
-  v_id := 'ws-' || replace(gen_random_uuid()::text,'-','');
+  v_id := coalesce(nullif(trim(p_workspace_id),''),'ws-' || replace(gen_random_uuid()::text,'-',''));
   insert into public.dr_workspaces(id,name,workspace_type,created_by) values(v_id,v_name,p_workspace_type,auth.uid());
   insert into public.dr_workspace_members(workspace_id,user_id,role) values(v_id,auth.uid(),'owner');
   return jsonb_build_object('id',v_id,'name',v_name,'workspace_type',p_workspace_type,'role','owner');
@@ -131,10 +131,10 @@ begin
 end $$;
 
 revoke all on function public.dr_list_workspaces() from public, anon;
-revoke all on function public.dr_create_workspace(text,text) from public, anon;
+revoke all on function public.dr_create_workspace(text,text,text) from public, anon;
 revoke all on function public.dr_sync_push(text,jsonb) from public, anon;
 revoke all on function public.dr_sync_pull(text,bigint,integer) from public, anon;
 grant execute on function public.dr_list_workspaces() to authenticated;
-grant execute on function public.dr_create_workspace(text,text) to authenticated;
+grant execute on function public.dr_create_workspace(text,text,text) to authenticated;
 grant execute on function public.dr_sync_push(text,jsonb) to authenticated;
 grant execute on function public.dr_sync_pull(text,bigint,integer) to authenticated;
