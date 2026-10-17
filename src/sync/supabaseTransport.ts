@@ -80,3 +80,15 @@ export async function createRemoteWorkspace(config: SupabaseConfig, name: string
   if (!response.ok) throw new Error(data.message ?? `Could not create workspace (${response.status}).`);
   return data as RemoteWorkspace;
 }
+
+export async function addRemoteWorkspaceMember(config: SupabaseConfig, workspaceId: string, email: string, role: "editor" | "viewer"): Promise<void> {
+  const session = await getValidSession(config);
+  if (!session) throw new Error("Sign in to manage workspace members.");
+  const response = await fetch(`${config.url.replace(/\\/+$/, "")}/rest/v1/rpc/dr_add_workspace_member`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: config.anonKey, Authorization: `Bearer ${session.accessToken}` },
+    body: JSON.stringify({ p_workspace_id: workspaceId, p_email: email.trim().toLowerCase(), p_role: role }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.message ?? `Could not add workspace member (${response.status}).`);
+}
