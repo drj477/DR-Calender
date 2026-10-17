@@ -358,6 +358,7 @@ export function parseICSCalendar(ics: string): ParsedICSEvent[] {
     "END:VCALENDAR",
   ].join("\r\n")));
   for (const event of parsed) {
+    if (event.method === "REPLY" && !event.start) continue;
     if (!event.start) throw new Error('Event "' + event.summary + '" is missing DTSTART.');
     const start = parseICSDateTime(event.start, event.timeZone);
     if (event.end) {
