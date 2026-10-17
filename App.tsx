@@ -191,16 +191,16 @@ function CalendarApp() {
     if (!pendingDeepLink) return;
     let parsed: URL;
     try { parsed = new URL(pendingDeepLink); } catch { setPendingDeepLink(null); return; }
-    const route = parsed.hostname || parsed.pathname.replace(/^\\//, "");
+    const route = parsed.hostname || parsed.pathname.replace(/^\//, "");
     if (route === "tasks" || parsed.pathname === "/tasks") {
       setActiveTab("Tasks");
       setPendingDeepLink(null);
       return;
     }
     if (route === "events" || parsed.pathname.startsWith("/events/")) {
-      const rawId = parsed.pathname.replace(/^\\/+/, "").startsWith("events/")
-        ? parsed.pathname.replace(/^\\/+/, "").slice("events/".length)
-        : parsed.pathname.replace(/^\\/+/, "");
+      const rawId = parsed.pathname.replace(/^\/+/, "").startsWith("events/")
+        ? parsed.pathname.replace(/^\/+/, "").slice("events/".length)
+        : parsed.pathname.replace(/^\/+/, "");
       const eventId = decodeURIComponent(rawId);
       const event = storedEntities.find(item =>
         item.itemType === "event" && item.deletedAt === null &&
@@ -208,7 +208,7 @@ function CalendarApp() {
       );
       if (event) {
         const occurrenceSuffix = eventId.startsWith(event.id + "::") ? eventId.slice(event.id.length + 2) : null;
-        const occurrenceStartAt = occurrenceSuffix !== null && /^\\d+$/.test(occurrenceSuffix) ? Number(occurrenceSuffix) : null;
+        const occurrenceStartAt = occurrenceSuffix !== null && /^\d+$/.test(occurrenceSuffix) ? Number(occurrenceSuffix) : null;
         const override = occurrenceStartAt === null ? null : event.metadata?.recurrence?.overrides[String(occurrenceStartAt)];
         setActiveTab("Calendar");
         setSelectedDate(new Date(override?.startAt ?? occurrenceStartAt ?? event.scheduledAt ?? Date.now()));
