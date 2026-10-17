@@ -46,11 +46,13 @@ A premium, offline-first calendar and scheduling application for iOS and Android
 ### Data safety and recovery
 
 - The **Data** tab performs read-only local SQLite diagnostics for entity/workspace counts, pending/failed sync mutations, invalid schedules, orphan checklist rows, and foreign-key issues.
-- JSON backup export includes local workspace and calendar/task data, tombstones, checklists, and sync bookkeeping; SecureStore authentication tokens are excluded.
-- In-app export is capped at 2 MB and displays a privacy warning because backup contents may include private event/task details and pending mutation payloads.
-- A root React error boundary provides a local recovery screen when rendering fails.
-- Backup export is not a restore workflow. Restore/import, large file-based exports, and schema migration/rollback policies remain incomplete.
-- As requested, no test/build/typecheck/device-validation pass has been run. The project is not yet release-certified.
+- Versioned JSON backups include local workspace/calendar/task data, tombstones, checklists, and sync bookkeeping; SecureStore authentication tokens are excluded.
+- Quick-share remains capped at 2 MB. File-based export writes a JSON backup and opens the system share sheet for larger datasets.
+- Restore/import validates the backup before replacing local data, then uses a single SQLite transaction and foreign-key integrity check. It is destructive to local data, does not overwrite cloud data, and requires a full app restart afterward.
+- Versioned schema migrations run transactionally and fail closed; the newest known reversible migration can be rolled back explicitly after exporting a backup.
+- Supabase hardening migration and source-level review checklist are in supabase/migrations/202610180002_phase7_security_hardening.sql and SUPABASE_SECURITY_REVIEW.md.
+- Android native alarms are persisted and have a reboot/time-change recovery receiver; iOS WidgetKit source exists but the Xcode/EAS extension target still needs configuration.
+- As requested, no test/build/typecheck/native-compilation/device-validation pass has been run. The project is not yet release-certified.
 
 ## Project structure
 
@@ -58,10 +60,12 @@ A premium, offline-first calendar and scheduling application for iOS and Android
 - `src/temporal/` — temporal models, scheduling, recurrence, multi-event ICS import/export, drag helpers, and SQLite DDL.
 - `src/components/SharingCenter.tsx` — ICS import/export, attendee RSVP, invitation sharing, and calendar feed subscriptions.
 - `src/store/` — Zustand calendar state.
-- `src/persistence/` — SQLite repository abstraction.
+- `src/persistence/` — SQLite repository abstraction, validated backup import/export, and versioned schema migrations.
 - `src/sync/` — HLC, deterministic merge, sync orchestration, Supabase Auth/session handling, and authenticated sync transport.
 - `supabase/migrations/` — server-side workspace membership, authorization, and sync RPC schema.
 - `SUPABASE_SETUP.md` — deployment and account setup instructions.
+- `SUPABASE_SECURITY_REVIEW.md` — source-level authorization review and staging verification checklist.
+- `RELEASE_READINESS.md` — implementation boundaries, backup recovery, native and security validation checklist.
 - `native/ios/` and `native/android/` — native widget/alarm source templates.
 
 ## Run locally
