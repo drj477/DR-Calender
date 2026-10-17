@@ -92,7 +92,7 @@ class DRCalenderNativeModule : Module() {
       val prefs = context.getSharedPreferences("drcalender_native_alarms", Context.MODE_PRIVATE)
       val ids = (prefs.getStringSet("alarm_ids", emptySet()) ?: emptySet()).toMutableSet()
       val keep = keepIds.toSet()
-      val stale = ids.filter { it.startsWith("native-event-") && it !in keep }
+      val stale = ids.filter { it.startsWith("native-event-auto-") && it !in keep }
       val manager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
       stale.forEach { id ->
         val alarmIntent = Intent(context, CalendarAlarmReceiver::class.java).apply {
