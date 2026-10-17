@@ -60,7 +60,7 @@ npx expo start
 ## Important implementation boundaries
 
 - The day view now uses a proportional draggable grid and week/month views have distinct overviews. Month paging and a Today shortcut are implemented. Timeline resizing and horizontal cross-date movement are implemented; a full editor for recurrence/attendees remains to be implemented.
-- The RRULE expander is intentionally bounded and is not a complete RFC 5545 recurrence implementation. Day/week/month views now render generated instances for supported recurrence rules. Occurrence exceptions, editing or deleting only one occurrence, and explicit series-level versus occurrence-level controls remain follow-up work. Timezone/DST-sensitive recurrence should be expanded with a timezone-aware engine.
+- The RRULE expander is intentionally bounded and is not a complete RFC 5545 recurrence implementation. Day/week/month views now render generated instances for supported recurrence rules. Occurrence exceptions and editing/deleting one occurrence remain follow-up work. To prevent accidental series corruption, recurring timeline cards cannot be dragged or resized; tapping one opens the source series editor, which warns that changes and deletion apply to the entire series. Timezone/DST-sensitive recurrence should be expanded with a timezone-aware engine.
 - The free-slot finder uses a fixed offset, not a full IANA timezone database.
 - The sync coordinator requires a real transport and transactional local adapter before multiplayer behavior is production-ready.
 - iOS critical alerts require Apple's entitlement and user authorization. Android exact alarms and full-screen intents are subject to OS permissions and user settings; neither platform can guarantee overriding all silent/focus states.
@@ -84,4 +84,4 @@ The calendar UI uses a midnight-navy and warm-amber palette inspired by the supp
 
 - Calendar views use the bounded RRULE expander to generate event instances within the visible date range; the stored series remains the source of truth.
 - Unsupported or malformed recurrence rules are logged and skipped rather than crashing the calendar render.
-- Per-occurrence overrides/exceptions and separate “this occurrence / entire series” editing flows are not implemented yet.
+- Per-occurrence overrides/exceptions and separate “this occurrence / entire series” editing flows are not implemented yet; current recurring-event interactions are deliberately series-only.
