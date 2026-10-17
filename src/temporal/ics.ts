@@ -11,7 +11,12 @@ export interface ParsedICSEvent {
   organizerEmail: string | null;
   attendees: InviteAttendee[];
   status: "CONFIRMED" | "TENTATIVE" | "CANCELLED" | null;
-  method: "REQUEST" | "REPLY" | "CANCEL" | "PUBLISH" | null;\n  isAllDay: boolean;\n  timeZone: string | null;\n  recurrenceRule: string | null;\n  excludedDates: string[];\n  recurrenceId: string | null;
+  method: "REQUEST" | "REPLY" | "CANCEL" | "PUBLISH" | null;
+  isAllDay: boolean;
+  timeZone: string | null;
+  recurrenceRule: string | null;
+  excludedDates: string[];
+  recurrenceId: string | null;
 }
 
 export interface BuildICSInviteInput {
@@ -29,11 +34,14 @@ export interface BuildICSInviteInput {
 
 /** RFC 5545 text escaping. */
 export function escapeICSText(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/\r?\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
+  return value.replace(/\\/g, "\\\\").replace(/\r?
+/g, "\
+").replace(/,/g, "\\,").replace(/;/g, "\\;");
 }
 
 export function unescapeICSText(value: string): string {
-  return value.replace(/\\[nN]/g, "\n").replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\\\/g, "\\");
+  return value.replace(/\\[nN]/g, "
+").replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\\\/g, "\\");
 }
 
 function utf8Length(value: string): number {
@@ -63,7 +71,8 @@ function foldLine(line: string): string {
     }
   }
   if (current) chunks.push(current);
-  return chunks.join("\r\n");
+  return chunks.join("\r
+");
 }
 
 function formatUTC(date: Date): string {
@@ -81,9 +90,13 @@ function statusToPartstat(status: RSVPStatus | undefined): string {
 }
 
 function unfoldLines(ics: string): string[] {
-  const normalized = ics.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const normalized = ics.replace(/\r
+/g, "
+").replace(/\r/g, "
+");
   const unfolded: string[] = [];
-  for (const line of normalized.split("\n")) {
+  for (const line of normalized.split("
+")) {
     if (/^[ \t]/.test(line) && unfolded.length) {
       unfolded[unfolded.length - 1] += line.slice(1);
     } else {
@@ -176,7 +189,12 @@ export function parseICS(ics: string): ParsedICSEvent {
     organizerEmail: organizer?.replace(/^mailto:/i, "") ?? null,
     attendees,
     status: status === "CONFIRMED" || status === "TENTATIVE" || status === "CANCELLED" ? status : null,
-    method: method === "REQUEST" || method === "REPLY" || method === "CANCEL" || method === "PUBLISH" ? method : null,\n    isAllDay: first("DTSTART")?.params.VALUE?.toUpperCase() === "DATE" || /^\\d{8}$/.test(first("DTSTART")?.value ?? ""),\n    timeZone: first("DTSTART")?.params.TZID ?? null,\n    recurrenceRule: first("RRULE")?.value ?? null,\n    excludedDates: properties.filter(property => property?.name === "EXDATE").flatMap(property => property?.value.split(",").map(value => parseDateProperty(value) ?? value) ?? []),\n    recurrenceId: parseDateProperty(first("RECURRENCE-ID")?.value ?? ""),
+    method: method === "REQUEST" || method === "REPLY" || method === "CANCEL" || method === "PUBLISH" ? method : null,
+    isAllDay: first("DTSTART")?.params.VALUE?.toUpperCase() === "DATE" || /^\\d{8}$/.test(first("DTSTART")?.value ?? ""),
+    timeZone: first("DTSTART")?.params.TZID ?? null,
+    recurrenceRule: first("RRULE")?.value ?? null,
+    excludedDates: properties.filter(property => property?.name === "EXDATE").flatMap(property => property?.value.split(",").map(value => parseDateProperty(value) ?? value) ?? []),
+    recurrenceId: parseDateProperty(first("RECURRENCE-ID")?.value ?? ""),
   };
 }
 
@@ -206,7 +224,9 @@ export function buildICS(input: BuildICSInviteInput): string {
     lines.push(`ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=${statusToPartstat(attendee.rsvpStatus)};RSVP=TRUE${name}:mailto:${attendee.email.trim()}`);
   }
   lines.push("END:VEVENT", "END:VCALENDAR");
-  return lines.map(foldLine).join("\r\n") + "\r\n";
+  return lines.map(foldLine).join("\r
+") + "\r
+";
 }
 
 /** Builds an RFC 5545 METHOD:REPLY payload for a single attendee. */
@@ -231,7 +251,9 @@ export function buildICSReply(input: {
   ];
   if (input.summary) lines.push(`SUMMARY:${escapeICSText(input.summary)}`);
   lines.push("END:VEVENT", "END:VCALENDAR");
-  return lines.map(foldLine).join("\r\n") + "\r\n";
+  return lines.map(foldLine).join("\r
+") + "\r
+";
 }
 
 import type { TemporalEntity, RecurrenceOverride } from "./types";
@@ -284,7 +306,9 @@ export function buildICSCalendar(entities: TemporalEntity[], calendarName = "DR-
     }
   }
   lines.push("END:VCALENDAR");
-  return lines.map(foldLine).join("\r\n") + "\r\n";
+  return lines.map(foldLine).join("\r
+") + "\r
+";
 }
 
 /** Parses every VEVENT in a VCALENDAR instead of silently importing only the first. */
@@ -305,5 +329,6 @@ export function parseICSCalendar(ics: string): ParsedICSEvent[] {
   if (!blocks.length) throw new Error("No events were found in this calendar.");
   if (blocks.length > 1000) throw new Error("Calendar contains too many events (maximum 1000 per import).");
   const method = unfolded.map(splitProperty).find(property => property?.name === "METHOD")?.value;
-  return blocks.map(block => parseICS(["BEGIN:VCALENDAR", ...(method ? [`METHOD:${method}`] : []), ...block, "END:VCALENDAR"].join("\r\n")));
+  return blocks.map(block => parseICS(["BEGIN:VCALENDAR", ...(method ? [`METHOD:${method}`] : []), ...block, "END:VCALENDAR"].join("\r
+")));
 }
