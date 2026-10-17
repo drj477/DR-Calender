@@ -36,14 +36,23 @@ export function unescapeICSText(value: string): string {
   return value.replace(/\\[nN]/g, "\n").replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\\\/g, "\\");
 }
 
+function utf8Length(value: string): number {
+  let length = 0;
+  for (const char of value) {
+    const codePoint = char.codePointAt(0) ?? 0;
+    length += codePoint <= 0x7f ? 1 : codePoint <= 0x7ff ? 2 : codePoint <= 0xffff ? 3 : 4;
+  }
+  return length;
+}
+
 function foldLine(line: string): string {
   // RFC 5545 limits content lines to 75 octets. Fold at Unicode code points
-  // conservatively; this avoids splitting surrogate pairs.
+  // conservatively; this avoids splitting surrogate pairs and needs no DOM APIs.
   const chunks: string[] = [];
   let current = "";
   let length = 0;
   for (const char of line) {
-    const octets = new TextEncoder().encode(char).length;
+    const octets = utf8Length(char);
     if (length + octets > 73) {
       chunks.push(current);
       current = " " + char;
