@@ -1,39 +1,63 @@
 # DR-Calender
 
-A high-performance, offline-first, collaborative calendar and scheduling application for iOS and Android.
+A premium, offline-first calendar and scheduling application for iOS and Android, built around shared temporal primitives, quick task capture, collaborative sync contracts, and native widget/alarm integration.
 
-## Architecture baseline
+## Current implementation
 
-- React Native + Expo Prebuild with the New Architecture enabled (Fabric and TurboModules).
-- Reanimated 3 and Gesture Handler for UI-thread gestures and motion.
-- Zustand for client state.
-- SQLite for offline-first persistence.
-- Supabase Realtime or a local-first replication layer for multiplayer synchronization.
+### Mobile application
 
-## Phase 1 scaffold
+- Expo application configured for the React Native New Architecture.
+- Dark, thumb-friendly calendar UI with Day / Week / Month mode controls, horizontal date selection, agenda cards, task completion micro-animation, and quick task creation.
+- React Native Reanimated 3 spring presets and Gesture Handler root integration.
+- Zustand state store with optimistic entity mutations and a pending-sync outbox model.
 
-This repository currently contains the Phase 1 temporal domain contracts, motion presets, SQLite schema, and widget snapshot DTOs.
+### Temporal engine
 
-### Files
+- Polymorphic temporal entities for events, tasks, reminders, and alarms.
+- Strict task DTO with title, due date, and assignee.
+- Interval overlap layout engine for concurrent calendar blocks.
+- Elastic event first-fit rescheduling and ghost-cluster expiry/confirmation results.
+- Bounded RRULE expansion for common DAILY, WEEKLY, and MONTHLY recurrence patterns.
+- Free-slot finder, drag snapping/resizing helpers, and incomplete-task rollover planning.
+- RFC 5545 ICS parsing and invitation / RSVP payload generation.
 
-- `src/temporal/types.ts` — polymorphic temporal entities and related DTOs.
-- `src/temporal/motion.ts` — shared Reanimated spring/timing presets.
-- `src/temporal/schema.sql` — SQLite tables and query-oriented indexes.
-- `src/temporal/index.ts` — public exports.
-- `package.json`, `tsconfig.json` — minimal TypeScript package setup.
+### Offline persistence and sync primitives
 
-## Development
+- SQLite schema with workspace membership, temporal entities, ghost clusters, checklists, sync outbox, sync cursors, and query-oriented indexes.
+- SQLite repository adapter for local-first writes, range queries, and outbox delivery bookkeeping.
+- Hybrid Logical Clock primitives, deterministic LWW merge helper, and transport-agnostic sync coordinator.
+- Remote sync transport is an interface; a production Supabase/PowerSync adapter and server authorization policies still need to be wired in.
 
-Requires Node.js 20+.
+### Native source templates
+
+- iOS WidgetKit task widget source.
+- Android Jetpack Glance task widget source.
+- Native local alarm scheduler templates for iOS and Android.
+- Native files are templates and are not yet registered in generated Xcode / Android targets. Widget extension setup, entitlements, manifest entries, notification receivers, and an Expo config plugin remain integration work.
+
+## Project structure
+
+- `App.tsx` — mobile application entry screen.
+- `src/temporal/` — temporal models, scheduling, recurrence, ICS, drag helpers, and SQLite DDL.
+- `src/store/` — Zustand calendar state.
+- `src/persistence/` — SQLite repository abstraction.
+- `src/sync/` — HLC, deterministic merge, and sync orchestration contracts.
+- `native/ios/` and `native/android/` — native widget/alarm source templates.
+
+## Run locally
+
+Requires Node.js compatible with Expo SDK 53.
 
 ```bash
 npm install
-npm run typecheck
+npx expo start
 ```
 
-## Implementation notes
+## Important implementation boundaries
 
-- Timestamps are stored as UTC epoch milliseconds in the app domain; SQLite stores indexed timestamp values as INTEGER.
-- Database mutations should be applied locally first and queued for synchronization.
-- Sync conflict resolution and native widget/alarm bridges are later-phase work, not implemented by this Phase 1 scaffold.
-- iOS critical alerts require Apple's specific entitlement and user/device authorization. Android exact alarms and full-screen intents are subject to OS version and user settings; neither platform can be assumed to override all mute or focus settings.
+- The calendar UI currently uses sample agenda/task data; connecting screens to the SQLite repository and real event creation is still required.
+- The RRULE expander is intentionally bounded and is not a complete RFC 5545 recurrence implementation. Timezone/DST-sensitive recurrence should be expanded with a timezone-aware engine.
+- The free-slot finder uses a fixed offset, not a full IANA timezone database.
+- The sync coordinator requires a real transport and transactional local adapter before multiplayer behavior is production-ready.
+- iOS critical alerts require Apple's entitlement and user authorization. Android exact alarms and full-screen intents are subject to OS permissions and user settings; neither platform can guarantee overriding all silent/focus states.
+- Build/typecheck/device tests have intentionally not been run yet; implementation is being built first as requested.
