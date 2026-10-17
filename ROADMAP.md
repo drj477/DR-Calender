@@ -71,6 +71,17 @@ The project will be built in substantial, user-facing phases. Implementation com
 - **Remaining:** Native compile/device validation; apply and review the Supabase migrations on a configured staging project; validate restore failure cases with automated tests; design a backup strategy for incompatible future schemas; complete migration down scripts for non-reversible schema changes; full accessibility/performance audit; and production monitoring/retention policies.
 - **Validation deferred:** No type checks, tests, builds, native compilation, or device validation have been run by request. Phase 7 source work is not a release certification.
 
+## Phase 8 — Integration readiness and lifecycle reconciliation
+**Goal:** Connect previously implemented native and recovery surfaces into complete application lifecycles before the dedicated validation pass.
+
+- **Implemented in source:** A rolling 30-day native alarm reconciler for events with an explicit reminder offset. It expands recurring event instances, respects excluded instances and moved occurrence overrides, bounds scheduling to 120 alarms, and reconciles stale alarms after event changes, completion, deletion, workspace changes, and app hydration.
+- **Implemented in source:** Android and iOS native bridges expose stale-alarm cancellation; Android retains alarm persistence and boot/time/time-zone restoration. Native alarms use stable occurrence IDs to make rescheduling idempotent.
+- **Implemented in source:** Widget task/event deep links are handled on cold and warm app launch. Android native event alarm notifications route to the associated event editor.
+- **Implemented in source:** Native integration docs describe the bridge contract and platform boundaries. Expo Go remains unsupported for the custom native module.
+- **Still open:** iOS Widget Extension target generation and signing, automatic workspace-switch reconciliation verification, recurring alarm delivery verification, notification tap behavior on iOS, and source-level review of native alarm IDs for unusual entity IDs.
+- **Still open:** End-to-end restore/sync exclusion and automatic in-memory database reinitialization after restore. Current restore UI still asks for a full app restart; restore must not run during sync.
+- **Validation deferred:** No tests, type checks, builds, native compilation, or device validation were run. This phase is source implementation, not proof of platform behavior.
+
 ## Delivery rule
 
 Finish one coherent phase or meaningful vertical slice at a time. Prefer changes spanning the model, persistence, and UI when needed to deliver a usable feature. Do not treat a feature as complete merely because its data contract or native template exists.
