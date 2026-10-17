@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 
 import { activateLocalWorkspace, type LocalCalendarDatabase } from "../persistence/localDatabase";
 import { acquireSyncLease } from "../persistence/recoveryGate";
 import { getValidSession, loadSession, loadSupabaseConfig, saveSupabaseConfig, signIn, signOut, signUp, type AuthSession, type SupabaseConfig } from "../sync/authService";
-import { acceptRemoteWorkspaceInvite, createRemoteWorkspace, createRemoteWorkspaceInvite, listRemoteWorkspaceInvites, listRemoteWorkspaceMembers, listRemoteWorkspaces, removeRemoteWorkspaceMember, revokeRemoteWorkspaceInvite, updateRemoteWorkspaceMemberRole, SupabaseSyncTransport, type RemoteWorkspace, type RemoteWorkspaceInvite, type RemoteWorkspaceMember } from "../sync/supabaseTransport";
+import { acceptRemoteWorkspaceInvite, createRemoteWorkspace, createRemoteWorkspaceInvite, sendRemoteWorkspaceInviteEmail, listRemoteWorkspaceInvites, listRemoteWorkspaceMembers, listRemoteWorkspaces, removeRemoteWorkspaceMember, revokeRemoteWorkspaceInvite, updateRemoteWorkspaceMemberRole, SupabaseSyncTransport, type RemoteWorkspace, type RemoteWorkspaceInvite, type RemoteWorkspaceMember } from "../sync/supabaseTransport";
 import { SyncCoordinator } from "../sync/syncCoordinator";
 import { useCalendarStore } from "../store/calendarStore";
 
@@ -118,29 +118,25 @@ export function AccountCenter({ database, onSynced, onWorkspaceChanged }: Props)
   };
   const addMember = async () => {
     if (!config || !database) return;
-    if (!memberEmail.trim()) { setMessage("Enter the email address of an existing account."); return; }
-    setBusy(true); setMessage("");
-    try {
-      await addRemoteWorkspaceMember(config, database.workspaceId, memberEmail, memberRole);
-      setMessage("Added " + memberEmail.trim() + " as " + memberRole + ". They can access this workspace after signing in.");
-      setMemberEmail("");
-    } catch (error) { setMessage(error instanceof Error ? error.message : String(error)); }
-    finally { setBusy(false); }
-  };
-  const reloadAccess = async () => {
-    if (!config || !database) return;
-    const nextMembers = await listRemoteWorkspaceMembers(config, database.workspaceId);
-    const nextInvites = await listRemoteWorkspaceInvites(config, database.workspaceId).catch(() => [] as RemoteWorkspaceInvite[]);
-    setMembers(nextMembers); setInvites(nextInvites);
-  };
-  const addMember = async () => {
-    if (!config || !database) return;
     if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(memberEmail.trim())) { setMessage("Enter a valid invitation email."); return; }
     setBusy(true); setMessage("");
     try {
-      const invite = await createRemoteWorkspaceInvite(config, database.workspaceId, memberEmail, memberRole);
-      await Share.share({ title: "DR-Calender workspace invitation", message: "You have been invited to " + (workspaces.find(item => item.id === database.workspaceId)?.name ?? database.workspaceId) + " as " + invite.role + ". Sign in with " + invite.email + " and enter this invitation ID in Account & sync: " + invite.id + ". Expires " + new Date(invite.expires_at).toLocaleString() });
-      await reloadAccess(); setMessage("Invitation created. Share the invitation ID with the recipient; they must sign in using the invited email and accept it in Account & sync."); setMemberEmail("");
+      let invite: RemoteWorkspaceInvite;
+      let delivery = "email";
+      try {
+        invite = await sendRemoteWorkspaceInviteEmail(config, database.workspaceId, memberEmail, memberRole);
+      } catch (emailError) {
+        // Keep invitation usable even before the optional email provider is configured.
+        invite = await createRemoteWorkspaceInvite(config, database.workspaceId, memberEmail, memberRole);
+        delivery = "share";
+        await Share.share({ title: "DR-Calender workspace invitation", message: "You have been invited to " + (workspaces.find(item => item.id === database.workspaceId)?.name ?? database.workspaceId) + " as " + invite.role + ". Sign in with " + invite.email + " and enter this invitation ID in Account & sync: " + invite.id + ". Expires " + new Date(invite.expires_at).toLocaleString() });
+        setMessage("Invitation created and shared by ID. Email delivery was unavailable: " + (emailError instanceof Error ? emailError.message : String(emailError)));
+      }
+      await reloadAccess();
+      if (delivery === "email") {
+        setMessage("Invitation email sent to " + invite.email + ". The recipient must sign in using that email and accept the invitation in Account & sync.");
+      }
+      setMemberEmail("");
     } catch (error) { setMessage(error instanceof Error ? error.message : String(error)); }
     finally { setBusy(false); }
   };
