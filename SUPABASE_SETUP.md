@@ -32,9 +32,9 @@ Create a family, team, or project workspace from the Workspaces section. Use the
 
 ## Operational boundaries
 
-- The migration must be applied before sync can succeed.
+- The migrations must be applied in order before sync and workspace invitations can succeed.
 - A project URL and public key are required; this repository does not provide a hosted Supabase project.
-- Workspace creation establishes the creator as owner. Owners/admins can invite by email, change eligible member roles, remove members, revoke pending invitations, and accept invitations from Account & sync. Invitation records expire after 14 days. The mobile app creates and shares an invitation ID but does not send email itself; trusted email delivery remains a deployment integration.
+- Workspace creation establishes the creator as owner. Owners/admins can invite by email, change eligible member roles, remove members, revoke pending invitations, and accept invitations from Account & sync. Invitation records expire after 14 days. The app calls `supabase/functions/send-workspace-invite/index.ts` for email delivery and falls back to sharing the invitation ID if email delivery is not configured or fails. The Edge Function uses the caller's JWT and the authenticated RPC; it does not expose a service-role key to the mobile app.
 - Conflict handling is deterministic LWW/HLC, not field-level collaborative merge.
 - The current sync client is foreground/manual; background sync scheduling and push-based invalidation remain future work.
 - Offline mutations remain in SQLite’s outbox until the server acknowledges them. Errors are surfaced in Account & sync.
