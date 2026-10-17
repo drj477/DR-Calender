@@ -32,6 +32,13 @@ public final class DRCalenderNativeModule: Module {
       content.body = body
       content.sound = .default
       content.categoryIdentifier = "DR_CALENDER_ALARM"
+      if id.hasPrefix("native-event-") {
+        let payload = String(id.dropFirst("native-event-".count))
+        if let separator = payload.lastIndex(of: "-") {
+          let eventID = String(payload[..<separator])
+          content.userInfo["deepLink"] = "drcalender://events/" + eventID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)!.replacingOccurrences(of: "/", with: "%2F")
+        }
+      }
       let trigger = UNCalendarNotificationTrigger(dateMatching: Calendar.current.dateComponents(
         [.year, .month, .day, .hour, .minute, .second], from: fireDate), repeats: false)
       try await UNUserNotificationCenter.current().add(UNNotificationRequest(
