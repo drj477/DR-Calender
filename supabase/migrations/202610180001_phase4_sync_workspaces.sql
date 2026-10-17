@@ -55,7 +55,8 @@ as $$
   order by w.created_at,w.name;
 $$;
 
-drop function if exists public.dr_create_workspace(text,text);\ncreate or replace function public.dr_create_workspace(p_name text,p_workspace_type text default 'personal',p_workspace_id text default null)
+drop function if exists public.dr_create_workspace(text,text);
+create or replace function public.dr_create_workspace(p_name text,p_workspace_type text default 'personal',p_workspace_id text default null)
 returns jsonb language plpgsql security definer set search_path = public, auth
 as $$
 declare v_id text; v_name text;
@@ -150,9 +151,11 @@ end $$;
 
 revoke all on function public.dr_list_workspaces() from public, anon;
 revoke all on function public.dr_create_workspace(text,text,text) from public, anon;
-revoke all on function public.dr_add_workspace_member(text,text,text) from public, anon;\nrevoke all on function public.dr_sync_push(text,jsonb) from public, anon;
+revoke all on function public.dr_add_workspace_member(text,text,text) from public, anon;
+revoke all on function public.dr_sync_push(text,jsonb) from public, anon;
 revoke all on function public.dr_sync_pull(text,bigint,integer) from public, anon;
 grant execute on function public.dr_list_workspaces() to authenticated;
 grant execute on function public.dr_create_workspace(text,text,text) to authenticated;
-grant execute on function public.dr_add_workspace_member(text,text,text) to authenticated;\ngrant execute on function public.dr_sync_push(text,jsonb) to authenticated;
+grant execute on function public.dr_add_workspace_member(text,text,text) to authenticated;
+grant execute on function public.dr_sync_push(text,jsonb) to authenticated;
 grant execute on function public.dr_sync_pull(text,bigint,integer) to authenticated;
