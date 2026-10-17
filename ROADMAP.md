@@ -11,7 +11,7 @@ The project will be built in substantial, user-facing phases. Implementation com
 - Tighten occurrence-versus-series operations and preserve exception identity when the series changes.
 - Improve validation and clear user-facing errors for invalid schedules.
 
-**Current progress:** Implemented: monthly default-day behavior, all-day/multi-day semantics across editor and calendar views, and recurrence occurrence exceptions. Per-event time-zone selection and exhaustive RFC 5545 DST gap/fold handling remain outside this phase.
+**Current progress:** Implemented: monthly default-day behavior, all-day/multi-day semantics across editor and calendar views, recurrence occurrence exceptions, an editable IANA time-zone field, and deterministic recurring-occurrence DST fold/gap resolution (earlier instant for folds; first valid wall minute after gaps). The editor uses the selected zone to resolve event start/end instants. Exhaustive RFC 5545 edge-case compatibility and imports using arbitrary non-IANA VTIMEZONE identifiers still need validation/expansion.
 
 ## Phase 2 — Reminders and notifications
 **Goal:** Turn scheduled events into dependable reminders.
@@ -37,7 +37,7 @@ The project will be built in substantial, user-facing phases. Implementation com
 - **Implemented:** Supabase Auth email sign-up/sign-in, SecureStore-backed session persistence, refresh-token lifecycle, and sign-out.
 - **Implemented:** Supabase RPC sync transport, SQLite sync cursor/clock persistence, workspace-filtered outbox batches, idempotent mutation acknowledgements, retries/error recording, and HLC/LWW merge orchestration.
 - **Implemented:** SQL migration for workspace membership, server-side authorization checks, workspace listing/creation, revision-cursor pull, and mutation push.
-- **Implemented:** Account & sync UI, project configuration, manual sync, offline/error/success feedback, cloud workspace creation, local workspace activation, workspace-scoped hydration, and owner/admin addition of registered users as editors/viewers.
+- **Implemented:** Account & sync UI, project configuration, manual sync, offline/error/success feedback, cloud workspace creation, local workspace activation, workspace-scoped hydration, and workspace member listing, owner/admin role changes and removal, expiring invitation records, invitation revocation, and acceptance restricted to the invited account email.
 - **Deployment required:** Apply `supabase/migrations/202610180001_phase4_sync_workspaces.sql` to a Supabase project and configure its URL/public key in the app. See `SUPABASE_SETUP.md`.
 - **Remaining:** Pending email invitations, member removal/role changes, field-level conflict resolution, background sync, and push-based invalidation. The phase has not been tested or built yet by request.
 
@@ -86,3 +86,10 @@ The project will be built in substantial, user-facing phases. Implementation com
 ## Delivery rule
 
 Finish one coherent phase or meaningful vertical slice at a time. Prefer changes spanning the model, persistence, and UI when needed to deliver a usable feature. Do not treat a feature as complete merely because its data contract or native template exists.
+
+## Phase 9 — Membership lifecycle and interoperability completion
+**Implemented in source:** `202610180003_phase9_workspace_lifecycle.sql` adds server-validated workspace member listing, role changes, member removal, 14-day email-address-bound invitations, invitation listing/revocation, and acceptance. Account & sync exposes member controls and a share-sheet invitation flow. Invitation creation is not email delivery; a trusted server-side email provider must be configured separately for automatic email.
+
+**Implemented in source:** Event editing now exposes an IANA time-zone field and resolves wall-clock times in that zone. Recurrence expansion resolves DST folds consistently and advances nonexistent wall times to the first valid minute. ICS export now includes generated `VTIMEZONE` observances for each exported IANA zone and the relevant event-year range.
+
+**Still open (environment/deployment dependent):** Apply all Supabase migrations to staging and verify the role matrix; connect trusted email delivery if desired; finish import support for arbitrary custom VTIMEZONE definitions; configure Apple signing; generate/compile native projects and verify on physical devices; complete accessibility/performance review, automated tests, and production operations. These cannot be honestly marked complete from source-only edits.
