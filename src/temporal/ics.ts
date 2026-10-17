@@ -340,11 +340,11 @@ function parseCustomWallTime(value:string,timeZone:string):number|null {
   const target=Date.UTC(wall.year,wall.month-1,wall.day,wall.hour,wall.minute,wall.second);
   const offsets=[...new Set(transitions.flatMap(item=>[item.offsetFrom,item.offsetTo]))];
   const resolve=(local:number)=>{
-    const candidates=offsets.map(offset=>local-offset*60_000).filter(epoch=>customZoneOffsetAt(epoch,transitions)===offsetForCandidate(epoch,local,offset));
-    return candidates.filter(epoch=>{
-      const offset=customZoneOffsetAt(epoch,transitions);
-      return epoch+offset*60_000===local;
-    }).sort((a,b)=>a-b);
+    return offsets
+      .map(offset=>({epoch:local-offset*60_000,offset}))
+      .filter(candidate=>customZoneOffsetAt(candidate.epoch,transitions)===candidate.offset && candidate.epoch+candidate.offset*60_000===local)
+      .map(candidate=>candidate.epoch)
+      .sort((a,b)=>a-b);
   };
   for(let minute=0;minute<=180;minute++){
     const local=target+minute*60_000;
@@ -353,8 +353,6 @@ function parseCustomWallTime(value:string,timeZone:string):number|null {
   }
   return null;
 }
-function offsetForCandidate(_epoch:number,_local:number,offset:number):number { return offset; }
-
 function parseICSDateTime(value: string, timeZone: string | null = null): number {
   if (/Z$|[+-]\d{2}:?\d{2}$/.test(value)) {
     const absolute = new Date(value).getTime();
