@@ -85,7 +85,7 @@ export async function scheduleEventNotifications(entity: TemporalEntity): Promis
         body: minutesBefore === 0 ? "Your event starts now." : "Your event starts in " + (minutesBefore >= 1440 ? (minutesBefore / 1440) + " day(s)" : minutesBefore >= 60 ? (minutesBefore / 60) + " hour(s)" : minutesBefore + " minutes") + ".",
         sound: "default",
         ...(Platform.OS === "android" ? { channelId: "reminders" } : {}),
-        data: { entityId: entity.id, itemType: "event", occurrenceStartAt: occurrence.originalStartAt, deepLink: "drcalender://events/" + entity.id },
+        data: { entityId: entity.id, itemType: "event", occurrenceStartAt: occurrence.originalStartAt, deepLink: "drcalender://events/" + encodeURIComponent(entity.id + "::" + occurrence.originalStartAt) },
       },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(triggerAt) },
     });
