@@ -83,7 +83,7 @@ export function CalendarOverview({ mode, date, events, onSelectDate }: CalendarO
                 {dayEvents.length ? dayEvents.slice(0, 3).map(event => (
                   <View key={event.id} style={[styles.weekEvent, { borderLeftColor: event.isShielded ? COLORS.accent : event.isElastic ? COLORS.coral : COLORS.lavender }]}>
                     <Text numberOfLines={1} style={styles.weekEventTitle}>{event.title}</Text>
-                    <Text style={styles.weekEventTime}>{event.scheduledAt === null ? "" : new Date(event.scheduledAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</Text>
+                    <Text style={styles.weekEventTime}>{event.scheduledAt === null ? "" : (event.metadata?.event?.kind === "all-day" ? "All day" : new Date(event.scheduledAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }))}</Text>
                   </View>
                 )) : <Text style={styles.noEvents}>No events</Text>}
                 {dayEvents.length > 3 ? <Text style={styles.moreEvents}>+{dayEvents.length - 3} more</Text> : null}
