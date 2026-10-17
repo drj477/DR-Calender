@@ -173,7 +173,7 @@ function CalendarApp() {
       const value = response?.notification.request.content.data?.deepLink;
       if (typeof value === "string" && value.startsWith("drcalender://")) setPendingDeepLink(value);
     };
-    openNotificationRoute(Notifications.getLastNotificationResponse());
+    void Notifications.getLastNotificationResponseAsync().then(openNotificationRoute).catch(() => undefined);
     const subscription = Notifications.addNotificationResponseReceivedListener(openNotificationRoute);
     return () => subscription.remove();
   }, []);
