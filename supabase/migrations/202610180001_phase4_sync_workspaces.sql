@@ -73,7 +73,7 @@ end $$;
 
 create or replace function public.dr_add_workspace_member(p_workspace_id text,p_email text,p_role text default 'editor')
 returns jsonb language plpgsql security definer set search_path = public, auth
-as $
+as $$
 declare v_actor_role text; v_user_id uuid;
 begin
   if auth.uid() is null then raise exception 'Authentication required' using errcode='42501'; end if;
@@ -87,7 +87,7 @@ begin
     values(p_workspace_id,v_user_id,p_role)
     on conflict(workspace_id,user_id) do update set role=excluded.role;
   return jsonb_build_object('workspace_id',p_workspace_id,'user_id',v_user_id,'role',p_role);
-end $;
+end $$;
 
 create or replace function public.dr_sync_push(p_workspace_id text,p_mutations jsonb)
 returns jsonb language plpgsql security definer set search_path = public, auth
