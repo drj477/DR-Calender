@@ -20,12 +20,15 @@ This document records source implementation and outstanding validation. It is **
 - [x] Sync and backup restore are coordinated through a shared operation gate; restore refreshes the active database workspace and in-memory stores before releasing the gate.
 
 - [x] Source-level rolling native alarm reconciliation for recurring event occurrences, moved overrides, exclusions, and stale alarm cancellation.
-- [x] App deep-link routing for task/event widget links and Android event alarm notification taps.
+- [x] App deep-link routing for task/event widget links and Android/iOS event notification taps.
+- [x] Native build CI workflow configured for Android debug compilation and iOS Simulator compilation including the generated WidgetKit extension.
+- [x] Android exact alarms hand off from Expo notifications when permission is granted to prevent duplicate event reminders; Expo notifications remain fallback when exact-alarm permission is unavailable.
 - [ ] Verify native alarm reconciliation after edits, deletion, completion, workspace switching, reboot, and time-zone changes on physical devices.
 - [ ] Verify cold-start and warm-start task/event deep links on Android and iOS.
 
 ## Required before production
 
+- [ ] Observe a successful run of `.github/workflows/native-build.yml` and resolve any Android/iOS compilation failures.
 - [ ] Run TypeScript checks and resolve all reported issues.
 - [ ] Add and run automated unit/integration tests, especially restore validation/rollback, migration recovery, recurrence, DST, sync idempotency, and workspace isolation.
 - [ ] Build Android and iOS native apps; verify local module autolinking, generated manifests, and native dependency resolution.
@@ -66,4 +69,4 @@ Android alarm persistence/recovery source and iOS WidgetKit source exist, but so
 
 ## Validation policy
 
-Implementation was prioritized before validation. No tests, builds, TypeScript checks, native compilation, or device validation were run during this implementation pass. Release readiness remains **not certified** until the checks above are completed.
+Implementation and build automation are now in place. A successful CI build result has not yet been confirmed in this workflow, and no physical-device validation or TypeScript/test pass is claimed. Release readiness remains **not certified** until the checks above are completed.
