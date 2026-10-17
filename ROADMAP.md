@@ -25,11 +25,11 @@ The project will be built in substantial, user-facing phases. Implementation com
 ## Phase 3 — Tasks and daily planning
 **Goal:** Make the app useful as a daily planner, not just a calendar grid.
 
-- Build a dedicated task inbox and task detail/edit flow.
-- Add due dates, priorities, completion states, checklists, and overdue handling.
-- Add “Plan my day” actions that place tasks into free slots while respecting duration and existing events.
-- Improve quick capture, task rollover, and day agenda summaries.
-- Connect task completion and rescheduling to the existing local-first persistence/outbox.
+- **Implemented:** dedicated task inbox with Inbox / Today / Upcoming / Overdue / Completed filters, task create/edit, due date/time or unscheduled capture, priority, completion, and persisted checklists.
+- **Implemented:** overdue identification and one-tap rollover to today; task delete uses local tombstones and the sync outbox.
+- **Implemented:** “Plan my day” assigns unscheduled and overdue tasks into 30-minute free slots from 9 AM–6 PM, prioritizing critical/high tasks and respecting existing timed events/tasks.
+- **Implemented:** task edits, checklist changes, completion, rollover, deletion, and auto-planning are persisted locally through the temporal repository and enqueue outbox mutations.
+- Day agenda summaries and configurable task durations remain follow-up work; auto-planning currently uses a fixed 30-minute task block and local device time.
 
 ## Phase 4 — Offline-first sync, accounts, and workspaces
 **Goal:** Safely synchronize data across devices and collaborators.
