@@ -39,3 +39,15 @@ Create a family, team, or project workspace from the Workspaces section. Use the
 - The current sync client is foreground/manual; background sync scheduling and push-based invalidation remain future work.
 - Offline mutations remain in SQLite’s outbox until the server acknowledges them. Errors are surfaced in Account & sync.
 - The mobile app cannot enforce server authorization by itself; the SQL RPC checks are the security boundary.
+
+
+## Phase 7 security hardening
+
+Apply migrations in order to a **staging** project first:
+
+1. `202610180001_phase4_sync_workspaces.sql`
+2. `202610180002_phase7_security_hardening.sql`
+
+The second migration removes direct table privileges from the mobile roles and hardens the authenticated sync-push RPC. Review `SUPABASE_SECURITY_REVIEW.md` and complete its role/permission and malformed-payload checklist before production. Repository source cannot confirm which migrations are applied to your hosted project; verify in the Supabase SQL editor and inspect effective grants/function definitions.
+
+Never place a Supabase service-role key in the mobile app. Use only the project URL, publishable/anon key, and authenticated user session.
