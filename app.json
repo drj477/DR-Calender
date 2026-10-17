@@ -19,7 +19,8 @@
       "edgeToEdgeEnabled": true
     },
     "plugins": [
-      "expo-sqlite"
+      "expo-sqlite",
+      ["expo-notifications", { "defaultChannel": "reminders", "color": "#FFC247" }]
     ]
   }
 }
