@@ -18,10 +18,12 @@ import Animated, {
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useCalendarStore } from "./src/store/calendarStore";
 import { initializeLocalDatabase, makeTaskEntity, type LocalCalendarDatabase } from "./src/persistence/localDatabase";
+import { EventEditor, type EventDraft } from "./src/components/EventEditor";
+import type { TemporalEntity } from "./src/temporal/types";
 
 type ScreenMode = "Day" | "Week" | "Month";
 type Task = { id: string; title: string; due: string; assignee: string; completed: boolean };
-type Event = { id: string; start: string; end: string; title: string; subtitle: string; color: string; top: number; height: number };
+
 
 const COLORS = {
   background: "#0C0F14",
@@ -35,13 +37,6 @@ const COLORS = {
   blue: "#86C7FF",
   coral: "#FFAD9B",
 };
-
-const EVENTS: Event[] = [
-  { id: "e1", start: "09:00", end: "09:45", title: "Product stand-up", subtitle: "Design team · Meet", color: COLORS.lavender, top: 0, height: 82 },
-  { id: "e2", start: "10:30", end: "11:30", title: "Deep work", subtitle: "Focus shield enabled", color: COLORS.accent, top: 0, height: 104 },
-  { id: "e3", start: "13:00", end: "13:45", title: "Campaign review", subtitle: "Marketing · Room 02", color: COLORS.blue, top: 0, height: 82 },
-  { id: "e4", start: "15:30", end: "16:15", title: "Project planning", subtitle: "DR Calender", color: COLORS.coral, top: 0, height: 82 },
-];
 
 const INITIAL_TASKS: Task[] = [
   { id: "t1", title: "Review onboarding flow", due: "Today · 11:30 AM", assignee: "You", completed: false },
@@ -73,16 +68,26 @@ function TaskRow({ task, onToggle }: { task: Task; onToggle: () => void }) {
   );
 }
 
-function EventCard({ event, index }: { event: Event; index: number }) {
+function EventCard({ event, index, onPress }: { event: TemporalEntity; index: number; onPress: () => void }) {
+  const start = event.scheduledAt === null ? null : new Date(event.scheduledAt);
+  const end = event.endAt === null ? null : new Date(event.endAt);
+  const color = event.isShielded ? COLORS.accent : event.isElastic ? COLORS.coral : COLORS.lavender;
+  const timeLabel = start
+    ? `${start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} – ${end ? end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "No end"}`
+    : "No time set";
+  const location = event.metadata?.event?.location;
   return (
-    <Animated.View entering={FadeInDown.delay(index * 18).duration(180)} style={[styles.eventCard, { minHeight: event.height, borderLeftColor: event.color }]}>
-      <View style={styles.eventTopLine}>
-        <Text style={styles.eventTime}>{event.start} – {event.end}</Text>
-        {event.title === "Deep work" ? <View style={styles.shieldPill}><Text style={styles.shieldText}>SHIELDED</Text></View> : null}
-      </View>
-      <Text style={styles.eventTitle}>{event.title}</Text>
-      <Text style={styles.eventSubtitle}>{event.subtitle}</Text>
-    </Animated.View>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`Edit ${event.title}`}>
+      <Animated.View entering={FadeInDown.delay(index * 18).duration(180)} style={[styles.eventCard, { minHeight: 82, borderLeftColor: color }]}>
+        <View style={styles.eventTopLine}>
+          <Text style={styles.eventTime}>{timeLabel}</Text>
+          {event.isShielded ? <View style={styles.shieldPill}><Text style={styles.shieldText}>SHIELDED</Text></View> : null}
+          {event.isElastic ? <View style={styles.shieldPill}><Text style={styles.shieldText}>FLEXIBLE</Text></View> : null}
+        </View>
+        <Text style={styles.eventTitle}>{event.title}</Text>
+        <Text style={styles.eventSubtitle}>{location ?? "Tap to edit event"}</Text>
+      </Animated.View>
+    </Pressable>
   );
 }
 
@@ -91,8 +96,18 @@ function CalendarApp() {
   const [selectedDay, setSelectedDay] = useState(new Date().getDate());
   const [tasks, setTasks] = useState(INITIAL_TASKS);
   const [database, setDatabase] = useState<LocalCalendarDatabase | null>(null);
+  const [eventEditorVisible, setEventEditorVisible] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<TemporalEntity | null>(null);
   const pendingCount = useCalendarStore(state => state.pendingMutations.length);
+  const storedEntities = useCalendarStore(state => Object.values(state.entitiesById));
   const today = useMemo(() => new Date(), []);
+  const selectedDate = useMemo(() => new Date(today.getFullYear(), today.getMonth(), selectedDay), [today, selectedDay]);
+  const dayStart = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()).getTime();
+  const dayEnd = dayStart + 24 * 60 * 60_000;
+  const visibleEvents = storedEntities
+    .filter(entity => entity.itemType === "event" && entity.deletedAt === null && entity.scheduledAt !== null)
+    .filter(entity => entity.scheduledAt! < dayEnd && (entity.endAt ?? entity.scheduledAt!) >= dayStart)
+    .sort((a, b) => (a.scheduledAt ?? 0) - (b.scheduledAt ?? 0));
   const monthLabel = today.toLocaleDateString(undefined, { month: "long", year: "numeric" });
   const days = useMemo(() => {
     const first = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -109,8 +124,8 @@ function CalendarApp() {
       if (!active) return;
       setDatabase(local);
       const now = new Date();
-      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-      const end = start + 14 * 24 * 60 * 60_000;
+      const start = new Date(now.getFullYear(), now.getMonth(), 1).getTime() - 31 * 24 * 60 * 60_000;
+      const end = new Date(now.getFullYear(), now.getMonth() + 2, 1).getTime();
       let entities = await local.repository.queryRange(local.workspaceId, start, end);
       if (entities.length === 0) {
         const today = new Date(start);
@@ -183,6 +198,71 @@ function CalendarApp() {
     }
   };
 
+  const openNewEvent = () => {
+    setEditingEvent(null);
+    setEventEditorVisible(true);
+  };
+
+  const saveEvent = (draft: EventDraft) => {
+    const now = Date.now();
+    const existing = editingEvent;
+    const id = existing?.id ?? `event-${now}`;
+    const entity: TemporalEntity = {
+      id,
+      workspaceId: database?.workspaceId ?? "workspace-personal",
+      itemType: "event",
+      title: draft.title,
+      scheduledAt: draft.startAt,
+      endAt: draft.endAt,
+      isCompleted: false,
+      priority: existing?.priority ?? "normal",
+      isShielded: draft.isShielded,
+      isElastic: draft.isElastic,
+      isGhost: false,
+      ghostClusterId: null,
+      assignedUserIds: existing?.assignedUserIds ?? ["local-user"],
+      rrule: existing?.rrule ?? null,
+      syncVersion: (existing?.syncVersion ?? 0) + 1,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+      deletedAt: null,
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+      metadata: {
+        ...existing?.metadata,
+        event: {
+          kind: existing?.metadata?.event?.kind ?? "standard",
+          commitment: draft.isElastic ? "elastic" : "hard",
+          location: draft.location,
+          meetingUrl: existing?.metadata?.event?.meetingUrl ?? null,
+          organizerUserId: existing?.metadata?.event?.organizerUserId ?? "local-user",
+          attendeeUserIds: existing?.metadata?.event?.attendeeUserIds ?? [],
+          travelBufferMinutes: existing?.metadata?.event?.travelBufferMinutes ?? null,
+          cooldownBufferMinutes: existing?.metadata?.event?.cooldownBufferMinutes ?? null,
+        },
+      },
+    };
+    const mutationId = `event-upsert-${id}-${entity.syncVersion}`;
+    useCalendarStore.getState().upsertEntity(entity, mutationId);
+    setEventEditorVisible(false);
+    setEditingEvent(null);
+    if (database) {
+      database.repository.upsert(entity, mutationId).catch(error => console.warn("Unable to persist event", error));
+    }
+  };
+
+  const deleteEvent = (event: TemporalEntity) => {
+    const mutationId = `event-delete-${event.id}-${event.syncVersion + 1}`;
+    setEventEditorVisible(false);
+    setEditingEvent(null);
+    if (database) {
+      database.repository.softDelete(event.id, mutationId).then(tombstone => {
+        if (tombstone) useCalendarStore.getState().upsertEntity(tombstone, mutationId);
+      }).catch(error => console.warn("Unable to delete event", error));
+    } else {
+      useCalendarStore.getState().deleteEntity(event.id, mutationId, event.workspaceId, "event");
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
@@ -200,7 +280,7 @@ function CalendarApp() {
       <View style={styles.modeBar}>
         <View>
           <Text style={styles.monthLabel}>{monthLabel}</Text>
-          <Text style={styles.subLabel}>{today.toLocaleDateString(undefined, { weekday: "long", day: "numeric" })}</Text>
+          <Text style={styles.subLabel}>{selectedDate.toLocaleDateString(undefined, { weekday: "long", day: "numeric" })}</Text>
         </View>
         <View style={styles.modeSwitch}>
           {(["Day", "Week", "Month"] as ScreenMode[]).map(item => (
@@ -226,7 +306,7 @@ function CalendarApp() {
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.sectionHeading}>
           <View><Text style={styles.sectionTitle}>{mode === "Day" ? "Today’s agenda" : `${mode} overview`}</Text><Text style={styles.sectionCaption}>A little structure, a lot more space.</Text></View>
-          <Pressable onPress={addQuickTask} style={styles.addButton}><Text style={styles.addGlyph}>＋</Text></Pressable>
+          <Pressable onPress={openNewEvent} style={styles.addButton} accessibilityRole="button" accessibilityLabel="Create event"><Text style={styles.addGlyph}>＋</Text></Pressable>
         </View>
 
         {mode === "Month" ? (
@@ -241,7 +321,18 @@ function CalendarApp() {
             </View>
             <View style={styles.eventsColumn}>
               <View style={styles.timelineLine} />
-              {EVENTS.map((event, index) => <EventCard key={event.id} event={event} index={index} />)}
+              {visibleEvents.length ? visibleEvents.map((event, index) => (
+                <EventCard key={event.id} event={event} index={index} onPress={() => {
+                  setEditingEvent(event);
+                  setEventEditorVisible(true);
+                }} />
+              )) : (
+                <View style={styles.emptyEvents}>
+                  <Text style={styles.emptyEventsTitle}>Nothing scheduled yet</Text>
+                  <Text style={styles.sectionCaption}>Add an event to start shaping this day.</Text>
+                  <Pressable onPress={openNewEvent} style={styles.emptyAdd}><Text style={styles.emptyAddText}>＋ Create event</Text></Pressable>
+                </View>
+              )}
             </View>
           </View>
         )}
@@ -257,6 +348,15 @@ function CalendarApp() {
         </View>
         <View style={styles.syncNote}><View style={styles.syncDot} /><Text style={styles.syncText}>{pendingCount ? `${pendingCount} changes waiting to sync` : "Offline-first · Ready when you are"}</Text></View>
       </ScrollView>
+
+      <EventEditor
+        visible={eventEditorVisible}
+        selectedDate={editingEvent?.scheduledAt ? new Date(editingEvent.scheduledAt) : selectedDate}
+        event={editingEvent}
+        onClose={() => { setEventEditorVisible(false); setEditingEvent(null); }}
+        onSave={saveEvent}
+        onDelete={deleteEvent}
+      />
 
       <View style={styles.bottomNav}>
         {[
@@ -333,6 +433,10 @@ const styles = StyleSheet.create({
   eventSubtitle: { color: COLORS.muted, fontSize: 10, marginTop: 4 },
   shieldPill: { paddingHorizontal: 7, paddingVertical: 4, borderRadius: 6, backgroundColor: "#28351E" },
   shieldText: { color: COLORS.accent, fontSize: 8, fontWeight: "800", letterSpacing: 0.7 },
+  emptyEvents: { marginLeft: 10, padding: 18, borderRadius: 14, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, gap: 7 },
+  emptyEventsTitle: { color: COLORS.text, fontSize: 13, fontWeight: "700" },
+  emptyAdd: { alignSelf: "flex-start", marginTop: 4, paddingVertical: 8, paddingHorizontal: 11, borderRadius: 9, backgroundColor: COLORS.surfaceRaised },
+  emptyAddText: { color: COLORS.accent, fontSize: 11, fontWeight: "700" },
   tasksSection: { marginTop: 28 },
   seeAll: { color: COLORS.accent, fontSize: 11, fontWeight: "700" },
   tasksCard: { backgroundColor: COLORS.surface, borderRadius: 17, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 14 },
