@@ -125,7 +125,7 @@ The calendar UI uses a midnight-navy and warm-amber palette inspired by the supp
 - Task rows can toggle a 15-minute-before-due alert when the task has a due time. Completing a task cancels its pending alert; reopening it can restore the alert.
 - Local reminder records and notification identifiers are stored in the existing temporal entity metadata, so reminders remain visible offline.
 
-**Native alarm boundary:** the iOS and Android exact-alarm source files remain templates and are not yet registered as a native Expo module. Phase 2 uses standard OS local notifications; exact Android alarm scheduling, alarm receiver/full-screen behavior, and iOS critical-alert entitlements still require native-target integration and platform-specific permission handling. Standard notifications cannot guarantee bypassing silent mode or Focus.
+**Native alarm boundary:** the local Expo native module is registered in source. Android exact alarms use AlarmManager and a receiver with persisted reboot/time-change recovery; iOS uses standard local notifications and App Group widget snapshots. Native compilation/device validation is still outstanding, iOS critical alerts are not included, and standard notifications cannot guarantee bypassing silent mode or Focus.
 
 
 ## Phase 3 delivery notes
