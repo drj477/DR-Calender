@@ -51,8 +51,9 @@ export function SharingCenter({events,onImport,onRSVP,onAddAttendee}:Props) {
   const addSubscription = async () => {
     const url=subscriptionUrl.trim();
     if(!/^https:\/\//i.test(url)){setMessage("Calendar subscription URLs must use HTTPS.");return;}
+    let hostname = ""; try { hostname = new URL(url).hostname; } catch { setMessage("Enter a valid HTTPS calendar URL."); return; }
     if(subscriptions.some(s=>s.url===url)){setMessage("This subscription URL is already saved.");return;}
-    const item:Subscription={id:"sub-"+Date.now(),url,name:new URL(url).hostname,lastChecked:null,eventCount:0,error:null};
+    const item:Subscription={id:"sub-"+Date.now(),url,name:hostname,lastChecked:null,eventCount:0,error:null};
     await saveSubscriptions([...subscriptions,item]);setSubscriptionUrl("");setMessage("Subscription saved. Select Refresh to fetch its current events.");
   };
   const refreshSubscription = async (subscription:Subscription) => {
@@ -101,7 +102,7 @@ export function SharingCenter({events,onImport,onRSVP,onAddAttendee}:Props) {
     const allDay=selectedEvent.metadata?.event?.kind==="all-day";
     const date=(value:number)=>{const d=new Date(value);return String(d.getFullYear()).padStart(4,"0")+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0")};
     const utc=(value:number)=>new Date(value).toISOString().replace(/[-:]/g,"").replace(/\.\d{3}Z$/,"Z");
-    const lines=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//DR-Calender//Temporal Engine//EN","METHOD:REQUEST","CALSCALE:GREGORIAN","BEGIN:VEVENT","UID:"+eventUID(selectedEvent),"SEQUENCE:"+selectedEvent.syncVersion,"DTSTAMP:"+utc(Date.now()),allDay?"DTSTART;VALUE=DATE:"+date(start):"DTSTART:"+utc(start),allDay?"DTEND;VALUE=DATE:"+date(end):"DTEND:"+utc(end),"SUMMARY:"+escapeICSText(selectedEvent.title),"ORGANIZER:mailto:"+organizerEmail.trim()];
+    const lines=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//DR-Calender//Temporal Engine//EN","METHOD:REQUEST","CALSCALE:GREGORIAN","BEGIN:VEVENT","UID:"+eventUID(selectedEvent),"SEQUENCE:"+selectedEvent.syncVersion,"DTSTAMP:"+utc(Date.now()),allDay?"DTSTART;VALUE=DATE:"+date(start):"DTSTART:"+utc(start),allDay?"DTEND;VALUE=DATE:"+date(end):"DTEND:"+utc(end),"SUMMARY:"+escapeICSText(selectedEvent.title),...(selectedEvent.metadata?.event?.location?["LOCATION:"+escapeICSText(selectedEvent.metadata.event.location)]:[]),"ORGANIZER:mailto:"+organizerEmail.trim()];
     for(const attendee of selectedEvent.metadata?.invite?.attendeeList??[])lines.push("ATTENDEE;RSVP=TRUE;PARTSTAT="+(attendee.rsvpStatus==="accepted"?"ACCEPTED":attendee.rsvpStatus==="declined"?"DECLINED":attendee.rsvpStatus==="tentative"?"TENTATIVE":"NEEDS-ACTION")+":mailto:"+attendee.email);
     lines.push("END:VEVENT","END:VCALENDAR");
     await Share.share({title:"Event invitation",message:lines.join("\r
