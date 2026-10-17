@@ -13,15 +13,28 @@ export interface ExpandRecurrenceOptions {
   maxOccurrences?: number;
 }
 
+type WallClockParts = {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+  millisecond: number;
+};
+
+const DAY_MS = 86400000;
+const WEEKDAY_CODES = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+
 /**
  * A deliberately bounded RRULE expander for common calendar rules.
  * Supported frequencies: DAILY, WEEKLY, MONTHLY; supported selectors:
- * INTERVAL, COUNT, UNTIL, BYDAY, BYMONTHDAY. Unsupported rule parts fail
- * explicitly rather than silently producing an incomplete schedule.
+ * INTERVAL, COUNT, UNTIL, BYDAY, BYMONTHDAY.
  *
- * This engine expands wall-clock dates using UTC calendar arithmetic. For
- * timezone-aware recurring events, callers should expand in the event's IANA
- * timezone with a timezone-aware adapter before relying on DST boundaries.
+ * Recurrence dates are generated as wall-clock dates in entity.timeZone, then
+ * converted back to instants. This keeps a 09:00 event at 09:00 local time
+ * across daylight-saving transitions. Ambiguous/nonexistent local times use
+ * the runtime's deterministic offset-resolution behavior.
  */
 export function expandRecurrence(
   entity: TemporalEntity,
@@ -49,7 +62,9 @@ export function expandRecurrence(
   for (const segment of entity.rrule.replace(/^RRULE:/i, "").split(";")) {
     const equals = segment.indexOf("=");
     if (equals < 1) throw new Error(`Invalid RRULE segment: ${segment}`);
-    parts.set(segment.slice(0, equals).toUpperCase(), segment.slice(equals + 1).toUpperCase());
+    const key = segment.slice(0, equals).toUpperCase();
+    if (parts.has(key)) throw new Error(`Duplicate RRULE part: ${key}`);
+    parts.set(key, segment.slice(equals + 1).toUpperCase());
   }
   const allowed = new Set(["FREQ", "INTERVAL", "COUNT", "UNTIL", "BYDAY", "BYMONTHDAY"]);
   for (const key of parts.keys()) if (!allowed.has(key)) throw new Error(`Unsupported RRULE part: ${key}`);
@@ -65,50 +80,117 @@ export function expandRecurrence(
   const until = parts.has("UNTIL") ? parseUntil(parts.get("UNTIL")!) : Infinity;
   const byDay = parts.get("BYDAY")?.split(",").map(day => day.slice(-2));
   const byMonthDay = parts.get("BYMONTHDAY")?.split(",").map(Number);
-  const weekdayCodes = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+  if (byDay?.some(day => !WEEKDAY_CODES.includes(day))) throw new Error("RRULE BYDAY contains an unsupported weekday");
+  if (byMonthDay?.some(day => !Number.isInteger(day) || day < 1 || day > 31)) {
+    throw new Error("RRULE BYMONTHDAY values must be integers from 1 to 31");
+  }
 
-  const start = new Date(entity.scheduledAt);
-  const cursor = new Date(start);
+  const timeZone = entity.timeZone || "UTC";
+  const startWall = getWallClockParts(entity.scheduledAt, timeZone);
+  const startDate = new Date(Date.UTC(startWall.year, startWall.month - 1, startWall.day));
+  const cursor = new Date(startDate);
   const occurrences: Occurrence[] = [];
   let generated = 0;
   let iterations = 0;
   const maxIterations = Math.max(maxOccurrences * 400, 10000);
+  // Include local dates just before the range because an event may overlap its start.
+  const rangeWall = getWallClockParts(options.rangeStart, timeZone);
+  const rangeDate = Date.UTC(rangeWall.year, rangeWall.month - 1, rangeWall.day);
+  const scanFromDate = rangeDate - (duration ?? 0) - 2 * DAY_MS;
+  const stopWall = getWallClockParts(options.rangeEnd, timeZone);
+  const stopDate = Date.UTC(stopWall.year, stopWall.month - 1, stopWall.day) + DAY_MS;
 
-  while (cursor.getTime() < options.rangeEnd && cursor.getTime() <= until && generated < count) {
+  while (cursor.getTime() < stopDate && generated < count) {
     if (++iterations > maxIterations) throw new Error("RRULE expansion exceeded safety iteration limit");
-    const elapsedDays = Math.floor((Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth(), cursor.getUTCDate()) -
-      Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate())) / 86400000);
-    const elapsedMonths = (cursor.getUTCFullYear() - start.getUTCFullYear()) * 12 + cursor.getUTCMonth() - start.getUTCMonth();
+    const elapsedDays = Math.floor((cursor.getTime() - startDate.getTime()) / DAY_MS);
+    const elapsedMonths = (cursor.getUTCFullYear() - startDate.getUTCFullYear()) * 12 + cursor.getUTCMonth() - startDate.getUTCMonth();
     const matchesFrequency =
       frequency === "DAILY" ? elapsedDays % interval === 0 :
       frequency === "WEEKLY" ? Math.floor(elapsedDays / 7) % interval === 0 :
       elapsedMonths % interval === 0;
-    const matchesDay = (!byDay || byDay.includes(weekdayCodes[cursor.getUTCDay()])) &&
+    const weekday = WEEKDAY_CODES[cursor.getUTCDay()];
+    const matchesDay = (!byDay || byDay.includes(weekday)) &&
       (!byMonthDay || byMonthDay.includes(cursor.getUTCDate()));
 
-    if (matchesFrequency && matchesDay && cursor.getTime() >= entity.scheduledAt) {
-      generated += 1;
-      const occurrenceStart = cursor.getTime();
-      const occurrenceEnd = duration === null ? null : occurrenceStart + duration;
-      if ((occurrenceEnd ?? occurrenceStart) >= options.rangeStart) {
-        occurrences.push({
-          entityId: entity.id,
-          startAt: occurrenceStart,
-          endAt: occurrenceEnd,
-          isRecurring: true,
-        });
-        if (occurrences.length >= maxOccurrences) break;
+    if (matchesFrequency && matchesDay) {
+      const wall: WallClockParts = {
+        ...startWall,
+        year: cursor.getUTCFullYear(),
+        month: cursor.getUTCMonth() + 1,
+        day: cursor.getUTCDate(),
+      };
+      const occurrenceStart = wallClockToEpoch(wall, timeZone);
+      if (occurrenceStart >= entity.scheduledAt && occurrenceStart <= until) {
+        generated += 1;
+        const occurrenceEnd = duration === null ? null : occurrenceStart + duration;
+        if (occurrenceStart < options.rangeEnd && (occurrenceEnd ?? occurrenceStart) >= options.rangeStart) {
+          occurrences.push({
+            entityId: entity.id,
+            startAt: occurrenceStart,
+            endAt: occurrenceEnd,
+            isRecurring: true,
+          });
+          if (occurrences.length >= maxOccurrences) break;
+        }
       }
     }
 
+    // If we are past the requested range and the DTSTART is ancient, avoid scanning
+    // unnecessary dates while preserving COUNT semantics by calculating generated count
+    // only for the supported unfiltered daily/weekly/monthly rules below.
+    if (cursor.getTime() >= scanFromDate && cursor.getTime() >= stopDate) break;
     cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
 
   return occurrences;
 }
 
+function getWallClockParts(epochMs: number, timeZone: string): WallClockParts {
+  let formatter: Intl.DateTimeFormat;
+  try {
+    formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23",
+    });
+  } catch {
+    throw new RangeError(`Invalid IANA time zone: ${timeZone}`);
+  }
+  const parts = formatter.formatToParts(new Date(epochMs));
+  const value = (type: string) => Number(parts.find(part => part.type === type)?.value);
+  return {
+    year: value("year"),
+    month: value("month"),
+    day: value("day"),
+    hour: value("hour"),
+    minute: value("minute"),
+    second: value("second"),
+    millisecond: ((epochMs % 1000) + 1000) % 1000,
+  };
+}
+
+function wallClockToEpoch(wall: WallClockParts, timeZone: string): number {
+  const targetUtc = Date.UTC(wall.year, wall.month - 1, wall.day, wall.hour, wall.minute, wall.second, wall.millisecond);
+  let candidate = targetUtc;
+  // Iteratively correct the candidate by the difference between desired wall time
+  // and the wall time represented by the candidate in the requested zone.
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const actual = getWallClockParts(candidate, timeZone);
+    const actualAsUtc = Date.UTC(actual.year, actual.month - 1, actual.day, actual.hour, actual.minute, actual.second, actual.millisecond);
+    const delta = targetUtc - actualAsUtc;
+    if (delta === 0) return candidate;
+    candidate += delta;
+  }
+  return candidate;
+}
+
 function parseUntil(value: string): number {
-  const match = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?(Z)?)?$/.exec(value);
+  const match = /^(\\d{4})(\\d{2})(\\d{2})(?:T(\\d{2})(\\d{2})(\\d{2})?(Z)?)?$/.exec(value);
   if (!match) throw new Error(`Unsupported RRULE UNTIL value: ${value}`);
   const [, y, m, d, hh = "23", mm = "59", ss = "59", z = "Z"] = match;
   if (z !== "Z") throw new Error("UNTIL must be a UTC value ending in Z");
