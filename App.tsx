@@ -19,6 +19,7 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useCalendarStore } from "./src/store/calendarStore";
 import { initializeLocalDatabase, makeTaskEntity, type LocalCalendarDatabase } from "./src/persistence/localDatabase";
 import { EventEditor, type EventDraft } from "./src/components/EventEditor";
+import { DayTimeline } from "./src/components/DayTimeline";
 import type { TemporalEntity } from "./src/temporal/types";
 
 type ScreenMode = "Day" | "Week" | "Month";
@@ -256,6 +257,21 @@ function CalendarApp() {
     }
   };
 
+  const moveEvent = (event: TemporalEntity, nextStartAt: number, nextEndAt: number) => {
+    const updated: TemporalEntity = {
+      ...event,
+      scheduledAt: nextStartAt,
+      endAt: nextEndAt,
+      updatedAt: Date.now(),
+      syncVersion: event.syncVersion + 1,
+    };
+    const mutationId = `event-move-${event.id}-${updated.syncVersion}`;
+    useCalendarStore.getState().upsertEntity(updated, mutationId);
+    if (database) {
+      database.repository.upsert(updated, mutationId).catch(error => console.warn("Unable to persist moved event", error));
+    }
+  };
+
   const deleteEvent = (event: TemporalEntity) => {
     const mutationId = `event-delete-${event.id}-${event.syncVersion + 1}`;
     setEventEditorVisible(false);
@@ -321,26 +337,23 @@ function CalendarApp() {
             <Text style={styles.sectionCaption}>Choose a day above to view its schedule.</Text>
           </View>
         ) : (
-          <View style={styles.timeline}>
-            <View style={styles.timeRail}>
-              {["09 AM", "10 AM", "11 AM", "12 PM", "01 PM", "02 PM", "03 PM", "04 PM"].map(time => <Text key={time} style={styles.timeLabel}>{time}</Text>)}
+          {visibleEvents.length ? (
+            <DayTimeline
+              date={selectedDate}
+              events={visibleEvents}
+              onEventPress={event => {
+                setEditingEvent(event);
+                setEventEditorVisible(true);
+              }}
+              onEventMove={moveEvent}
+            />
+          ) : (
+            <View style={styles.emptyEvents}>
+              <Text style={styles.emptyEventsTitle}>Nothing scheduled yet</Text>
+              <Text style={styles.sectionCaption}>Add an event to start shaping this day.</Text>
+              <Pressable onPress={openNewEvent} style={styles.emptyAdd}><Text style={styles.emptyAddText}>＋ Create event</Text></Pressable>
             </View>
-            <View style={styles.eventsColumn}>
-              <View style={styles.timelineLine} />
-              {visibleEvents.length ? visibleEvents.map((event, index) => (
-                <EventCard key={event.id} event={event} index={index} onPress={() => {
-                  setEditingEvent(event);
-                  setEventEditorVisible(true);
-                }} />
-              )) : (
-                <View style={styles.emptyEvents}>
-                  <Text style={styles.emptyEventsTitle}>Nothing scheduled yet</Text>
-                  <Text style={styles.sectionCaption}>Add an event to start shaping this day.</Text>
-                  <Pressable onPress={openNewEvent} style={styles.emptyAdd}><Text style={styles.emptyAddText}>＋ Create event</Text></Pressable>
-                </View>
-              )}
-            </View>
-          </View>
+          )}
         )}
 
         <View style={styles.tasksSection}>
