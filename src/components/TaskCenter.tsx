@@ -39,7 +39,8 @@ export function TaskCenter({ tasks, onSave, onToggle, onDelete, onPlanDay, onRol
   const [error, setError] = useState("");
   const now = Date.now();
   const todayStart = new Date().setHours(0, 0, 0, 0);
-  const tomorrowStart = todayStart + 86400000;
+  const today = new Date();
+  const tomorrowStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).getTime();
   const liveTasks = useMemo(() => tasks.filter(t => t.itemType === "task" && t.deletedAt === null), [tasks]);
   const overdue = (task: TemporalEntity) => !task.isCompleted && (task.metadata?.task?.dueAt ?? task.scheduledAt) !== null && (task.metadata?.task?.dueAt ?? task.scheduledAt)! < todayStart;
   const counts: Record<Filter, number> = {
