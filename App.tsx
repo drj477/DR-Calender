@@ -18,7 +18,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useCalendarStore } from "./src/store/calendarStore";
-import { initializeLocalDatabase, makeTaskEntity, type LocalCalendarDatabase } from "./src/persistence/localDatabase";
+import { DEFAULT_WORKSPACE_ID, initializeLocalDatabase, makeTaskEntity, type LocalCalendarDatabase } from "./src/persistence/localDatabase";
 import { EventEditor, type EventDraft } from "./src/components/EventEditor";
 import { DayTimeline } from "./src/components/DayTimeline";
 import { CalendarOverview } from "./src/components/CalendarOverview";
