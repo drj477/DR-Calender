@@ -84,7 +84,8 @@ export async function createRemoteWorkspace(config: SupabaseConfig, name: string
 export async function addRemoteWorkspaceMember(config: SupabaseConfig, workspaceId: string, email: string, role: "editor" | "viewer"): Promise<void> {
   const session = await getValidSession(config);
   if (!session) throw new Error("Sign in to manage workspace members.");
-  const response = await fetch(`${config.url.replace(/\\/+$/, "")}/rest/v1/rpc/dr_add_workspace_member`, {
+  const baseUrl = config.url.endsWith("/") ? config.url.slice(0, -1) : config.url;
+  const response = await fetch(`${baseUrl}/rest/v1/rpc/dr_add_workspace_member`, {
     method: "POST",
     headers: { "Content-Type": "application/json", apikey: config.anonKey, Authorization: `Bearer ${session.accessToken}` },
     body: JSON.stringify({ p_workspace_id: workspaceId, p_email: email.trim().toLowerCase(), p_role: role }),
