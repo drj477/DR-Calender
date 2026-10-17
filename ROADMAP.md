@@ -78,7 +78,7 @@ The project will be built in substantial, user-facing phases. Implementation com
 - **Implemented in source:** Android and iOS native bridges expose stale-alarm cancellation; Android retains alarm persistence and boot/time/time-zone restoration. Native alarms use stable occurrence IDs to make rescheduling idempotent.
 - **Implemented in source:** Widget task/event deep links are handled on cold and warm app launch. Android native event alarm notifications route to the associated event editor.
 - **Implemented in source:** Native integration docs describe the bridge contract and platform boundaries. Expo Go remains unsupported for the custom native module.
-- **Still open:** iOS Widget Extension target generation and signing, automatic workspace-switch reconciliation verification, recurring alarm delivery verification, notification tap behavior on iOS, and source-level review of native alarm IDs for unusual entity IDs.
+- **Still open:** iOS Widget Extension target generation and signing, automatic workspace-switch reconciliation verification, recurring alarm delivery verification, and source-level review of native alarm IDs for unusual entity IDs.
 - **Still open:** End-to-end restore/sync exclusion and automatic in-memory database reinitialization after restore. Current restore UI still asks for a full app restart; restore must not run during sync.
 - **Validation deferred:** No tests, type checks, builds, native compilation, or device validation were run. This phase is source implementation, not proof of platform behavior.
 
