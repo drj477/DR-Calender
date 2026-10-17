@@ -43,7 +43,7 @@ A premium, offline-first calendar and scheduling application for iOS and Android
 ## Project structure
 
 - `App.tsx` — mobile application entry screen.
-- `src/temporal/` — temporal models, scheduling, recurrence, ICS, drag helpers, and SQLite DDL.
+- `src/temporal/` — temporal models, scheduling, recurrence, multi-event ICS import/export, drag helpers, and SQLite DDL.\n- `src/components/SharingCenter.tsx` — ICS import/export, attendee RSVP, invitation sharing, and calendar feed subscriptions.
 - `src/store/` — Zustand calendar state.
 - `src/persistence/` — SQLite repository abstraction.
 - `src/sync/` — HLC, deterministic merge, sync orchestration, Supabase Auth/session handling, and authenticated sync transport.
@@ -129,3 +129,14 @@ The calendar UI uses a midnight-navy and warm-amber palette inspired by the supp
 - Added `supabase/migrations/202610180001_phase4_sync_workspaces.sql` with workspace/member tables, server-side membership checks, and push/pull/workspace RPCs.
 - **Required deployment step:** apply the migration and configure a Supabase project. See `SUPABASE_SETUP.md`. No hosted backend is provisioned by repository changes alone.
 - Current boundaries: workspace creator membership only (no invite/member-management UI), deterministic HLC/LWW rather than field-level merge, and foreground/manual sync rather than background sync. Tests, builds, and TypeScript checks remain intentionally unrun.
+
+
+## Phase 5 delivery notes — sharing and interoperability
+
+- Added a **Sharing** tab with ICS import preview, validation, duplicate UID counts, and explicit skip/update behavior.
+- ICS import supports multi-event VCALENDAR payloads, all-day events, RRULEs, EXDATEs, TZID-aware date-time conversion, attendee RSVP fields, and recurrence exception records.
+- ICS export includes all-day/timed event records, recurrence rules, excluded dates, moved overrides, time-zone identifiers, organizer and attendee state.
+- Added system-share-sheet invitation generation, attendee addition and RSVP updates. Changes persist through SQLite and enter the sync outbox.
+- Added saved public HTTPS calendar subscriptions with manual refresh, event counts, last refresh/error status, and UID-based updates. Removing a subscription does not delete previously imported events.
+- Workspace permissions remain enforced at workspace level by the Phase 4 server RPC. An event's attendee list does not independently authorize access to workspace data.
+- Boundaries: feeds must be publicly reachable over HTTPS; no native file picker or direct .ics attachment creation; no authenticated feeds, per-event ACLs, complete VTIMEZONE generation, or push refresh yet. Tests, builds and TypeScript checks remain intentionally unrun.
