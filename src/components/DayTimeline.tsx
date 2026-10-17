@@ -111,7 +111,7 @@ function DraggableEvent({
   const color = event.isShielded ? COLORS.accent : event.isElastic ? COLORS.coral : COLORS.lavender;
   return (
     <View
-      {...responder.panHandlers}
+      {...(!event.rrule ? responder.panHandlers : {})}
       style={[
         styles.eventBlock,
         {
@@ -124,17 +124,21 @@ function DraggableEvent({
         { transform: [{ translateY: dragY }] },
       ]}
     >
-      <View style={styles.resizeStart} {...startResizeResponder.panHandlers}>
-        <View style={styles.resizeGrip} />
-      </View>
+      {!event.rrule ? (
+        <View style={styles.resizeStart} {...startResizeResponder.panHandlers}>
+          <View style={styles.resizeGrip} />
+        </View>
+      ) : null}
       <Pressable onPress={onPress} style={styles.eventPressable} accessibilityRole="button" accessibilityLabel={`Edit ${event.title}`}>
         <Text numberOfLines={1} style={styles.eventTime}>{event.scheduledAt === null ? "" : clockLabel(event.scheduledAt)}{event.endAt ? ` – ${clockLabel(event.endAt)}` : ""}</Text>
         <Text numberOfLines={2} style={styles.eventTitle}>{event.title}</Text>
         {height > 48 && event.metadata?.event?.location ? <Text numberOfLines={1} style={styles.eventLocation}>{event.metadata.event.location}</Text> : null}
       </Pressable>
-      <View style={styles.resizeEnd} {...endResizeResponder.panHandlers}>
-        <View style={styles.resizeGrip} />
-      </View>
+      {!event.rrule ? (
+        <View style={styles.resizeEnd} {...endResizeResponder.panHandlers}>
+          <View style={styles.resizeGrip} />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -189,7 +193,7 @@ export function DayTimeline({ date, events, onEventPress, onEventMove }: DayTime
           })}
         </View>
       </View>
-      <Text style={styles.hint}>Drag vertically to move by 15 minutes, horizontally to shift a day, or use the gold grips to resize.</Text>
+      <Text style={styles.hint}>Drag one-time events to move or resize. Recurring events are series-managed; tap one to edit the entire series.</Text>
     </ScrollView>
   );
 }
