@@ -425,7 +425,10 @@ function CalendarApp() {
               date={selectedDate}
               events={visibleEvents}
               onEventPress={event => {
-                setEditingEvent(event);
+                // Occurrence-level editing is not supported yet. Resolve the source entity so
+                // tapping an instance opens the series without shifting its DTSTART.
+                const sourceEvent = eventSeries.find(item => item.id === event.id) ?? event;
+                setEditingEvent(sourceEvent);
                 setEventEditorVisible(true);
               }}
               onEventMove={moveEvent}
