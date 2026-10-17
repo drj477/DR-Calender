@@ -7,7 +7,7 @@ export const DEFAULT_WORKSPACE_ID = "workspace-personal";
 
 const LOCAL_SCHEMA = `
 PRAGMA foreign_keys = ON;
-CREATE TABLE IF NOT EXISTS workspaces (
+CREATE TABLE IF NOT EXISTS app_settings (\n  key TEXT PRIMARY KEY NOT NULL,\n  value TEXT NOT NULL,\n  updated_at INTEGER NOT NULL\n);\nCREATE TABLE IF NOT EXISTS workspaces (
   id TEXT PRIMARY KEY NOT NULL,
   name TEXT NOT NULL,
   workspace_type TEXT NOT NULL CHECK (workspace_type IN ('personal', 'family', 'team', 'project')),
@@ -128,8 +128,12 @@ export function initializeLocalDatabase(): Promise<LocalCalendarDatabase> {
        ON CONFLICT(workspace_id, user_id) DO NOTHING`,
       DEFAULT_WORKSPACE_ID, "local-user", "You", now, now,
     );
+    const activeSetting = await db.getFirstAsync<{ value: string }>("SELECT value FROM app_settings WHERE key = 'active_workspace_id' LIMIT 1");
+    const activeId = activeSetting?.value ?? DEFAULT_WORKSPACE_ID;
+    const activeRow = await db.getFirstAsync<{ id: string }>("SELECT id FROM workspaces WHERE id = ? LIMIT 1", activeId);
+    const workspaceId = activeRow?.id ?? DEFAULT_WORKSPACE_ID;
     const repository = new SQLiteTemporalRepository(db as never);
-    return { db, repository, workspaceId: DEFAULT_WORKSPACE_ID };
+    return { db, repository, workspaceId };
   })().catch(error => {
     initialization = null;
     throw error;
@@ -172,4 +176,28 @@ export function makeTaskEntity(input: {
       },
     },
   };
+}
+
+/** Create a local mirror for a server-authorized workspace and make it active. */
+export async function activateLocalWorkspace(
+  current: LocalCalendarDatabase,
+  input: { id: string; name: string; type: "personal" | "family" | "team" | "project"; role: "owner" | "admin" | "editor" | "viewer" },
+): Promise<LocalCalendarDatabase> {
+  const now = Date.now();
+  await current.db.runAsync(
+    `INSERT INTO workspaces(id,name,workspace_type,created_at,updated_at) VALUES(?,?,?,?,?)
+     ON CONFLICT(id) DO UPDATE SET name=excluded.name,workspace_type=excluded.workspace_type,updated_at=excluded.updated_at`,
+    input.id,input.name,input.type,now,now,
+  );
+  await current.db.runAsync(
+    `INSERT INTO workspace_members(workspace_id,user_id,role,display_name,created_at,updated_at) VALUES(?,?,?,?,?,?)
+     ON CONFLICT(workspace_id,user_id) DO UPDATE SET role=excluded.role,updated_at=excluded.updated_at`,
+    input.id,"local-user",input.role,"You",now,now,
+  );
+  await current.db.runAsync(
+    `INSERT INTO app_settings(key,value,updated_at) VALUES('active_workspace_id',?,?)
+     ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at`,
+    input.id,now,
+  );
+  return { ...current, workspaceId: input.id };
 }
