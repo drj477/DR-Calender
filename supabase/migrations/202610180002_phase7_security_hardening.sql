@@ -18,8 +18,10 @@ begin
   if v_role is null or v_role not in ('owner','admin','editor') then
     raise exception 'Workspace write access denied' using errcode='42501';
   end if;
-  if coalesce(jsonb_typeof(p_mutations),'') <> 'array'
-     or jsonb_array_length(p_mutations)<1 or jsonb_array_length(p_mutations)>100 then
+  if coalesce(jsonb_typeof(p_mutations),'') <> 'array' then
+    raise exception 'Mutation batch must be a JSON array';
+  end if;
+  if jsonb_array_length(p_mutations)<1 or jsonb_array_length(p_mutations)>100 then
     raise exception 'Mutation batch must contain between 1 and 100 items';
   end if;
 
