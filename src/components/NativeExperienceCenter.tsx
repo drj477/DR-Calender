@@ -21,7 +21,7 @@ export function NativeExperienceCenter({entities}:Props){
     finally{setBusyId(null);void isExactAlarmAllowed().then(setExactAllowed).catch(()=>setExactAllowed(false))}
   };
   const schedule=async(event:TemporalEntity)=>{
-    const id="event-"+event.id;
+    const id="native-event-manual-"+event.id;
     setBusyId(id);setMessage("");
     try{
       const lead=event.metadata?.event?.reminderMinutesBefore??0;
@@ -34,7 +34,7 @@ export function NativeExperienceCenter({entities}:Props){
     finally{setBusyId(null)}
   };
   const cancel=async(event:TemporalEntity)=>{
-    const id="event-"+event.id;setBusyId(id);
+    const id="native-event-manual-"+event.id;setBusyId("event-"+event.id);
     try{await cancelNativeAlarm(id);setScheduled(current=>({...current,[event.id]:false}));setMessage("Native alarm cancelled.")}
     catch(error){setMessage(error instanceof Error?error.message:String(error))}
     finally{setBusyId(null)}
