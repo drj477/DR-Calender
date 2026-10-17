@@ -75,13 +75,13 @@ The project will be built in substantial, user-facing phases. Implementation com
 **Goal:** Connect previously implemented native and recovery surfaces into complete application lifecycles before the dedicated validation pass.
 
 - **Implemented in source:** A rolling 30-day native alarm reconciler for events with an explicit reminder offset. It expands recurring event instances, respects excluded instances and moved occurrence overrides, bounds scheduling to 120 alarms, and reconciles stale alarms after event changes, completion, deletion, workspace changes, and app hydration.
-- **Implemented in source:** Android and iOS native bridges expose stale-alarm cancellation; Android retains alarm persistence and boot/time/time-zone restoration. Native alarms use stable occurrence IDs to make rescheduling idempotent.
+- **Implemented in source:** Android native bridge exposes stale-alarm cancellation and retains alarm persistence plus boot/time/time-zone restoration. Stable occurrence IDs make rescheduling idempotent. iOS event reminders stay on Expo Notifications to avoid double scheduling, while iOS widget/alarm links route through the app.
 - **Implemented in source:** Widget task/event deep links are handled on cold and warm app launch. Android native event alarm notifications route to the associated event editor.
 - **Implemented in source:** Native integration docs describe the bridge contract and platform boundaries. Expo Go remains unsupported for the custom native module.
 - **Implemented in source:** iOS WidgetKit extension target generation is configured through `@bacons/apple-targets`, with a dedicated target folder, shared App Group entitlement, and widget source. A clean iOS prebuild on supported macOS tooling should generate the Xcode target.
 - **Implemented in source:** A shared recovery gate prevents a sync run from overlapping a restore transaction and keeps sync locked until active workspace/store rehydration completes. Restore now refreshes the cached local database workspace, calendar store, task view, and dependent alarm reconciliation without requiring a manual app restart.
 - **Still open:** Add the real Apple Developer Team ID for signing; verify widget target generation, signing, alarm lifecycle, workspace changes, reboot/time-zone recovery, and deep links on actual Android/iOS devices. Native IDs and alarm restore behavior still require source review during the validation pass.
-- **Validation deferred:** No tests, type checks, builds, native compilation, or device validation were run. This phase is source implementation, not proof of platform behavior.
+- **Build validation configured:** `.github/workflows/native-build.yml` now generates and compiles Android and iOS Simulator projects on pushes/PRs, including the generated WidgetKit target. The workflow result still must be observed; source implementation is not proof of platform behavior. Physical-device checks remain separate.
 
 ## Delivery rule
 
