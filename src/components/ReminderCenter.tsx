@@ -27,7 +27,7 @@ export function ReminderCenter({ reminders, permissionGranted, onRequestPermissi
   const [date, setDate] = useState(() => dateInputValue(initial));
   const [time, setTime] = useState(() => timeInputValue(initial));
   const [error, setError] = useState("");
-  const reminderTime = (item: TemporalEntity) => item.metadata?.reminder?.snoozeUntil ?? (item.metadata?.reminder?.trigger.kind === "time" ? item.metadata.reminder.trigger.at : item.scheduledAt ?? 0);
+  const reminderTime = (item: TemporalEntity) => { const trigger = item.metadata?.reminder?.trigger; return item.metadata?.reminder?.snoozeUntil ?? (trigger?.kind === "time" ? trigger.at : item.scheduledAt ?? 0); };
   const upcoming = reminders.filter(item => !item.isCompleted && item.deletedAt === null).sort((a, b) => reminderTime(a) - reminderTime(b));
   const completed = reminders.filter(item => item.isCompleted && item.deletedAt === null);
 
