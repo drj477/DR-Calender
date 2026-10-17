@@ -558,15 +558,80 @@ function CalendarApp() {
     }
   };
 
+  const reconcileWorkspaceNotifications = async (
+    nextDatabase: LocalCalendarDatabase,
+    sourceEntities: TemporalEntity[],
+  ): Promise<TemporalEntity[]> => {
+    // A workspace switch or restore invalidates the previous workspace's
+    // scheduled OS requests. Rebuild them from the now-active local dataset.
+    await Notifications.cancelAllScheduledNotificationsAsync();
+    const permission = await Notifications.getPermissionsAsync();
+    setPermissionGranted(permission.granted);
+    const entities = [...sourceEntities];
+    const now = Date.now();
+    for (let index = 0; index < entities.length; index += 1) {
+      const entity = entities[index];
+      let updated: TemporalEntity | null = null;
+      if (entity.itemType === "reminder" && entity.metadata?.reminder) {
+        const meta = entity.metadata.reminder;
+        const at = entity.deletedAt === null && !entity.isCompleted
+          ? meta.snoozeUntil ?? (meta.trigger.kind === "time" ? meta.trigger.at : null)
+          : null;
+        const notificationId = permission.granted && at !== null && at > now
+          ? await scheduleReminderNotification(entity, at)
+          : null;
+        if ((meta.notificationId ?? null) !== notificationId) {
+          updated = { ...entity, updatedAt: now, syncVersion: entity.syncVersion + 1,
+            metadata: { ...entity.metadata, reminder: { ...meta, notificationId } } };
+        }
+      } else if (entity.itemType === "task" && entity.metadata?.task) {
+        const meta = entity.metadata.task;
+        const dueAt = meta.dueAt ?? entity.scheduledAt;
+        const triggerAt = dueAt === null ? null : dueAt - (meta.reminderMinutesBefore ?? 15) * 60_000 > now
+          ? dueAt - (meta.reminderMinutesBefore ?? 15) * 60_000
+          : dueAt;
+        const notificationId = permission.granted && entity.deletedAt === null && !entity.isCompleted &&
+          meta.reminderMinutesBefore != null && triggerAt !== null && triggerAt > now
+          ? await scheduleReminderNotification(entity, triggerAt)
+          : null;
+        if ((meta.notificationId ?? null) !== notificationId) {
+          updated = { ...entity, updatedAt: now, syncVersion: entity.syncVersion + 1,
+            metadata: { ...entity.metadata, task: { ...meta, notificationId } } };
+        }
+      } else if (entity.itemType === "event" && entity.metadata?.event) {
+        const meta = entity.metadata.event;
+        const useNativeAndroidAlarm = Platform.OS === "android" && isNativeBridgeAvailable() &&
+          permission.granted && await isExactAlarmAllowed();
+        const notificationIds = permission.granted && entity.deletedAt === null && !entity.isCompleted &&
+          meta.reminderMinutesBefore != null && !useNativeAndroidAlarm
+          ? await scheduleEventNotifications(entity)
+          : [];
+        const currentIds = meta.notificationIds ?? [];
+        if (currentIds.length !== notificationIds.length || currentIds.some((id, i) => id !== notificationIds[i])) {
+          updated = { ...entity, updatedAt: now, syncVersion: entity.syncVersion + 1,
+            metadata: { ...entity.metadata, event: { ...meta, notificationIds } } };
+        }
+      }
+      if (updated) {
+        const mutationId = "workspace-notification-reconcile-" + updated.id + "-" + updated.syncVersion;
+        await nextDatabase.repository.upsert(updated, mutationId);
+        useCalendarStore.getState().upsertEntity(updated, mutationId);
+        entities[index] = updated;
+      }
+    }
+    return entities;
+  };
+
   const refreshWorkspaceData = async (nextDatabase: LocalCalendarDatabase) => {
     setCalendarHydrated(false);
     setDatabase(nextDatabase);
     const now = new Date();
     const start = new Date(now.getFullYear() - 1, now.getMonth(), 1).getTime();
     const end = new Date(now.getFullYear() + 5, now.getMonth() + 1, 1).getTime();
-    const entities = await nextDatabase.repository.queryRange(nextDatabase.workspaceId, start, end);
+    let entities = await nextDatabase.repository.queryRange(nextDatabase.workspaceId, start, end);
     const pending = await nextDatabase.repository.listPendingMutations(1000, nextDatabase.workspaceId);
     useCalendarStore.getState().hydrate(entities, pending);
+    entities = await reconcileWorkspaceNotifications(nextDatabase, entities);
     setCalendarHydrated(true);
     setTasks(entities.filter(entity => entity.itemType === "task").map(entity => {
       const dueAt = entity.metadata?.task?.dueAt ?? entity.scheduledAt;
