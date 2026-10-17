@@ -82,9 +82,12 @@ function EventCard({ event, index, onPress }: { event: TemporalEntity; index: nu
   const start = event.scheduledAt === null ? null : new Date(event.scheduledAt);
   const end = event.endAt === null ? null : new Date(event.endAt);
   const color = event.isShielded ? COLORS.accent : event.isElastic ? COLORS.coral : COLORS.lavender;
-  const timeLabel = start
-    ? `${start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} – ${end ? end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "No end"}`
-    : "No time set";
+  const isAllDay = event.metadata?.event?.kind === "all-day";
+  const timeLabel = isAllDay
+    ? "ALL DAY"
+    : start
+      ? `${start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} – ${end ? end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "No end"}`
+      : "No time set";
   const location = event.metadata?.event?.location;
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`Edit ${event.title}`}>
@@ -361,7 +364,7 @@ function CalendarApp() {
           existing.scheduledAt !== draft.startAt
         )) ? { recurrence: undefined } : {}),
         event: {
-          kind: existing?.metadata?.event?.kind ?? "standard",
+          kind: draft.isAllDay ? "all-day" : "standard",
           commitment: draft.isElastic ? "elastic" : "hard",
           location: draft.location,
           meetingUrl: existing?.metadata?.event?.meetingUrl ?? null,
