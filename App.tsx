@@ -22,6 +22,7 @@ import { EventEditor, type EventDraft } from "./src/components/EventEditor";
 import { DayTimeline } from "./src/components/DayTimeline";
 import { CalendarOverview } from "./src/components/CalendarOverview";
 import type { TemporalEntity } from "./src/temporal/types";
+import { expandRecurrence } from "./src/temporal/recurrence";
 
 type ScreenMode = "Day" | "Week" | "Month";
 type Task = { id: string; title: string; due: string; assignee: string; completed: boolean };
@@ -119,10 +120,46 @@ function CalendarApp() {
   );
   const dayStart = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()).getTime();
   const dayEnd = dayStart + 24 * 60 * 60_000;
-  const visibleEvents = storedEntities
-    .filter(entity => entity.itemType === "event" && entity.deletedAt === null && entity.scheduledAt !== null)
-    .filter(entity => entity.scheduledAt! < dayEnd && (entity.endAt ?? entity.scheduledAt!) >= dayStart)
-    .sort((a, b) => (a.scheduledAt ?? 0) - (b.scheduledAt ?? 0));
+  const eventSeries = storedEntities.filter(
+    entity => entity.itemType === "event" && entity.deletedAt === null && entity.scheduledAt !== null,
+  );
+
+  const expandVisibleEvents = (rangeStart: number, rangeEnd: number): TemporalEntity[] => {
+    const expanded: TemporalEntity[] = [];
+    for (const entity of eventSeries) {
+      try {
+        const occurrences = expandRecurrence(entity, { rangeStart, rangeEnd, maxOccurrences: 500 });
+        for (const occurrence of occurrences) {
+          expanded.push({
+            ...entity,
+            id: entity.id,
+            scheduledAt: occurrence.startAt,
+            endAt: occurrence.endAt,
+            metadata: {
+              ...entity.metadata,
+              event: {
+                ...entity.metadata?.event,
+                kind: entity.metadata?.event?.kind ?? "standard",
+                commitment: entity.metadata?.event?.commitment ?? (entity.isElastic ? "elastic" : "hard"),
+                location: entity.metadata?.event?.location ?? null,
+                meetingUrl: entity.metadata?.event?.meetingUrl ?? null,
+                organizerUserId: entity.metadata?.event?.organizerUserId ?? null,
+                attendeeUserIds: entity.metadata?.event?.attendeeUserIds ?? [],
+                travelBufferMinutes: entity.metadata?.event?.travelBufferMinutes ?? null,
+                cooldownBufferMinutes: entity.metadata?.event?.cooldownBufferMinutes ?? null,
+              },
+              recurrenceOccurrence: { startAt: occurrence.startAt, isRecurring: occurrence.isRecurring },
+            },
+          });
+        }
+      } catch (error) {
+        console.warn(`Unable to expand recurrence for event ${entity.id}`, error);
+      }
+    }
+    return expanded.sort((a, b) => (a.scheduledAt ?? 0) - (b.scheduledAt ?? 0));
+  };
+
+  const visibleEvents = expandVisibleEvents(dayStart, dayEnd);
   const monthLabel = selectedDate.toLocaleDateString(undefined, { month: "long", year: "numeric" });
 
   const shiftCalendarMonth = (amount: number) => {
@@ -404,7 +441,10 @@ function CalendarApp() {
           <CalendarOverview
             mode={mode}
             date={selectedDate}
-            events={storedEntities.filter(entity => entity.itemType === "event" && entity.deletedAt === null)}
+            events={expandVisibleEvents(
+              new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1).getTime() - 7 * 86400000,
+              new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 1).getTime() + 7 * 86400000,
+            )}
             onSelectDate={date => {
               setSelectedDate(date);
               if (mode === "Month") setMode("Day");
