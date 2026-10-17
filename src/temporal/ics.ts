@@ -40,7 +40,7 @@ export function escapeICSText(value: string): string {
 }
 
 export function unescapeICSText(value: string): string {
-  return value.replace(/\\[nN]/g, "\r\n").replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\\\/g, "\\");
+  return value.replace(/\\[nN]/g, "\n").replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\\\/g, "\\");
 }
 
 function utf8Length(value: string): number {
@@ -53,8 +53,6 @@ function utf8Length(value: string): number {
 }
 
 function foldLine(line: string): string {
-  // RFC 5545 limits content lines to 75 octets. Fold at Unicode code points
-  // conservatively; this avoids splitting surrogate pairs and needs no DOM APIs.
   const chunks: string[] = [];
   let current = "";
   let length = 0;
@@ -70,8 +68,7 @@ function foldLine(line: string): string {
     }
   }
   if (current) chunks.push(current);
-  return chunks.join("\r
-");
+  return chunks.join("\r\n");
 }
 
 function formatUTC(date: Date): string {
@@ -89,10 +86,9 @@ function statusToPartstat(status: RSVPStatus | undefined): string {
 }
 
 function unfoldLines(ics: string): string[] {
-  const normalized = ics.replace(/\r
-/g, "\r\n").replace(/\r/g, "\r\n");
+  const normalized = ics.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   const unfolded: string[] = [];
-  for (const line of normalized.split("\r\n")) {
+  for (const line of normalized.split("\n")) {
     if (/^[ \t]/.test(line) && unfolded.length) {
       unfolded[unfolded.length - 1] += line.slice(1);
     } else {
@@ -118,12 +114,10 @@ function splitProperty(line: string): { name: string; params: Record<string, str
 
 function parseDateProperty(value: string): string | null {
   if (!value) return null;
-  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/.exec(value);
+  const match = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?(Z)?)?$/.exec(value);
   if (!match) return value;
   const [, year, month, day, hour = "00", minute = "00", second = "00", zulu] = match;
-  return zulu
-    ? `${year}-${month}-${day}T${hour}:${minute}:${second}Z`
-    : `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+  return year + "-" + month + "-" + day + "T" + hour + ":" + minute + ":" + second + (zulu ? "Z" : "");
 }
 
 /** Parses the first VEVENT in an ICS payload, including common RSVP fields. */
