@@ -20,7 +20,14 @@
     },
     "plugins": [
       "expo-sqlite",
-      ["expo-notifications", { "defaultChannel": "reminders", "color": "#FFC247" }]
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "reminders",
+          "color": "#FFC247"
+        }
+      ],
+      "expo-secure-store"
     ]
   }
 }
