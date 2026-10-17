@@ -97,7 +97,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
     setLocation(override?.location ?? event?.metadata?.event?.location ?? "");
     setShielded(override?.isShielded ?? event?.isShielded ?? false);
     setElastic(override?.isElastic ?? event?.isElastic ?? false);
-    setAllDay(event?.metadata?.event?.kind === "all-day");
+    setAllDay(override?.isAllDay ?? event?.metadata?.event?.kind === "all-day");
     if (override?.title) setTitle(override.title);
     setRecurrence(event?.rrule ? recurrenceFromRule(event.rrule) : "none");
     setError("");
@@ -123,7 +123,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
       : override?.location ?? event.metadata?.event?.location ?? "");
     setShielded(nextScope === "series" ? event.isShielded : override?.isShielded ?? event.isShielded);
     setElastic(nextScope === "series" ? event.isElastic : override?.isElastic ?? event.isElastic);
-    setAllDay(event.metadata?.event?.kind === "all-day");
+    setAllDay(override?.isAllDay ?? event.metadata?.event?.kind === "all-day");
     setRecurrence(event.rrule ? recurrenceFromRule(event.rrule) : "none");
     setError("");
   };
