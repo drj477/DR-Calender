@@ -32,8 +32,8 @@ public final class DRCalenderNativeModule: Module {
       content.body = body
       content.sound = .default
       content.categoryIdentifier = "DR_CALENDER_ALARM"
-      if id.hasPrefix("native-event-") {
-        let payload = String(id.dropFirst("native-event-".count))
+      if id.hasPrefix("native-event-auto-") {
+        let payload = String(id.dropFirst("native-event-auto-".count))
         if let separator = payload.lastIndex(of: "-") {
           let eventID = String(payload[..<separator])
           let occurrenceStart = String(payload[payload.index(after: separator)...])
@@ -58,7 +58,7 @@ public final class DRCalenderNativeModule: Module {
       let center = UNUserNotificationCenter.current()
       let keep = Set(keepIds)
       let pending = await center.pendingNotificationRequests()
-      let stale = pending.map(\.identifier).filter { $0.hasPrefix("native-event-") && !keep.contains($0) }
+      let stale = pending.map(\.identifier).filter { $0.hasPrefix("native-event-auto-") && !keep.contains($0) }
       center.removePendingNotificationRequests(withIdentifiers: stale)
       center.removeDeliveredNotifications(withIdentifiers: stale)
       return stale.count
