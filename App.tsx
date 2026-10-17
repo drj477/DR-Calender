@@ -218,10 +218,12 @@ function CalendarApp() {
       const permission = await Notifications.getPermissionsAsync();
       setPermissionGranted(permission.granted);
       if (!permission.granted) return;
+      const pendingNotifications = await Notifications.getAllScheduledNotificationsAsync();
+      const pendingNotificationIds = new Set(pendingNotifications.map(item => item.identifier));
       for (const entity of storedEntities) {
         if (!active || entity.deletedAt !== null || entity.isCompleted) continue;
         let updated: TemporalEntity | null = null;
-        if (entity.itemType === "reminder" && entity.metadata?.reminder && !entity.metadata.reminder.notificationId) {
+        if (entity.itemType === "reminder" && entity.metadata?.reminder && (!entity.metadata.reminder.notificationId || !pendingNotificationIds.has(entity.metadata.reminder.notificationId))) {
           const meta = entity.metadata.reminder;
           const at = meta.snoozeUntil ?? (meta.trigger.kind === "time" ? meta.trigger.at : null);
           if (at !== null && at > Date.now()) {
@@ -230,7 +232,7 @@ function CalendarApp() {
               metadata: { ...entity.metadata, reminder: { ...meta, notificationId } } };
           }
         } else if (entity.itemType === "task" && entity.metadata?.task &&
-          entity.metadata.task.reminderMinutesBefore != null && !entity.metadata.task.notificationId) {
+          entity.metadata.task.reminderMinutesBefore != null && (!entity.metadata.task.notificationId || !pendingNotificationIds.has(entity.metadata.task.notificationId))) {
           const meta = entity.metadata.task;
           const dueAt = meta.dueAt ?? entity.scheduledAt;
           if (dueAt !== null) {
@@ -243,7 +245,7 @@ function CalendarApp() {
             }
           }
         } else if (entity.itemType === "event" && entity.metadata?.event?.reminderMinutesBefore != null &&
-          !entity.metadata.event.notificationIds?.length) {
+          (!entity.metadata.event.notificationIds?.length || !entity.metadata.event.notificationIds.some(id => pendingNotificationIds.has(id)))) {
           const useNativeAndroidAlarm = Platform.OS === "android" && isNativeBridgeAvailable() && await isExactAlarmAllowed();
           if (!useNativeAndroidAlarm) {
             const notificationIds = await scheduleEventNotifications(entity);
