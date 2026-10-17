@@ -44,10 +44,12 @@ The project will be built in substantial, user-facing phases. Implementation com
 ## Phase 5 — Sharing and interoperability
 **Goal:** Make calendars portable and collaborative.
 
-- Complete ICS import/export flows with preview, validation, and duplicate handling.
-- Add invitations, attendee responses, and shared event permissions.
-- Add calendar subscription/import management and sync status.
-- Preserve recurrence rules, exceptions, time zones, and all-day dates through round trips.
+- **Implemented:** Multi-event ICS import with preview, input-size/event-count limits, UID duplicate detection, skip/update strategy, and validation of required start and end ranges.
+- **Implemented:** ICS export of timed/all-day events, IANA time-zone wall times, RRULEs, EXDATE exclusions, moved recurrence overrides, organizer, attendees, and RSVP state.
+- **Implemented:** Event invitation sharing through the system share sheet, attendee addition, RSVP status updates, and local outbox persistence so changes sync with the workspace.
+- **Implemented:** Public HTTPS calendar subscription management with saved feed URLs, manual refresh, last-refresh/error status, and UID-based update behavior.
+- **Permission boundary:** Workspace access is governed by Phase 4 workspace roles. Event attendees are invitation metadata and do not independently grant access to private workspace data.
+- **Remaining:** Native document/file picker import and direct .ics attachment creation, authenticated calendar feeds, full VTIMEZONE component generation, per-event ACLs, and push-based subscription refresh. No tests/build/type checks have been run by request.
 
 ## Phase 6 — Native experience and widgets
 **Goal:** Make DR-Calender feel integrated with the operating system.
