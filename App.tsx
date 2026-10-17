@@ -624,6 +624,8 @@ function CalendarApp() {
 
   const refreshWorkspaceData = async (nextDatabase: LocalCalendarDatabase) => {
     setCalendarHydrated(false);
+    try { await cancelAllManualNativeAlarms(); }
+    catch (error) { console.warn("Unable to clear manual alarms before workspace reload", error); }
     setDatabase(nextDatabase);
     const now = new Date();
     const start = new Date(now.getFullYear() - 1, now.getMonth(), 1).getTime();
