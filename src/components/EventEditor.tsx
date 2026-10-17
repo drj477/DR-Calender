@@ -35,6 +35,8 @@ export interface EventDraft {
   isShielded: boolean;
   isElastic: boolean;
   rrule: string | null;
+  scope: "occurrence" | "series";
+  occurrenceStartAt: number | null;
 }
 
 interface EventEditorProps {
@@ -43,7 +45,8 @@ interface EventEditorProps {
   event: TemporalEntity | null;
   onClose: () => void;
   onSave: (draft: EventDraft) => void;
-  onDelete?: (event: TemporalEntity) => void;
+  occurrenceStartAt?: number | null;
+  onDelete?: (event: TemporalEntity, scope: "occurrence" | "series", occurrenceStartAt: number | null) => void;
 }
 
 function formatClock(date: Date): string {
@@ -67,7 +70,7 @@ function recurrenceFromRule(rule: string): string {
   return "custom";
 }
 
-export function EventEditor({ visible, selectedDate, event, onClose, onSave, onDelete }: EventEditorProps) {
+export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = null, onClose, onSave, onDelete }: EventEditorProps) {
   const [title, setTitle] = useState("");
   const [startClock, setStartClock] = useState("09:00");
   const [duration, setDuration] = useState("60");
@@ -75,23 +78,27 @@ export function EventEditor({ visible, selectedDate, event, onClose, onSave, onD
   const [shielded, setShielded] = useState(false);
   const [elastic, setElastic] = useState(false);
   const [recurrence, setRecurrence] = useState("none");
+  const [scope, setScope] = useState<"occurrence" | "series">("series");
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (!visible) return;
     setTitle(event?.title ?? "");
-    const start = event?.scheduledAt ?? new Date(
+    setScope(occurrenceStartAt !== null && event?.rrule ? "occurrence" : "series");
+    const override = occurrenceStartAt !== null ? event?.metadata?.recurrence?.overrides[String(occurrenceStartAt)] : undefined;
+    const start = override?.startAt ?? occurrenceStartAt ?? event?.scheduledAt ?? new Date(
       selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 9, 0,
     ).getTime();
-    const end = event?.endAt ?? start + 60 * 60_000;
+    const end = override?.endAt ?? (event?.endAt !== null && event?.endAt !== undefined ? start + ((event.endAt - (event.scheduledAt ?? start)) || 60 * 60_000) : start + 60 * 60_000);
     setStartClock(formatClock(new Date(start)));
     setDuration(String(Math.max(5, Math.round((end - start) / 60_000))));
-    setLocation(event?.metadata?.event?.location ?? "");
-    setShielded(event?.isShielded ?? false);
-    setElastic(event?.isElastic ?? false);
+    setLocation(override?.location ?? event?.metadata?.event?.location ?? "");
+    setShielded(override?.isShielded ?? event?.isShielded ?? false);
+    setElastic(override?.isElastic ?? event?.isElastic ?? false);
+    if (override?.title) setTitle(override.title);
     setRecurrence(event?.rrule ? recurrenceFromRule(event.rrule) : "none");
     setError("");
-  }, [visible, selectedDate, event]);
+  }, [visible, selectedDate, event, occurrenceStartAt]);
 
   const save = () => {
     const cleanTitle = title.trim();
@@ -122,6 +129,8 @@ export function EventEditor({ visible, selectedDate, event, onClose, onSave, onD
       isShielded: shielded,
       isElastic: elastic,
       rrule: ruleFromRecurrence(recurrence),
+      scope: event?.rrule && occurrenceStartAt !== null ? scope : "series",
+      occurrenceStartAt: event?.rrule && occurrenceStartAt !== null ? occurrenceStartAt : null,
     });
   };
 
@@ -134,10 +143,22 @@ export function EventEditor({ visible, selectedDate, event, onClose, onSave, onD
           <Pressable onPress={save} accessibilityRole="button" hitSlop={8}><Text style={styles.save}>Save</Text></Pressable>
         </View>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.body}>
-          {event?.rrule ? (
+          {event?.rrule && occurrenceStartAt !== null ? (
+            <View style={styles.seriesNotice} accessibilityRole="summary">
+              <Text style={styles.seriesNoticeTitle}>Edit recurring event</Text>
+              <View style={styles.recurrenceOptions}>
+                {([{ label: "This occurrence", value: "occurrence" }, { label: "Entire series", value: "series" }] as const).map(option => (
+                  <Pressable key={option.value} accessibilityRole="button" accessibilityState={{ selected: scope === option.value }} onPress={() => setScope(option.value)} style={[styles.recurrenceOption, scope === option.value && styles.recurrenceOptionActive]}>
+                    <Text style={[styles.recurrenceText, scope === option.value && styles.recurrenceTextActive]}>{option.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={styles.optionHint}>{scope === "occurrence" ? "Only this date is changed. The recurring schedule stays intact." : "Changes apply to every occurrence in this series."}</Text>
+            </View>
+          ) : event?.rrule ? (
             <View style={styles.seriesNotice} accessibilityRole="summary">
               <Text style={styles.seriesNoticeTitle}>Recurring series</Text>
-              <Text style={styles.optionHint}>Changes here apply to the entire series. Editing or deleting only one occurrence is not available yet.</Text>
+              <Text style={styles.optionHint}>Changes here apply to the entire series.</Text>
             </View>
           ) : null}
 
@@ -205,8 +226,8 @@ export function EventEditor({ visible, selectedDate, event, onClose, onSave, onD
 
           {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
           {event && onDelete ? (
-            <Pressable style={styles.deleteButton} onPress={() => onDelete(event)}>
-              <Text style={styles.deleteText}>{event.rrule ? "Delete entire series" : "Delete event"}</Text>
+            <Pressable style={styles.deleteButton} onPress={() => onDelete(event, event.rrule && occurrenceStartAt !== null ? scope : "series", occurrenceStartAt)}>
+              <Text style={styles.deleteText}>{event.rrule && occurrenceStartAt !== null && scope === "occurrence" ? "Delete this occurrence" : event.rrule ? "Delete entire series" : "Delete event"}</Text>
             </Pressable>
           ) : null}
         </ScrollView>
