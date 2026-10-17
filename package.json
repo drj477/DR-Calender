@@ -1,0 +1,12 @@
+{
+  "name": "dr-calender",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Offline-first collaborative calendar and scheduling app",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}
