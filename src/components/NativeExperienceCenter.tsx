@@ -21,6 +21,10 @@ export function NativeExperienceCenter({entities}:Props){
     finally{setBusyId(null);void isExactAlarmAllowed().then(setExactAllowed).catch(()=>setExactAllowed(false))}
   };
   const schedule=async(event:TemporalEntity)=>{
+    if(event.metadata?.event?.reminderMinutesBefore!=null) {
+      setMessage("This event already has an automatic reminder. Edit its reminder offset instead of creating a second alarm.");
+      return;
+    }
     const id="native-event-manual-"+event.id;
     setBusyId("event-"+event.id);setMessage("");
     try{
