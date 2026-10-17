@@ -195,8 +195,9 @@ export class SQLiteTemporalRepository {
       ON CONFLICT(workspace_id) DO UPDATE SET cursor=excluded.cursor,last_synced_at=excluded.last_synced_at,updated_at=excluded.updated_at`, workspaceId, cursor, now, now);
   }
 
-  async getVersionedEntity(id: string): Promise<RemoteTemporalRecord | null> {
-    const entity = await this.getById(id);
+  async getVersionedEntity(id: string, workspaceId?: string): Promise<RemoteTemporalRecord | null> {
+    const scopedRow = workspaceId ? await this.db.getFirstAsync<TemporalRow>("SELECT * FROM temporal_entities WHERE id = ? AND workspace_id = ? AND deleted_at IS NULL LIMIT 1", id, workspaceId) : null;
+    const entity = workspaceId ? (scopedRow ? toEntity(scopedRow) : null) : await this.getById(id);
     if (!entity) return null;
     const row = await this.db.getFirstAsync<{ clock_json: string }>("SELECT clock_json FROM sync_entity_clocks WHERE entity_id = ? LIMIT 1", id);
     let clock: HybridLogicalClock;
@@ -208,6 +209,10 @@ export class SQLiteTemporalRepository {
   async applyRemoteEntity(record: RemoteTemporalRecord): Promise<void> {
     const entity = record.entity;
     validateEntity(entity);
+    const existingWorkspace = await this.db.getFirstAsync<{ workspace_id: string }>("SELECT workspace_id FROM temporal_entities WHERE id = ? LIMIT 1", entity.id);
+    if (existingWorkspace && existingWorkspace.workspace_id !== entity.workspaceId) {
+      throw new Error("Sync rejected an entity ID collision across workspaces.");
+    }
     await this.db.withTransactionAsync(async () => {
       await this.db.runAsync(`INSERT INTO temporal_entities (
         id,workspace_id,item_type,title,scheduled_at,end_at,is_completed,priority,is_shielded,is_elastic,is_ghost,ghost_cluster_id,
