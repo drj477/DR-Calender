@@ -118,7 +118,7 @@ export function AccountCenter({ database, onSynced, onWorkspaceChanged }: Props)
   };
   const addMember = async () => {
     if (!config || !database) return;
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(memberEmail.trim())) { setMessage("Enter a valid invitation email."); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(memberEmail.trim())) { setMessage("Enter a valid invitation email."); return; }
     setBusy(true); setMessage("");
     try {
       let invite: RemoteWorkspaceInvite;
