@@ -1,5 +1,5 @@
 import "react-native-gesture-handler";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -17,6 +17,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useCalendarStore } from "./src/store/calendarStore";
+import { initializeLocalDatabase, makeTaskEntity, type LocalCalendarDatabase } from "./src/persistence/localDatabase";
 
 type ScreenMode = "Day" | "Week" | "Month";
 type Task = { id: string; title: string; due: string; assignee: string; completed: boolean };
@@ -89,6 +90,7 @@ function CalendarApp() {
   const [mode, setMode] = useState<ScreenMode>("Day");
   const [selectedDay, setSelectedDay] = useState(new Date().getDate());
   const [tasks, setTasks] = useState(INITIAL_TASKS);
+  const [database, setDatabase] = useState<LocalCalendarDatabase | null>(null);
   const pendingCount = useCalendarStore(state => state.pendingMutations.length);
   const today = useMemo(() => new Date(), []);
   const monthLabel = today.toLocaleDateString(undefined, { month: "long", year: "numeric" });
@@ -101,11 +103,75 @@ function CalendarApp() {
     }));
   }, [today]);
 
-  const toggleTask = (id: string) => setTasks(current => current.map(task => task.id === id ? { ...task, completed: !task.completed } : task));
-  const addQuickTask = () => setTasks(current => [
-    { id: `t-${Date.now()}`, title: "New task", due: "Today · No time set", assignee: "You", completed: false },
-    ...current,
-  ]);
+  useEffect(() => {
+    let active = true;
+    initializeLocalDatabase().then(async local => {
+      if (!active) return;
+      setDatabase(local);
+      const now = new Date();
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      const end = start + 14 * 24 * 60 * 60_000;
+      let entities = await local.repository.queryRange(local.workspaceId, start, end);
+      if (entities.length === 0) {
+        const today = new Date(start);
+        const dueTimes = [
+          new Date(today.getTime() + 11 * 60 * 60_000 + 30 * 60_000).getTime(),
+          new Date(today.getTime() + 14 * 60 * 60_000).getTime(),
+          new Date(today.getTime() + 24 * 60 * 60_000 + 10 * 60 * 60_000).getTime(),
+        ];
+        const seed = INITIAL_TASKS.map((task, index) => ({
+          ...makeTaskEntity({ id: task.id, title: task.title, dueAt: dueTimes[index] ?? null }),
+          isCompleted: task.completed,
+          updatedAt: Date.now(),
+        }));
+        for (const entity of seed) {
+          await local.repository.upsert(entity, `seed-${entity.id}`);
+        }
+        entities = await local.repository.queryRange(local.workspaceId, start, end);
+      }
+      if (!active) return;
+      const persistedTasks = entities.filter(entity => entity.itemType === "task").map(entity => {
+        const dueAt = entity.metadata?.task?.dueAt ?? entity.scheduledAt;
+        const due = dueAt === null
+          ? "Today · No time set"
+          : new Date(dueAt).toLocaleString(undefined, { weekday: dueAt < start + 24 * 60 * 60_000 ? undefined : "short", hour: "numeric", minute: "2-digit" });
+        return {
+          id: entity.id,
+          title: entity.title,
+          due,
+          assignee: entity.metadata?.task?.assignee?.name ?? "You",
+          completed: entity.isCompleted,
+        };
+      });
+      setTasks(persistedTasks);
+    }).catch(error => {
+      console.warn("Local calendar database initialization failed", error);
+    });
+    return () => { active = false; };
+  }, []);
+
+  const toggleTask = (id: string) => {
+    const existing = tasks.find(task => task.id === id);
+    if (!existing) return;
+    const completed = !existing.completed;
+    setTasks(current => current.map(task => task.id === id ? { ...task, completed } : task));
+    if (database) {
+      database.repository.getById(id).then(entity => {
+        if (!entity) return;
+        const updated = { ...entity, isCompleted: completed, updatedAt: Date.now(), syncVersion: entity.syncVersion + 1 };
+        return database.repository.upsert(updated, `task-toggle-${id}-${updated.syncVersion}`);
+      }).catch(error => console.warn("Unable to persist task completion", error));
+    }
+  };
+
+  const addQuickTask = () => {
+    const id = `task-${Date.now()}`;
+    setTasks(current => [{ id, title: "New task", due: "Today · No time set", assignee: "You", completed: false }, ...current]);
+    if (database) {
+      const entity = makeTaskEntity({ id, title: "New task", dueAt: null, workspaceId: database.workspaceId });
+      database.repository.upsert(entity, `task-create-${id}`).catch(error => console.warn("Unable to persist new task", error));
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
