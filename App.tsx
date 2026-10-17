@@ -117,6 +117,21 @@ function CalendarApp() {
     .filter(entity => entity.scheduledAt! < dayEnd && (entity.endAt ?? entity.scheduledAt!) >= dayStart)
     .sort((a, b) => (a.scheduledAt ?? 0) - (b.scheduledAt ?? 0));
   const monthLabel = selectedDate.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+
+  const shiftCalendarMonth = (amount: number) => {
+    setSelectedDate(current => {
+      const next = new Date(current);
+      const originalDay = current.getDate();
+      next.setDate(1);
+      next.setMonth(next.getMonth() + amount);
+      const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+      next.setDate(Math.min(originalDay, lastDay));
+      return next;
+    });
+  };
+
+  const jumpToToday = () => setSelectedDate(new Date());
+
   const days = useMemo(() => {
     const count = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate();
     return Array.from({ length: count }, (_, i) => ({
@@ -300,9 +315,37 @@ function CalendarApp() {
       </View>
 
       <View style={styles.modeBar}>
-        <View>
-          <Text style={styles.monthLabel}>{monthLabel}</Text>
-          <Text style={styles.subLabel}>{selectedDate.toLocaleDateString(undefined, { weekday: "long", day: "numeric" })}</Text>
+        <View style={styles.dateHeading}>
+          <View>
+            <Text style={styles.monthLabel}>{monthLabel}</Text>
+            <Text style={styles.subLabel}>{selectedDate.toLocaleDateString(undefined, { weekday: "long", day: "numeric" })}</Text>
+          </View>
+          <View style={styles.monthControls}>
+            <Pressable
+              onPress={() => shiftCalendarMonth(-1)}
+              accessibilityRole="button"
+              accessibilityLabel="Previous month"
+              style={styles.monthArrow}
+            >
+              <Text style={styles.monthArrowGlyph}>‹</Text>
+            </Pressable>
+            <Pressable
+              onPress={jumpToToday}
+              accessibilityRole="button"
+              accessibilityLabel="Go to today"
+              style={styles.todayButton}
+            >
+              <Text style={styles.todayButtonText}>Today</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => shiftCalendarMonth(1)}
+              accessibilityRole="button"
+              accessibilityLabel="Next month"
+              style={styles.monthArrow}
+            >
+              <Text style={styles.monthArrowGlyph}>›</Text>
+            </Pressable>
+          </View>
         </View>
         <View style={styles.modeSwitch}>
           {(["Day", "Week", "Month"] as ScreenMode[]).map(item => (
@@ -419,7 +462,13 @@ const styles = StyleSheet.create({
   iconGlyph: { color: COLORS.text, fontSize: 28, lineHeight: 30 },
   profileButton: { width: 42, height: 42, borderRadius: 15, backgroundColor: COLORS.accent, alignItems: "center", justifyContent: "center" },
   profileText: { color: COLORS.background, fontSize: 12, fontWeight: "900" },
-  modeBar: { paddingHorizontal: 24, flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 18 },
+  modeBar: { paddingHorizontal: 24, flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 18, gap: 10 },
+  dateHeading: { flex: 1, gap: 9 },
+  monthControls: { flexDirection: "row", alignItems: "center", gap: 6 },
+  monthArrow: { width: 29, height: 29, borderRadius: 9, alignItems: "center", justifyContent: "center", backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border },
+  monthArrowGlyph: { color: COLORS.text, fontSize: 22, lineHeight: 24, marginTop: -2 },
+  todayButton: { paddingHorizontal: 10, height: 29, borderRadius: 9, justifyContent: "center", backgroundColor: "#322817", borderWidth: 1, borderColor: "#72551C" },
+  todayButtonText: { color: COLORS.accent, fontSize: 10, fontWeight: "800" },
   monthLabel: { color: COLORS.text, fontSize: 18, fontWeight: "700" },
   subLabel: { color: COLORS.muted, fontSize: 12, marginTop: 3 },
   modeSwitch: { flexDirection: "row", padding: 4, backgroundColor: COLORS.surface, borderRadius: 13, borderWidth: 1, borderColor: COLORS.border },
