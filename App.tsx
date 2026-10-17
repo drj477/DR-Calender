@@ -243,7 +243,7 @@ function CalendarApp() {
       isGhost: false,
       ghostClusterId: null,
       assignedUserIds: existing?.assignedUserIds ?? ["local-user"],
-      rrule: existing?.rrule ?? null,
+      rrule: draft.rrule,
       syncVersion: (existing?.syncVersion ?? 0) + 1,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
