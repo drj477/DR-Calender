@@ -1,6 +1,7 @@
 import "react-native-gesture-handler";
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  Linking,
   Pressable,
   ScrollView,
   StatusBar,
@@ -23,8 +24,12 @@ import { DayTimeline } from "./src/components/DayTimeline";
 import { CalendarOverview } from "./src/components/CalendarOverview";
 import type { TemporalEntity } from "./src/temporal/types";
 import { expandRecurrence } from "./src/temporal/recurrence";
+import { ReminderCenter } from "./src/components/ReminderCenter";
+import { cancelNotificationIds, requestNotificationPermission, scheduleEventNotifications, scheduleReminderNotification } from "./src/notifications/notificationService";
+import * as Notifications from "expo-notifications";
 
 type ScreenMode = "Day" | "Week" | "Month";
+type MainTab = "Calendar" | "Tasks" | "Reminders" | "Spaces";
 type Task = { id: string; title: string; due: string; assignee: string; completed: boolean };
 
 
@@ -106,6 +111,8 @@ function EventCard({ event, index, onPress }: { event: TemporalEntity; index: nu
 
 function CalendarApp() {
   const [mode, setMode] = useState<ScreenMode>("Day");
+  const [activeTab, setActiveTab] = useState<MainTab>("Calendar");
+  const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null);
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const selectedDay = selectedDate.getDate();
   const [tasks, setTasks] = useState(INITIAL_TASKS);
@@ -125,6 +132,7 @@ function CalendarApp() {
   );
   const dayStart = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()).getTime();
   const dayEnd = dayStart + 24 * 60 * 60_000;
+  const reminders = storedEntities.filter(entity => entity.itemType === "reminder" && entity.deletedAt === null);
   const eventSeries = storedEntities.filter(
     entity => entity.itemType === "event" && entity.deletedAt === null && entity.scheduledAt !== null,
   );
