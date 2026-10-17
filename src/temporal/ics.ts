@@ -190,7 +190,7 @@ export function parseICS(ics: string): ParsedICSEvent {
     attendees,
     status: status === "CONFIRMED" || status === "TENTATIVE" || status === "CANCELLED" ? status : null,
     method: method === "REQUEST" || method === "REPLY" || method === "CANCEL" || method === "PUBLISH" ? method : null,
-    isAllDay: first("DTSTART")?.params.VALUE?.toUpperCase() === "DATE" || /^\\d{8}$/.test(first("DTSTART")?.value ?? ""),
+    isAllDay: first("DTSTART")?.params.VALUE?.toUpperCase() === "DATE" || /^\d{8}$/.test(first("DTSTART")?.value ?? ""),
     timeZone: first("DTSTART")?.params.TZID ?? null,
     recurrenceRule: first("RRULE")?.value ?? null,
     excludedDates: properties.filter(property => property?.name === "EXDATE").flatMap(property => property?.value.split(",").map(value => parseDateProperty(value) ?? value) ?? []),
