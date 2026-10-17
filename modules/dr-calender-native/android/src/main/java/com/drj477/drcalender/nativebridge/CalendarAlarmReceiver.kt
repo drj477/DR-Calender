@@ -25,16 +25,25 @@ class CalendarAlarmReceiver : BroadcastReceiver() {
         CHANNEL_ID, "Calendar alarms", NotificationManager.IMPORTANCE_HIGH
       ))
     }
-    val launch = if (id.startsWith("native-event-")) {
-      val payload = id.removePrefix("native-event-")
-      val separator = payload.lastIndexOf("-")
-      val eventId = if (separator > 0) payload.substring(0, separator) else payload
-      val occurrenceStart = if (separator > 0) payload.substring(separator + 1) else null
-      val routeId = if (occurrenceStart != null) eventId + "::" + occurrenceStart else eventId
-      Intent(Intent.ACTION_VIEW, Uri.parse("drcalender://events/" + Uri.encode(routeId))).apply {
-        setPackage(context.packageName)
+    val launch = when {
+      id.startsWith("native-event-auto-") -> {
+        val payload = id.removePrefix("native-event-auto-")
+        val separator = payload.lastIndexOf("-")
+        val eventId = if (separator > 0) payload.substring(0, separator) else payload
+        val occurrenceStart = if (separator > 0) payload.substring(separator + 1) else null
+        val routeId = if (occurrenceStart != null) eventId + "::" + occurrenceStart else eventId
+        Intent(Intent.ACTION_VIEW, Uri.parse("drcalender://events/" + Uri.encode(routeId))).apply {
+          setPackage(context.packageName)
+        }
       }
-    } else context.packageManager.getLaunchIntentForPackage(context.packageName)
+      id.startsWith("native-event-manual-") -> {
+        val eventId = id.removePrefix("native-event-manual-")
+        Intent(Intent.ACTION_VIEW, Uri.parse("drcalender://events/" + Uri.encode(eventId))).apply {
+          setPackage(context.packageName)
+        }
+      }
+      else -> context.packageManager.getLaunchIntentForPackage(context.packageName)
+    }
     val contentIntent = launch?.let {
       PendingIntent.getActivity(context, id.hashCode(), it,
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
