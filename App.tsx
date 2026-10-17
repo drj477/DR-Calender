@@ -240,6 +240,8 @@ function CalendarApp() {
       return;
     }
     if (route === "events" || parsed.pathname.startsWith("/events/")) {
+      // Keep cold-start event links queued until the database has hydrated.
+      if (!calendarHydrated) return;
       const rawId = parsed.pathname.replace(/^\/+/, "").startsWith("events/")
         ? parsed.pathname.replace(/^\/+/, "").slice("events/".length)
         : parsed.pathname.replace(/^\/+/, "");
@@ -266,7 +268,7 @@ function CalendarApp() {
     } else {
       setPendingDeepLink(null);
     }
-  }, [pendingDeepLink, storedEntities, database]);
+  }, [pendingDeepLink, storedEntities, database, calendarHydrated]);
 
   const eventEditorDate = useMemo(
     () => editingOccurrenceStartAt !== null
