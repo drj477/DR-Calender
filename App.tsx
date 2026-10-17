@@ -33,7 +33,7 @@ import { SharingCenter } from "./src/components/SharingCenter";
 import { NativeExperienceCenter } from "./src/components/NativeExperienceCenter";
 import { publishNativeWidgetSnapshot } from "./src/native/nativeExperience";
 import { reconcileNativeEventAlarms } from "./src/native/alarmReconciliation";
-import { isExactAlarmAllowed, isNativeBridgeAvailable } from "./src/native/nativeExperience";
+import { cancelNativeAlarm, isExactAlarmAllowed, isNativeBridgeAvailable } from "./src/native/nativeExperience";
 import { DataSafetyCenter } from "./src/components/DataSafetyCenter";
 import { AppErrorBoundary } from "./src/components/AppErrorBoundary";
 import { parseICSDateTime, type ParsedICSEvent } from "./src/temporal/ics";
@@ -882,6 +882,9 @@ function CalendarApp() {
   const saveEvent = (draft: EventDraft) => {
     const now = Date.now();
     const existing = editingEvent;
+    if (existing && draft.scope !== "occurrence") {
+      void cancelNativeAlarm("event-" + existing.id).catch(error => console.warn("Unable to cancel stale manual native alarm", error));
+    }
     if (existing && draft.scope === "occurrence" && draft.occurrenceStartAt !== null) {
       const occurrenceKey = String(draft.occurrenceStartAt);
       const current = existing.metadata?.recurrence ?? { excludedStartsAt: [], overrides: {} };
@@ -957,6 +960,7 @@ function CalendarApp() {
   };
 
   const moveEvent = (event: TemporalEntity, nextStartAt: number, nextEndAt: number) => {
+    void cancelNativeAlarm("event-" + event.id).catch(error => console.warn("Unable to cancel moved event's manual native alarm", error));
     const updated: TemporalEntity = {
       ...event,
       scheduledAt: nextStartAt,
@@ -974,6 +978,9 @@ function CalendarApp() {
   };
 
   const deleteEvent = (event: TemporalEntity, scope: "occurrence" | "series" = "series", occurrenceStartAt: number | null = null) => {
+    if (scope === "series") {
+      void cancelNativeAlarm("event-" + event.id).catch(error => console.warn("Unable to cancel deleted event's manual native alarm", error));
+    }
     if (scope === "occurrence" && occurrenceStartAt !== null) {
       const current = event.metadata?.recurrence ?? { excludedStartsAt: [], overrides: {} };
       const updated: TemporalEntity = {
