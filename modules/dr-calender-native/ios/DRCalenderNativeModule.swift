@@ -73,6 +73,15 @@ public final class DRCalenderNativeModule: Module {
       return stale.count
     }
 
+    AsyncFunction("cancelAllManualAlarms") { () async -> Int in
+      let center = UNUserNotificationCenter.current()
+      let pending = await center.pendingNotificationRequests()
+      let manualIDs = pending.map(\\.identifier).filter { $0.hasPrefix("native-event-manual-") }
+      center.removePendingNotificationRequests(withIdentifiers: manualIDs)
+      center.removeDeliveredNotifications(withIdentifiers: manualIDs)
+      return manualIDs.count
+    }
+
     AsyncFunction("publishWidgetSnapshot") { (title: String, dueLabel: String, assignee: String, deepLink: String) async -> Bool in
       guard let defaults = UserDefaults(suiteName: "group.com.drj477.drcalender") else {
         throw NSError(domain: "DRCalenderNative", code: 2,
