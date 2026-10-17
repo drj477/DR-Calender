@@ -83,9 +83,11 @@ begin
   if length(trim(coalesce(p_email,'')))<3 or length(trim(p_email))>254 then raise exception 'Enter a valid member email'; end if;
   select id into v_user_id from auth.users where lower(email)=lower(trim(p_email)) limit 1;
   if v_user_id is null then raise exception 'No registered account was found for that email. The member must create an account first.'; end if;
+  if exists(select 1 from public.dr_workspace_members where workspace_id=p_workspace_id and user_id=v_user_id) then
+    raise exception 'This account is already a workspace member. Role changes are not supported in this screen.';
+  end if;
   insert into public.dr_workspace_members(workspace_id,user_id,role)
-    values(p_workspace_id,v_user_id,p_role)
-    on conflict(workspace_id,user_id) do update set role=excluded.role;
+    values(p_workspace_id,v_user_id,p_role);
   return jsonb_build_object('workspace_id',p_workspace_id,'user_id',v_user_id,'role',p_role);
 end $$;
 
