@@ -80,13 +80,21 @@ function DraggableEvent({
   const endResizeResponder = useMemo(() => makeResizeResponder("end", endResizeY), [event, onMove]);
   const responder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => false,
-    onMoveShouldSetPanResponder: (_event, gesture) => Math.abs(gesture.dy) > 7 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
+    onMoveShouldSetPanResponder: (_event, gesture) =>
+      (Math.abs(gesture.dy) > 7 && Math.abs(gesture.dy) > Math.abs(gesture.dx)) ||
+      (Math.abs(gesture.dx) > 45 && Math.abs(gesture.dx) > Math.abs(gesture.dy)),
     onPanResponderGrant: () => { dragY.setValue(0); },
     onPanResponderMove: (_event, gesture) => { dragY.setValue(gesture.dy); },
     onPanResponderRelease: (_event, gesture) => {
       Animated.spring(dragY, { toValue: 0, useNativeDriver: false, damping: 20, stiffness: 220 }).start();
+      if (event.scheduledAt === null) return;
+      if (Math.abs(gesture.dx) > 45 && Math.abs(gesture.dx) > Math.abs(gesture.dy)) {
+        const nextStart = event.scheduledAt + (gesture.dx < 0 ? 1 : -1) * 24 * 60 * 60_000;
+        onMove(event, nextStart, nextStart + duration);
+        return;
+      }
       const deltaMinutes = Math.round((gesture.dy / MINUTE_HEIGHT) / GRID_MINUTES) * GRID_MINUTES;
-      if (!deltaMinutes || event.scheduledAt === null) return;
+      if (!deltaMinutes) return;
       const dayStart = new Date(event.scheduledAt);
       dayStart.setHours(START_HOUR, 0, 0, 0);
       const dayEnd = new Date(event.scheduledAt);
@@ -179,7 +187,7 @@ export function DayTimeline({ date, events, onEventPress, onEventMove }: DayTime
           })}
         </View>
       </View>
-      <Text style={styles.hint}>Drag an event vertically to move it in 15-minute increments.</Text>
+      <Text style={styles.hint}>Drag vertically to move by 15 minutes, horizontally to shift a day, or use the gold grips to resize.</Text>
     </ScrollView>
   );
 }
