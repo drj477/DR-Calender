@@ -34,9 +34,7 @@ export interface BuildICSInviteInput {
 
 /** RFC 5545 text escaping. */
 export function escapeICSText(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/\r?
-/g, "\
-").replace(/,/g, "\\,").replace(/;/g, "\\;");
+  return value.replace(/\\/g, "\\\\").replace(/\r?\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
 }
 
 export function unescapeICSText(value: string): string {
@@ -213,6 +211,31 @@ export function buildICS(input: BuildICSInviteInput): string {
     const name = attendee.name ? `;CN="${attendee.name.replace(/["\\\\]/g, "")}"` : "";
     lines.push(`ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=${statusToPartstat(attendee.rsvpStatus)};RSVP=TRUE${name}:mailto:${attendee.email.trim()}`);
   }
+  lines.push("END:VEVENT", "END:VCALENDAR");
+  return lines.map(foldLine).join("\r\n") + "\r\n";
+}
+
+/** Builds an RFC 5545 METHOD:REPLY payload for a single attendee. */
+export function buildICSReply(input: {
+  uid: string;
+  sequence: number;
+  attendeeEmail: string;
+  status: Exclude<RSVPStatus, "needs-action">;
+  summary?: string;
+}): string {
+  const partstat = statusToPartstat(input.status);
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//DR-Calender//Temporal Engine//EN",
+    "METHOD:REPLY",
+    "BEGIN:VEVENT",
+    "UID:" + escapeICSText(input.uid),
+    "SEQUENCE:" + Math.max(0, Math.trunc(input.sequence)),
+    "DTSTAMP:" + formatUTC(new Date()),
+    "ATTENDEE;PARTSTAT=" + partstat + ":mailto:" + input.attendeeEmail.trim(),
+  ];
+  if (input.summary) lines.push("SUMMARY:" + escapeICSText(input.summary));
   lines.push("END:VEVENT", "END:VCALENDAR");
   return lines.map(foldLine).join("\r\n") + "\r\n";
 }
