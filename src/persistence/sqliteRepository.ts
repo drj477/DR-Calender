@@ -171,6 +171,14 @@ export class SQLiteTemporalRepository {
     return row ? toEntity(row) : null;
   }
 
+  async getByIdIncludingDeleted(id: string): Promise<TemporalEntity | null> {
+    const row = await this.db.getFirstAsync<TemporalRow>(
+      "SELECT * FROM temporal_entities WHERE id = ? LIMIT 1",
+      id,
+    );
+    return row ? toEntity(row) : null;
+  }
+
   async queryRange(workspaceId: string, rangeStart: number, rangeEnd: number): Promise<TemporalEntity[]> {
     if (!Number.isFinite(rangeStart) || !Number.isFinite(rangeEnd) || rangeEnd <= rangeStart) {
       throw new RangeError("Invalid temporal query range");
