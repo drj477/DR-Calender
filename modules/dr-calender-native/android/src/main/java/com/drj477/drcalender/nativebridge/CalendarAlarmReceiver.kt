@@ -29,7 +29,9 @@ class CalendarAlarmReceiver : BroadcastReceiver() {
       val payload = id.removePrefix("native-event-")
       val separator = payload.lastIndexOf("-")
       val eventId = if (separator > 0) payload.substring(0, separator) else payload
-      Intent(Intent.ACTION_VIEW, Uri.parse("drcalender://events/" + Uri.encode(eventId))).apply {
+      val occurrenceStart = if (separator > 0) payload.substring(separator + 1) else null
+      val routeId = if (occurrenceStart != null) eventId + "::" + occurrenceStart else eventId
+      Intent(Intent.ACTION_VIEW, Uri.parse("drcalender://events/" + Uri.encode(routeId))).apply {
         setPackage(context.packageName)
       }
     } else context.packageManager.getLaunchIntentForPackage(context.packageName)
