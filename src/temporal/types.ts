@@ -150,6 +150,7 @@ export interface TemporalMetadata {
     assignee: AssigneeDTO;
     reminderMinutesBefore?: number | null;
     notificationId?: string | null;
+    checklist?: ChecklistItem[];
   };
 }
 
