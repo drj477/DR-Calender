@@ -1,7 +1,7 @@
 -- Phase 7 security hardening. Apply after 202610180001_phase4_sync_workspaces.sql.
 -- Direct table access is unnecessary: the mobile client uses authenticated RPCs.
 revoke all on table public.dr_workspaces, public.dr_workspace_members,
-  public.dr_sync_mutations, public.dr_temporal_entities from anon, authenticated;
+  public.dr_sync_mutations, public.dr_temporal_entities from public, anon, authenticated;
 
 create or replace function public.dr_sync_push(p_workspace_id text,p_mutations jsonb)
 returns jsonb language plpgsql security definer set search_path = public, auth
