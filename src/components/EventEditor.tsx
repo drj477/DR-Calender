@@ -35,6 +35,7 @@ export interface EventDraft {
   isShielded: boolean;
   isElastic: boolean;
   isAllDay: boolean;
+  reminderMinutesBefore: number | null;
   rrule: string | null;
   scope: "occurrence" | "series";
   occurrenceStartAt: number | null;
@@ -80,6 +81,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
   const [elastic, setElastic] = useState(false);
   const [allDay, setAllDay] = useState(false);
   const [allDayDays, setAllDayDays] = useState("1");
+  const [reminderMinutesBefore, setReminderMinutesBefore] = useState<number | null>(null);
   const [recurrence, setRecurrence] = useState("none");
   const [scope, setScope] = useState<"occurrence" | "series">("series");
   const [error, setError] = useState("");
@@ -98,6 +100,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
     setLocation(override?.location ?? event?.metadata?.event?.location ?? "");
     setShielded(override?.isShielded ?? event?.isShielded ?? false);
     setElastic(override?.isElastic ?? event?.isElastic ?? false);
+    setReminderMinutesBefore(event?.metadata?.event?.reminderMinutesBefore ?? null);
     setAllDay(override?.isAllDay ?? event?.metadata?.event?.kind === "all-day");
     const existingEnd = override?.endAt ?? event?.endAt;
     setAllDayDays(String(Math.max(1, Math.round(((existingEnd ?? start + 86400000) - new Date(new Date(start).getFullYear(), new Date(start).getMonth(), new Date(start).getDate()).getTime()) / 86400000))));
@@ -126,6 +129,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
       : override?.location ?? event.metadata?.event?.location ?? "");
     setShielded(nextScope === "series" ? event.isShielded : override?.isShielded ?? event.isShielded);
     setElastic(nextScope === "series" ? event.isElastic : override?.isElastic ?? event.isElastic);
+    setReminderMinutesBefore(event.metadata?.event?.reminderMinutesBefore ?? null);
     setAllDay(override?.isAllDay ?? event.metadata?.event?.kind === "all-day");
     setAllDayDays("1");
     setRecurrence(event.rrule ? recurrenceFromRule(event.rrule) : "none");
@@ -169,6 +173,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
       isShielded: shielded,
       isElastic: elastic,
       isAllDay: allDay,
+      reminderMinutesBefore,
       rrule: ruleFromRecurrence(recurrence),
       scope: event?.rrule && occurrenceStartAt !== null ? scope : "series",
       occurrenceStartAt: event?.rrule && occurrenceStartAt !== null ? occurrenceStartAt : null,
@@ -270,6 +275,26 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
           {recurrence === "custom" ? <Text style={styles.optionHint}>This event has a custom recurrence rule. Choose a preset to replace it.</Text> : null}
           </>
           )}
+
+          {scope !== "occurrence" ? <>
+            <Text style={styles.label}>REMIND ME</Text>
+            <View style={styles.recurrenceOptions}>
+              {[
+                { label: "Off", value: null },
+                { label: "At start", value: 0 },
+                { label: "5 min", value: 5 },
+                { label: "15 min", value: 15 },
+                { label: "30 min", value: 30 },
+                { label: "1 hour", value: 60 },
+                { label: "1 day", value: 1440 },
+              ].map(option => (
+                <Pressable key={String(option.value)} accessibilityRole="button" accessibilityState={{ selected: reminderMinutesBefore === option.value }} onPress={() => setReminderMinutesBefore(option.value)} style={[styles.recurrenceOption, reminderMinutesBefore === option.value && styles.recurrenceOptionActive]}>
+                  <Text style={[styles.recurrenceText, reminderMinutesBefore === option.value && styles.recurrenceTextActive]}>{option.label}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <Text style={styles.optionHint}>Recurring events schedule notifications for upcoming occurrences over the next 14 days.</Text>
+          </> : null}
 
           <Text style={styles.label}>EVENT BEHAVIOUR</Text>
           <Pressable onPress={() => setShielded(value => !value)} style={styles.optionRow}>
