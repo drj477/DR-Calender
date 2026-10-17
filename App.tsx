@@ -30,7 +30,7 @@ import * as Notifications from "expo-notifications";
 
 type ScreenMode = "Day" | "Week" | "Month";
 type MainTab = "Calendar" | "Tasks" | "Reminders" | "Spaces";
-type Task = { id: string; title: string; due: string; assignee: string; completed: boolean };
+type Task = { id: string; title: string; due: string; assignee: string; completed: boolean; dueAt?: number | null; hasReminder?: boolean };
 
 
 const COLORS = {
@@ -59,7 +59,7 @@ const INITIAL_TASKS: Task[] = [
   { id: "t3", title: "Update sprint notes", due: "Tomorrow", assignee: "You", completed: true },
 ];
 
-function TaskRow({ task, onToggle }: { task: Task; onToggle: () => void }) {
+function TaskRow({ task, onToggle, onRemind }: { task: Task; onToggle: () => void; onRemind: () => void }) {
   const scale = useSharedValue(1);
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const toggle = () => {
@@ -78,6 +78,7 @@ function TaskRow({ task, onToggle }: { task: Task; onToggle: () => void }) {
         <Text style={[styles.taskTitle, task.completed && styles.completedText]}>{task.title}</Text>
         <Text style={styles.taskDue}>{task.due}</Text>
       </View>
+      <Pressable disabled={task.dueAt == null} onPress={onRemind} accessibilityRole="button" accessibilityLabel={task.hasReminder ? "Turn off task reminder" : "Set task reminder"} style={[styles.taskReminderButton, task.dueAt == null && styles.taskReminderDisabled]}><Text style={[styles.taskReminderGlyph, task.hasReminder && styles.taskReminderActive]}>{task.hasReminder ? "◉" : "◷"}</Text></Pressable>
       <View style={styles.avatar}><Text style={styles.avatarText}>{task.assignee === "You" ? "DR" : task.assignee}</Text></View>
     </Animated.View>
   );
@@ -278,6 +279,8 @@ function CalendarApp() {
           due,
           assignee: entity.metadata?.task?.assignee?.name ?? "You",
           completed: entity.isCompleted,
+          dueAt,
+          hasReminder: entity.metadata?.task?.reminderMinutesBefore != null,
         };
       });
       setTasks(persistedTasks);
@@ -685,7 +688,7 @@ function CalendarApp() {
             <Pressable onPress={addQuickTask}><Text style={styles.seeAll}>＋ Add</Text></Pressable>
           </View>
           <View style={[styles.tasksCard, SHADOWS.card]}>
-            {tasks.map(task => <TaskRow key={task.id} task={task} onToggle={() => toggleTask(task.id)} />)}
+            {tasks.map(task => <TaskRow key={task.id} task={task} onToggle={() => toggleTask(task.id)} onRemind={() => toggleTaskReminder(task.id)} />)}
           </View>
         </View>
         <View style={styles.syncNote}><View style={styles.syncDot} /><Text style={styles.syncText}>{pendingCount ? `${pendingCount} changes waiting to sync` : "Offline-first · Ready when you are"}</Text></View>
@@ -800,6 +803,10 @@ const styles = StyleSheet.create({
   taskTitle: { color: COLORS.text, fontSize: 12, fontWeight: "600" },
   completedText: { color: COLORS.muted, textDecorationLine: "line-through" },
   taskDue: { color: COLORS.muted, fontSize: 10 },
+  taskReminderButton: { width: 28, height: 28, alignItems: "center", justifyContent: "center", borderRadius: 9, backgroundColor: COLORS.surfaceRaised, borderWidth: 1, borderColor: COLORS.border },
+  taskReminderDisabled: { opacity: 0.3 },
+  taskReminderGlyph: { color: COLORS.muted, fontSize: 15 },
+  taskReminderActive: { color: COLORS.accent },
   avatar: { width: 28, height: 28, borderRadius: 10, backgroundColor: COLORS.surfaceRaised, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: COLORS.border },
   avatarText: { color: COLORS.text, fontSize: 9, fontWeight: "800" },
   syncNote: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, marginTop: 22, marginBottom: 5 },
