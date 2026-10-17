@@ -883,7 +883,7 @@ function CalendarApp() {
     const now = Date.now();
     const existing = editingEvent;
     if (existing && draft.scope !== "occurrence") {
-      void cancelNativeAlarm("event-" + existing.id).catch(error => console.warn("Unable to cancel stale manual native alarm", error));
+      void cancelNativeAlarm("native-event-manual-" + existing.id).catch(error => console.warn("Unable to cancel stale manual native alarm", error));
     }
     if (existing && draft.scope === "occurrence" && draft.occurrenceStartAt !== null) {
       const occurrenceKey = String(draft.occurrenceStartAt);
@@ -960,7 +960,7 @@ function CalendarApp() {
   };
 
   const moveEvent = (event: TemporalEntity, nextStartAt: number, nextEndAt: number) => {
-    void cancelNativeAlarm("event-" + event.id).catch(error => console.warn("Unable to cancel moved event's manual native alarm", error));
+    void cancelNativeAlarm("native-event-manual-" + event.id).catch(error => console.warn("Unable to cancel moved event's manual native alarm", error));
     const updated: TemporalEntity = {
       ...event,
       scheduledAt: nextStartAt,
@@ -979,7 +979,7 @@ function CalendarApp() {
 
   const deleteEvent = (event: TemporalEntity, scope: "occurrence" | "series" = "series", occurrenceStartAt: number | null = null) => {
     if (scope === "series") {
-      void cancelNativeAlarm("event-" + event.id).catch(error => console.warn("Unable to cancel deleted event's manual native alarm", error));
+      void cancelNativeAlarm("native-event-manual-" + event.id).catch(error => console.warn("Unable to cancel deleted event's manual native alarm", error));
     }
     if (scope === "occurrence" && occurrenceStartAt !== null) {
       const current = event.metadata?.recurrence ?? { excludedStartsAt: [], overrides: {} };
