@@ -491,6 +491,18 @@ function CalendarApp() {
     useCalendarStore.getState().upsertEntity(updated,mutationId);
   };
 
+  const addEventAttendee = async (event: TemporalEntity, email: string) => {
+    if (!database) throw new Error("Local calendar storage is not ready.");
+    const current = await database.repository.getById(event.id);
+    if (!current) throw new Error("Event no longer exists in this workspace.");
+    const attendees = current.metadata?.invite?.attendeeList ?? [];
+    if (attendees.some(attendee => attendee.email.toLowerCase() === email.trim().toLowerCase())) throw new Error("This attendee is already on the event.");
+    const updated: TemporalEntity = { ...current, updatedAt:Date.now(), syncVersion:current.syncVersion+1, metadata:{ ...current.metadata, invite:{ ...(current.metadata?.invite ?? { organizerEmail:"", attendeeList:[], rsvpStatus:"needs-action" as const, icsUid:current.id+"@dr-calender.local", sequence:0 }), attendeeList:[...attendees,{email:email.trim().toLowerCase(),displayName:null,userId:null,rsvpStatus:"needs-action" as const}], sequence:(current.metadata?.invite?.sequence??0)+1 } } };
+    const mutationId="event-attendee-"+current.id+"-"+updated.syncVersion;
+    await database.repository.upsert(updated,mutationId);
+    useCalendarStore.getState().upsertEntity(updated,mutationId);
+  };
+
   const saveTask = async (draft: TaskDraft) => {
     if (!database) return;
     const existing = draft.id ? await database.repository.getById(draft.id) : null;
@@ -948,7 +960,7 @@ function CalendarApp() {
           </View>
         </View>
         <View style={styles.syncNote}><View style={styles.syncDot} /><Text style={styles.syncText}>{pendingCount ? `${pendingCount} changes waiting to sync` : "Offline-first · Ready when you are"}</Text></View>
-      </ScrollView></> : activeTab === "Tasks" ? <TaskCenter tasks={taskEntities} onSave={draft => { void saveTask(draft).catch(error => console.warn("Unable to save task", error)); }} onToggle={task => { void toggleTaskEntity(task).catch(error => console.warn("Unable to update task", error)); }} onDelete={task => { void deleteTaskEntity(task).catch(error => console.warn("Unable to delete task", error)); }} onPlanDay={() => { void planMyDay().catch(error => console.warn("Unable to plan day", error)); }} onRollover={task => { void rolloverTask(task).catch(error => console.warn("Unable to roll task forward", error)); }} /> : activeTab === "Reminders" ? <ReminderCenter reminders={reminders} permissionGranted={permissionGranted} onRequestPermission={handleRequestNotifications} onCreate={createReminder} onSnooze={snoozeReminder} onComplete={completeReminder} onDelete={deleteReminder} /> : activeTab === "Sharing" ? <SharingCenter events={sharingEntities} onImport={importICSItems} onRSVP={updateEventRSVP} /> : <AccountCenter database={database} onSynced={refreshAfterSync} onWorkspaceChanged={refreshWorkspaceData} />}
+      </ScrollView></> : activeTab === "Tasks" ? <TaskCenter tasks={taskEntities} onSave={draft => { void saveTask(draft).catch(error => console.warn("Unable to save task", error)); }} onToggle={task => { void toggleTaskEntity(task).catch(error => console.warn("Unable to update task", error)); }} onDelete={task => { void deleteTaskEntity(task).catch(error => console.warn("Unable to delete task", error)); }} onPlanDay={() => { void planMyDay().catch(error => console.warn("Unable to plan day", error)); }} onRollover={task => { void rolloverTask(task).catch(error => console.warn("Unable to roll task forward", error)); }} /> : activeTab === "Reminders" ? <ReminderCenter reminders={reminders} permissionGranted={permissionGranted} onRequestPermission={handleRequestNotifications} onCreate={createReminder} onSnooze={snoozeReminder} onComplete={completeReminder} onDelete={deleteReminder} /> : activeTab === "Sharing" ? <SharingCenter events={sharingEntities} onImport={importICSItems} onRSVP={updateEventRSVP} onAddAttendee={addEventAttendee} /> : <AccountCenter database={database} onSynced={refreshAfterSync} onWorkspaceChanged={refreshWorkspaceData} />}
 
       <EventEditor
         visible={activeTab === "Calendar" && eventEditorVisible}
