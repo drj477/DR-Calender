@@ -21,7 +21,11 @@ const palette = {
   muted: "#9BA7BA",
   accent: "#FFC247",
   danger: "#FF9A63",
+  accentWash: "#322817",
+  dangerWash: "#3A2525",
 };
+
+const editorShadow = { shadowColor: "#000000", shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 4 };
 
 export interface EventDraft {
   title: string;
@@ -125,9 +129,9 @@ export function EventEditor({ visible, selectedDate, event, onClose, onSave, onD
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <View style={styles.header}>
-          <Pressable onPress={onClose} accessibilityRole="button"><Text style={styles.cancel}>Cancel</Text></Pressable>
+          <Pressable onPress={onClose} accessibilityRole="button" hitSlop={8}><Text style={styles.cancel}>Cancel</Text></Pressable>
           <Text style={styles.heading}>{event ? "Edit event" : "New event"}</Text>
-          <Pressable onPress={save} accessibilityRole="button"><Text style={styles.save}>Save</Text></Pressable>
+          <Pressable onPress={save} accessibilityRole="button" hitSlop={8}><Text style={styles.save}>Save</Text></Pressable>
         </View>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.body}>
           <Text style={styles.label}>EVENT TITLE</Text>
@@ -142,14 +146,14 @@ export function EventEditor({ visible, selectedDate, event, onClose, onSave, onD
           />
 
           <Text style={styles.label}>DATE</Text>
-          <View style={styles.readOnlyField}>
+          <View style={[styles.readOnlyField, editorShadow]}>
             <Text style={styles.fieldText}>{selectedDate.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}</Text>
           </View>
 
           <View style={styles.twoColumns}>
             <View style={styles.column}>
               <Text style={styles.label}>START TIME (24H)</Text>
-              <TextInput value={startClock} onChangeText={setStartClock} placeholder="09:00" placeholderTextColor={palette.muted} keyboardType="numbers-and-punctuation" maxLength={5} style={styles.input} />
+              <TextInput value={startClock} onChangeText={setStartClock} placeholder="09:00" placeholderTextColor={palette.muted} keyboardType="numbers-and-punctuation" maxLength={5} style={[styles.input, editorShadow]} />
             </View>
             <View style={styles.column}>
               <Text style={styles.label}>DURATION (MIN)</Text>
@@ -174,7 +178,7 @@ export function EventEditor({ visible, selectedDate, event, onClose, onSave, onD
                 accessibilityRole="button"
                 accessibilityState={{ selected: recurrence === option.value }}
                 onPress={() => setRecurrence(option.value)}
-                style={[styles.recurrenceOption, recurrence === option.value && styles.recurrenceOptionActive]}
+                style={[styles.recurrenceOption, recurrence === option.value && styles.recurrenceOptionActive, recurrence === option.value && editorShadow]}
               >
                 <Text style={[styles.recurrenceText, recurrence === option.value && styles.recurrenceTextActive]}>{option.label}</Text>
               </Pressable>
@@ -212,26 +216,26 @@ const styles = StyleSheet.create({
   save: { color: palette.accent, fontSize: 14, fontWeight: "800" },
   body: { padding: 22, paddingBottom: 42, gap: 10 },
   label: { color: palette.muted, fontSize: 10, letterSpacing: 1.4, fontWeight: "800", marginTop: 13, marginBottom: 3 },
-  titleInput: { color: palette.text, fontSize: 23, fontWeight: "700", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: palette.border, marginBottom: 8 },
+  titleInput: { color: palette.text, fontSize: 24, fontWeight: "800", letterSpacing: -0.6, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: palette.border, marginBottom: 8 },
   readOnlyField: { padding: 14, backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.border, borderRadius: 13 },
   fieldText: { color: palette.text, fontSize: 13 },
   twoColumns: { flexDirection: "row", gap: 12 },
   column: { flex: 1 },
-  input: { color: palette.text, fontSize: 14, paddingHorizontal: 13, paddingVertical: 13, backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.border, borderRadius: 13 },
+  input: { color: palette.text, fontSize: 14, fontWeight: "600", paddingHorizontal: 14, paddingVertical: 14, backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.border, borderRadius: 14 },
   recurrenceOptions: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
   recurrenceOption: { paddingHorizontal: 11, paddingVertical: 9, borderRadius: 10, backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.border },
-  recurrenceOptionActive: { backgroundColor: "#322817", borderColor: palette.accent },
+  recurrenceOptionActive: { backgroundColor: palette.accentWash, borderColor: palette.accent },
   recurrenceText: { color: palette.muted, fontSize: 11, fontWeight: "700" },
   recurrenceTextActive: { color: palette.accent },
   optionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: palette.border, gap: 16 },
   optionCopy: { flex: 1, gap: 4 },
   optionTitle: { color: palette.text, fontSize: 13, fontWeight: "700" },
-  optionHint: { color: palette.muted, fontSize: 11, lineHeight: 16 },
+  optionHint: { color: palette.muted, fontSize: 11, lineHeight: 17, fontStyle: "italic" },
   toggle: { width: 43, height: 25, borderRadius: 13, padding: 3, backgroundColor: palette.raised, borderWidth: 1, borderColor: palette.border, justifyContent: "center" },
   toggleOn: { backgroundColor: palette.accent, borderColor: palette.accent },
   toggleThumb: { width: 17, height: 17, borderRadius: 9, backgroundColor: palette.muted },
   toggleThumbOn: { alignSelf: "flex-end", backgroundColor: palette.background },
   error: { color: palette.danger, fontSize: 12, marginTop: 8 },
-  deleteButton: { marginTop: 25, padding: 15, alignItems: "center", borderWidth: 1, borderColor: "#5A332A", borderRadius: 13 },
+  deleteButton: { marginTop: 25, padding: 15, alignItems: "center", backgroundColor: palette.dangerWash, borderWidth: 1, borderColor: "#5A332A", borderRadius: 14 },
   deleteText: { color: palette.danger, fontSize: 13, fontWeight: "700" },
 });
