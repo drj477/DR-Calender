@@ -100,6 +100,30 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
     setError("");
   }, [visible, selectedDate, event, occurrenceStartAt]);
 
+  const selectScope = (nextScope: "occurrence" | "series") => {
+    setScope(nextScope);
+    if (!event || occurrenceStartAt === null) return;
+
+    const override = event.metadata?.recurrence?.overrides[String(occurrenceStartAt)];
+    const occurrenceStart = override?.startAt ?? occurrenceStartAt;
+    const seriesStart = event.scheduledAt ?? occurrenceStartAt;
+    const baseStart = nextScope === "series" ? seriesStart : occurrenceStart;
+    const baseEnd = nextScope === "series"
+      ? event.endAt ?? seriesStart + 60 * 60_000
+      : override?.endAt ?? occurrenceStart + Math.max(5 * 60_000, (event.endAt ?? seriesStart + 60 * 60_000) - seriesStart);
+
+    setTitle(nextScope === "series" ? event.title : override?.title ?? event.title);
+    setStartClock(formatClock(new Date(baseStart)));
+    setDuration(String(Math.max(5, Math.round((baseEnd - baseStart) / 60_000))));
+    setLocation(nextScope === "series"
+      ? event.metadata?.event?.location ?? ""
+      : override?.location ?? event.metadata?.event?.location ?? "");
+    setShielded(nextScope === "series" ? event.isShielded : override?.isShielded ?? event.isShielded);
+    setElastic(nextScope === "series" ? event.isElastic : override?.isElastic ?? event.isElastic);
+    setRecurrence(event.rrule ? recurrenceFromRule(event.rrule) : "none");
+    setError("");
+  };
+
   const save = () => {
     const cleanTitle = title.trim();
     const timeMatch = /^(\d{1,2}):(\d{2})$/.exec(startClock.trim());
@@ -151,12 +175,15 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
               <Text style={styles.seriesNoticeTitle}>Edit recurring event</Text>
               <View style={styles.recurrenceOptions}>
                 {([{ label: "This occurrence", value: "occurrence" }, { label: "Entire series", value: "series" }] as const).map(option => (
-                  <Pressable key={option.value} accessibilityRole="button" accessibilityState={{ selected: scope === option.value }} onPress={() => setScope(option.value)} style={[styles.recurrenceOption, scope === option.value && styles.recurrenceOptionActive]}>
+                  <Pressable key={option.value} accessibilityRole="button" accessibilityState={{ selected: scope === option.value }} onPress={() => selectScope(option.value)} style={[styles.recurrenceOption, scope === option.value && styles.recurrenceOptionActive]}>
                     <Text style={[styles.recurrenceText, scope === option.value && styles.recurrenceTextActive]}>{option.label}</Text>
                   </Pressable>
                 ))}
               </View>
               <Text style={styles.optionHint}>{scope === "occurrence" ? "Only this date is changed. The recurring schedule stays intact." : "Changes apply to every occurrence. The series keeps its original start date."}</Text>
+              {scope === "series" && (Object.keys(event.metadata?.recurrence?.overrides ?? {}).length > 0 || (event.metadata?.recurrence?.excludedStartsAt.length ?? 0) > 0) ? (
+                <Text style={styles.exceptionWarning}>Changing the series repeat rule or start time clears existing occurrence-specific edits and exclusions.</Text>
+              ) : null}
             </View>
           ) : event?.rrule ? (
             <View style={styles.seriesNotice} accessibilityRole="summary">
@@ -178,7 +205,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
 
           <Text style={styles.label}>DATE</Text>
           <View style={[styles.readOnlyField, editorShadow]}>
-            <Text style={styles.fieldText}>{selectedDate.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}</Text>
+            <Text style={styles.fieldText}>{(scope === "series" && occurrenceStartAt !== null && event?.scheduledAt !== null && event?.scheduledAt !== undefined ? new Date(event.scheduledAt) : selectedDate).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}</Text>
           </View>
 
           <View style={styles.twoColumns}>
@@ -195,6 +222,12 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
           <Text style={styles.label}>LOCATION (OPTIONAL)</Text>
           <TextInput value={location} onChangeText={setLocation} placeholder="Add a room or address" placeholderTextColor={palette.muted} style={styles.input} />
 
+          {scope === "occurrence" && occurrenceStartAt !== null ? (
+            <View style={styles.seriesNotice}>
+              <Text style={styles.optionHint}>Repeat settings belong to the entire series. Choose “Entire series” to change the schedule.</Text>
+            </View>
+          ) : (
+          <>
           <Text style={styles.label}>REPEAT</Text>
           <View style={styles.recurrenceOptions}>
             {[
@@ -216,6 +249,8 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
             ))}
           </View>
           {recurrence === "custom" ? <Text style={styles.optionHint}>This event has a custom recurrence rule. Choose a preset to replace it.</Text> : null}
+          </>
+          )}
 
           <Text style={styles.label}>EVENT BEHAVIOUR</Text>
           <Pressable onPress={() => setShielded(value => !value)} style={styles.optionRow}>
@@ -269,6 +304,7 @@ const styles = StyleSheet.create({
   error: { color: palette.danger, fontSize: 12, marginTop: 8 },
   seriesNotice: { padding: 13, gap: 5, backgroundColor: palette.accentWash, borderWidth: 1, borderColor: palette.accent, borderRadius: 13 },
   seriesNoticeTitle: { color: palette.accent, fontSize: 12, fontWeight: "800" },
+  exceptionWarning: { color: palette.danger, fontSize: 11, lineHeight: 16, fontWeight: "600" },
   deleteButton: { marginTop: 25, padding: 15, alignItems: "center", backgroundColor: palette.dangerWash, borderWidth: 1, borderColor: "#5A332A", borderRadius: 14 },
   deleteText: { color: palette.danger, fontSize: 13, fontWeight: "700" },
 });
