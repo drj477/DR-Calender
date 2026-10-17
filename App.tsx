@@ -242,6 +242,11 @@ function CalendarApp() {
       setPendingDeepLink(null);
       return;
     }
+    if (route === "reminders" || parsed.pathname.startsWith("/reminders/")) {
+      setActiveTab("Reminders");
+      setPendingDeepLink(null);
+      return;
+    }
     if (route === "events" || parsed.pathname.startsWith("/events/")) {
       // Keep cold-start event links queued until the database has hydrated.
       if (!calendarHydrated) return;
