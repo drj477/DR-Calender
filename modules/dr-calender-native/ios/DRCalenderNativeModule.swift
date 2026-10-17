@@ -57,6 +57,11 @@ public final class DRCalenderNativeModule: Module {
       return true
     }
 
+    AsyncFunction("isExactAlarmScheduled") { (id: String) async -> Bool in
+      let pending = await UNUserNotificationCenter.current().pendingNotificationRequests()
+      return pending.contains { $0.identifier == id }
+    }
+
     AsyncFunction("cancelExactAlarm") { (id: String) async -> Bool in
       UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id])
       UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [id])
