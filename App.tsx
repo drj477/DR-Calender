@@ -323,15 +323,48 @@ function CalendarApp() {
     if (database) {
       database.repository.getById(id).then(entity => {
         if (!entity) return;
-        const updated = { ...entity, isCompleted: completed, updatedAt: Date.now(), syncVersion: entity.syncVersion + 1 };
+        const taskMeta = entity.metadata?.task;
+        if (completed) void cancelNotificationIds(taskMeta?.notificationId ? [taskMeta.notificationId] : []);
+        const updated = { ...entity, isCompleted: completed, updatedAt: Date.now(), syncVersion: entity.syncVersion + 1, metadata: { ...entity.metadata, task: taskMeta ? { ...taskMeta, notificationId: completed ? null : taskMeta.notificationId } : undefined } };
         const mutationId = `task-toggle-${id}-${updated.syncVersion}`;
-        return database.repository.upsert(updated, mutationId).then(() => {
+        return database.repository.upsert(updated, mutationId).then(async () => {
           useCalendarStore.getState().upsertEntity(updated, mutationId);
+          if (!completed && taskMeta?.reminderMinutesBefore != null && (taskMeta.dueAt ?? updated.scheduledAt) != null && permissionGranted) {
+            const dueAt = taskMeta.dueAt ?? updated.scheduledAt!;
+            const notifyAt = dueAt - taskMeta.reminderMinutesBefore * 60_000 > Date.now() ? dueAt - taskMeta.reminderMinutesBefore * 60_000 : dueAt;
+            const notificationId = await scheduleReminderNotification(updated, notifyAt);
+            const rescheduled = { ...updated, syncVersion: updated.syncVersion + 1, updatedAt: Date.now(), metadata: { ...updated.metadata, task: { ...taskMeta, notificationId } } };
+            await persistReminderUpdate(rescheduled, "task-reminder-reschedule-" + id + "-" + rescheduled.syncVersion);
+          }
         });
       }).catch(error => console.warn("Unable to persist task completion", error));
     }
   };
 
+  const toggleTaskReminder = async (id: string) => {
+    if (!database) return;
+    const entity = await database.repository.getById(id);
+    if (!entity || entity.itemType !== "task") return;
+    const current = entity.metadata?.task;
+    const dueAt = current?.dueAt ?? entity.scheduledAt;
+    if (dueAt == null) return;
+    if (current?.reminderMinutesBefore != null) {
+      await cancelNotificationIds(current.notificationId ? [current.notificationId] : []);
+      const updated = { ...entity, syncVersion: entity.syncVersion + 1, updatedAt: Date.now(), metadata: { ...entity.metadata, task: { ...current, reminderMinutesBefore: null, notificationId: null } } };
+      await persistReminderUpdate(updated, "task-reminder-off-" + id + "-" + updated.syncVersion);
+      setTasks(currentTasks => currentTasks.map(task => task.id === id ? { ...task, hasReminder: false } : task));
+      return;
+    }
+    const granted = permissionGranted === true || await requestNotificationPermission();
+    setPermissionGranted(granted);
+    if (!granted) return;
+    const notifyAt = dueAt - 15 * 60_000 > Date.now() ? dueAt - 15 * 60_000 : dueAt;
+    if (notifyAt <= Date.now()) return;
+    const notificationId = await scheduleReminderNotification(entity, notifyAt);
+    const updated = { ...entity, syncVersion: entity.syncVersion + 1, updatedAt: Date.now(), metadata: { ...entity.metadata, task: { ...current, dueAt, assignee: current?.assignee ?? { id: "local-user", name: "You", avatarUrl: null }, reminderMinutesBefore: 15, notificationId } } };
+    await persistReminderUpdate(updated, "task-reminder-on-" + id + "-" + updated.syncVersion);
+    setTasks(currentTasks => currentTasks.map(task => task.id === id ? { ...task, hasReminder: true } : task));
+  };
   const addQuickTask = () => {
     const id = `task-${Date.now()}`;
     setTasks(current => [{ id, title: "New task", due: "Today · No time set", assignee: "You", completed: false }, ...current]);
