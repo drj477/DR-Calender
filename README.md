@@ -43,7 +43,8 @@ A premium, offline-first calendar and scheduling application for iOS and Android
 ## Project structure
 
 - `App.tsx` — mobile application entry screen.
-- `src/temporal/` — temporal models, scheduling, recurrence, multi-event ICS import/export, drag helpers, and SQLite DDL.\n- `src/components/SharingCenter.tsx` — ICS import/export, attendee RSVP, invitation sharing, and calendar feed subscriptions.
+- `src/temporal/` — temporal models, scheduling, recurrence, multi-event ICS import/export, drag helpers, and SQLite DDL.
+- `src/components/SharingCenter.tsx` — ICS import/export, attendee RSVP, invitation sharing, and calendar feed subscriptions.
 - `src/store/` — Zustand calendar state.
 - `src/persistence/` — SQLite repository abstraction.
 - `src/sync/` — HLC, deterministic merge, sync orchestration, Supabase Auth/session handling, and authenticated sync transport.
