@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import { refreshLocalDatabaseAfterRestore, type LocalCalendarDatabase } from "../persistence/localDatabase";
 import { isSyncOperationActive } from "../persistence/recoveryGate";
-import { cancelAllManualNativeAlarms } from "../native/nativeExperience";
 import { createBackup, exportBackupToFile, restoreBackupFromFile } from "../persistence/backupService";
 
 const C={bg:"#10141D",surface:"#171C28",raised:"#202838",border:"#30394B",text:"#F4F6FC",muted:"#9BA7BA",accent:"#FFC247",wash:"#322817",green:"#72D6A1",danger:"#FF9A63"};
@@ -71,8 +70,6 @@ export function DataSafetyCenter({database,onRestored}:Props){
     setBusy("restore");setMessage("");
     try{
      const result=await restoreBackupFromFile(database.db,async()=>{
-      try { await cancelAllManualNativeAlarms(); }
-      catch(error) { console.warn("Unable to clear manual native alarms after restore",error); }
       const refreshedDatabase=await refreshLocalDatabaseAfterRestore(database);
       await onRestored(refreshedDatabase);
      });
