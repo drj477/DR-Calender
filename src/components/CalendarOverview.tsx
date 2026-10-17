@@ -3,14 +3,14 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { TemporalEntity } from "../temporal/types";
 
 const COLORS = {
-  surface: "#141922",
-  raised: "#1B222D",
-  border: "#252D39",
-  text: "#F3F5F8",
-  muted: "#8994A5",
-  accent: "#B8F36B",
-  lavender: "#B7A5FF",
-  coral: "#FFAD9B",
+  surface: "#171C28",
+  raised: "#202838",
+  border: "#30394B",
+  text: "#F4F6FC",
+  muted: "#9BA7BA",
+  accent: "#FFC247",
+  lavender: "#F4C45E",
+  coral: "#FF9A63",
 };
 
 type OverviewMode = "Week" | "Month";
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   monthDay: { width: "14.2857%", height: 49, alignItems: "center", paddingTop: 7, borderRadius: 9 },
   monthDaySelected: { backgroundColor: COLORS.raised, borderWidth: 1, borderColor: COLORS.accent },
   monthDayNumber: { color: COLORS.text, fontSize: 12, fontWeight: "600" },
-  outsideMonth: { color: "#4F5968" },
+  outsideMonth: { color: "#596274" },
   monthDots: { flexDirection: "row", gap: 3, marginTop: 5, height: 4 },
   monthDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: COLORS.lavender },
   monthDotSelected: { backgroundColor: COLORS.accent },
