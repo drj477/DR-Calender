@@ -286,7 +286,7 @@ function CalendarApp() {
       if (permission.granted) {
         for (const entity of entities) {
           if (entity.deletedAt !== null) continue;
-          if (entity.itemType === "reminder" && !entity.isCompleted && entity.metadata?.reminder) 
+          if (entity.itemType === "reminder" && !entity.isCompleted && entity.metadata?.reminder) {
             const meta = entity.metadata.reminder;
             const at = meta.snoozeUntil ?? (meta.trigger.kind === "time" ? meta.trigger.at : null);
             if (at && at > Date.now()) {
