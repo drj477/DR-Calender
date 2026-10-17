@@ -300,6 +300,21 @@ function CalendarApp() {
               await local.repository.upsert(updated, mutationId);
               useCalendarStore.getState().upsertEntity(updated, mutationId);
             }
+          } else if (entity.itemType === "task" && !entity.isCompleted && entity.metadata?.task?.reminderMinutesBefore != null) {
+            const taskMeta = entity.metadata.task;
+            const dueAt = taskMeta.dueAt ?? entity.scheduledAt;
+            if (dueAt != null) {
+              const offset = taskMeta.reminderMinutesBefore ?? 15;
+              const at = dueAt - offset * 60_000 > Date.now() ? dueAt - offset * 60_000 : dueAt;
+              if (at > Date.now()) {
+                await cancelNotificationIds(taskMeta.notificationId ? [taskMeta.notificationId] : []);
+                const notificationId = await scheduleReminderNotification(entity, at);
+                const updated = { ...entity, metadata: { ...entity.metadata, task: { ...taskMeta, notificationId } } };
+                const mutationId = "task-reminder-reschedule-" + entity.id + "-" + Date.now();
+                await local.repository.upsert(updated, mutationId);
+                useCalendarStore.getState().upsertEntity(updated, mutationId);
+              }
+            }
           } else if (entity.itemType === "event" && entity.metadata?.event?.reminderMinutesBefore != null) {
             const notificationIds = await scheduleEventNotifications(entity);
             const updated = { ...entity, metadata: { ...entity.metadata, event: { ...entity.metadata.event, notificationIds } } };
