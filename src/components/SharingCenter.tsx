@@ -82,7 +82,7 @@ export function SharingCenter({events,onImport,onRSVP,onAddAttendee}:Props) {
       const match=selectedEvent.metadata?.invite?.attendeeList.find(a=>a.email.toLowerCase()===rsvpEmail.trim().toLowerCase());
       if(!match){setMessage("That email is not on this event’s attendee list. Add attendees through an invitation import first.");return;}
       await onRSVP(selectedEvent,rsvpEmail,rsvpStatus);
-      setMessage("RSVP updated locally and queued for sync. Export the event to send the updated response.");
+      setMessage("RSVP updated locally and queued for sync. Use Share RSVP reply to send a METHOD:REPLY payload.");
     } catch(error){setMessage(error instanceof Error?error.message:String(error));}
     finally{setBusy(false);}
   };
