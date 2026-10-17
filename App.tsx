@@ -169,6 +169,15 @@ function CalendarApp() {
   // Resolve event IDs after hydration so cold-start links are not lost.
   const [pendingDeepLink, setPendingDeepLink] = useState<string | null>(null);
   useEffect(() => {
+    const openNotificationRoute = (response: Notifications.NotificationResponse | null) => {
+      const value = response?.notification.request.content.data?.deepLink;
+      if (typeof value === "string" && value.startsWith("drcalender://")) setPendingDeepLink(value);
+    };
+    openNotificationRoute(Notifications.getLastNotificationResponse());
+    const subscription = Notifications.addNotificationResponseReceivedListener(openNotificationRoute);
+    return () => subscription.remove();
+  }, []);
+  useEffect(() => {
     let active = true;
     const receiveUrl = (url: string | null) => {
       if (active && url) setPendingDeepLink(url);
