@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
@@ -24,7 +25,14 @@ class CalendarAlarmReceiver : BroadcastReceiver() {
         CHANNEL_ID, "Calendar alarms", NotificationManager.IMPORTANCE_HIGH
       ))
     }
-    val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
+    val launch = if (id.startsWith("native-event-")) {
+      val payload = id.removePrefix("native-event-")
+      val separator = payload.lastIndexOf("-")
+      val eventId = if (separator > 0) payload.substring(0, separator) else payload
+      Intent(Intent.ACTION_VIEW, Uri.parse("drcalender://events/" + Uri.encode(eventId))).apply {
+        setPackage(context.packageName)
+      }
+    } else context.packageManager.getLaunchIntentForPackage(context.packageName)
     val contentIntent = launch?.let {
       PendingIntent.getActivity(context, id.hashCode(), it,
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
