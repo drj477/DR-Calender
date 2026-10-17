@@ -26,11 +26,14 @@ import type { TemporalEntity } from "./src/temporal/types";
 import { expandRecurrence } from "./src/temporal/recurrence";
 import { ReminderCenter } from "./src/components/ReminderCenter";
 import { TaskCenter, type TaskDraft } from "./src/components/TaskCenter";\nimport { AccountCenter } from "./src/components/AccountCenter";
+import { SharingCenter } from "./src/components/SharingCenter";
+import type { ParsedICSEvent } from "./src/temporal/ics";
+import type { RSVPStatus } from "./src/temporal/types";
 import { cancelNotificationIds, requestNotificationPermission, scheduleEventNotifications, scheduleReminderNotification } from "./src/notifications/notificationService";
 import * as Notifications from "expo-notifications";
 
 type ScreenMode = "Day" | "Week" | "Month";
-type MainTab = "Calendar" | "Tasks" | "Reminders" | "Spaces";
+type MainTab = "Calendar" | "Tasks" | "Reminders" | "Sharing" | "Spaces";
 type Task = { id: string; title: string; due: string; assignee: string; completed: boolean; dueAt?: number | null; hasReminder?: boolean };
 
 
@@ -114,6 +117,7 @@ function EventCard({ event, index, onPress }: { event: TemporalEntity; index: nu
 function CalendarApp() {
   const [mode, setMode] = useState<ScreenMode>("Day");
   const [activeTab, setActiveTab] = useState<MainTab>("Calendar");
+  const sharingEntities = useCalendarStore(state => Object.values(state.entitiesById));
   const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null);
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const selectedDay = selectedDate.getDate();
@@ -421,6 +425,70 @@ function CalendarApp() {
       const dueAt = entity.metadata?.task?.dueAt ?? entity.scheduledAt;
       return { id: entity.id, title: entity.title, due: dueAt === null ? "No due date" : new Date(dueAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }), assignee: entity.metadata?.task?.assignee?.name ?? "You", completed: entity.isCompleted, dueAt, hasReminder: entity.metadata?.task?.reminderMinutesBefore != null };
     }));
+  };
+
+  const importICSItems = async (items: ParsedICSEvent[], strategy: "skip" | "update") => {
+    if (!database) throw new Error("Local calendar storage is not ready.");
+    const current = await database.repository.queryRange(database.workspaceId, 0, 4102444800000);
+    const masters = items.filter(item => item.recurrenceId === null);
+    const exceptions = items.filter(item => item.recurrenceId !== null);
+    let imported = 0;
+    for (const item of masters) {
+      if (!item.start) continue;
+      const startAt = new Date(item.start).getTime();
+      if (!Number.isFinite(startAt)) continue;
+      const allDay = item.isAllDay;
+      const endAt = item.end ? new Date(item.end).getTime() : startAt + (allDay ? 86_400_000 : 3_600_000);
+      if (!Number.isFinite(endAt) || endAt <= startAt) continue;
+      const existing = current.find(entity => entity.itemType === "event" && entity.metadata?.invite?.icsUid === item.uid);
+      if (existing && strategy === "skip") continue;
+      const now = Date.now();
+      const id = existing?.id ?? "ics-" + item.uid.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 100);
+      const attendeeList = item.attendees;
+      const matchingExceptions = exceptions.filter(exception => exception.uid === item.uid);
+      const overrides: Record<string, { startAt:number; endAt:number; title:string; location:string|null; isShielded:boolean; isElastic:boolean; isAllDay?:boolean }> = {};
+      for (const exception of matchingExceptions) {
+        if (!exception.recurrenceId || !exception.start) continue;
+        const originalAt = new Date(exception.recurrenceId).getTime();
+        const movedAt = new Date(exception.start).getTime();
+        if (!Number.isFinite(originalAt) || !Number.isFinite(movedAt)) continue;
+        const exceptionEnd = exception.end ? new Date(exception.end).getTime() : movedAt + (allDay ? 86_400_000 : 3_600_000);
+        overrides[String(originalAt)] = { startAt:movedAt, endAt:exceptionEnd, title:exception.summary || item.summary, location:exception.location ?? item.location, isShielded:false, isElastic:false, isAllDay:exception.isAllDay };
+      }
+      const excludedStartsAt = item.excludedDates.map(value => new Date(value).getTime()).filter(Number.isFinite);
+      const entity: TemporalEntity = {
+        id, workspaceId:database.workspaceId, itemType:"event", title:item.summary || "(Untitled event)",
+        scheduledAt:startAt, endAt, isCompleted:item.status==="CANCELLED", priority:existing?.priority??"normal",
+        isShielded:existing?.isShielded??false, isElastic:existing?.isElastic??false, isGhost:false, ghostClusterId:null,
+        assignedUserIds:existing?.assignedUserIds??["local-user"], rrule:item.recurrenceRule, syncVersion:(existing?.syncVersion??0)+1,
+        createdAt:existing?.createdAt??now, updatedAt:now, deletedAt:null, timeZone:item.timeZone??Intl.DateTimeFormat().resolvedOptions().timeZone??"UTC",
+        metadata:{
+          ...existing?.metadata,
+          recurrence: { excludedStartsAt, overrides:{ ...(existing?.metadata?.recurrence?.overrides??{}), ...overrides } },
+          event:{ kind:allDay?"all-day":"standard", commitment:"hard", location:item.location, meetingUrl:existing?.metadata?.event?.meetingUrl??null, organizerUserId:existing?.metadata?.event?.organizerUserId??null, attendeeUserIds:existing?.metadata?.event?.attendeeUserIds??[], travelBufferMinutes:null, cooldownBufferMinutes:null, reminderMinutesBefore:existing?.metadata?.event?.reminderMinutesBefore??null, notificationIds:existing?.metadata?.event?.notificationIds??[] },
+          invite:{ organizerEmail:item.organizerEmail??"", attendeeList, rsvpStatus:"needs-action", icsUid:item.uid, sequence:item.sequence },
+        },
+      };
+      const mutationId="ics-import-"+id+"-"+entity.syncVersion;
+      await database.repository.upsert(entity,mutationId);
+      useCalendarStore.getState().upsertEntity(entity,mutationId);
+      imported++;
+    }
+    await refreshWorkspaceData(database);
+    if (imported===0) throw new Error("No new or updated master events were imported. Check duplicates, event dates, and recurrence exceptions.");
+  };
+
+  const updateEventRSVP = async (event: TemporalEntity, email: string, status: Exclude<RSVPStatus,"needs-action">) => {
+    if (!database) throw new Error("Local calendar storage is not ready.");
+    const current = await database.repository.getById(event.id);
+    if (!current) throw new Error("Event no longer exists in this workspace.");
+    const attendees = current.metadata?.invite?.attendeeList ?? [];
+    const attendeeExists = attendees.some(attendee => attendee.email.toLowerCase() === email.trim().toLowerCase());
+    if (!attendeeExists) throw new Error("Attendee was not found on the event.");
+    const updated: TemporalEntity = { ...current, updatedAt:Date.now(), syncVersion:current.syncVersion+1, metadata:{ ...current.metadata, invite:{ ...(current.metadata?.invite ?? { organizerEmail:"", attendeeList:[], rsvpStatus:"needs-action" as const, icsUid:current.id+"@dr-calender.local", sequence:0 }), attendeeList:attendees.map(attendee=>attendee.email.toLowerCase()===email.trim().toLowerCase()?{...attendee,rsvpStatus:status}:attendee), sequence:(current.metadata?.invite?.sequence??0)+1 } } };
+    const mutationId="event-rsvp-"+current.id+"-"+updated.syncVersion;
+    await database.repository.upsert(updated,mutationId);
+    useCalendarStore.getState().upsertEntity(updated,mutationId);
   };
 
   const saveTask = async (draft: TaskDraft) => {
@@ -880,7 +948,7 @@ function CalendarApp() {
           </View>
         </View>
         <View style={styles.syncNote}><View style={styles.syncDot} /><Text style={styles.syncText}>{pendingCount ? `${pendingCount} changes waiting to sync` : "Offline-first · Ready when you are"}</Text></View>
-      </ScrollView></> : activeTab === "Tasks" ? <TaskCenter tasks={taskEntities} onSave={draft => { void saveTask(draft).catch(error => console.warn("Unable to save task", error)); }} onToggle={task => { void toggleTaskEntity(task).catch(error => console.warn("Unable to update task", error)); }} onDelete={task => { void deleteTaskEntity(task).catch(error => console.warn("Unable to delete task", error)); }} onPlanDay={() => { void planMyDay().catch(error => console.warn("Unable to plan day", error)); }} onRollover={task => { void rolloverTask(task).catch(error => console.warn("Unable to roll task forward", error)); }} /> : activeTab === "Reminders" ? <ReminderCenter reminders={reminders} permissionGranted={permissionGranted} onRequestPermission={handleRequestNotifications} onCreate={createReminder} onSnooze={snoozeReminder} onComplete={completeReminder} onDelete={deleteReminder} /> : <AccountCenter database={database} onSynced={refreshAfterSync} onWorkspaceChanged={refreshWorkspaceData} />}
+      </ScrollView></> : activeTab === "Tasks" ? <TaskCenter tasks={taskEntities} onSave={draft => { void saveTask(draft).catch(error => console.warn("Unable to save task", error)); }} onToggle={task => { void toggleTaskEntity(task).catch(error => console.warn("Unable to update task", error)); }} onDelete={task => { void deleteTaskEntity(task).catch(error => console.warn("Unable to delete task", error)); }} onPlanDay={() => { void planMyDay().catch(error => console.warn("Unable to plan day", error)); }} onRollover={task => { void rolloverTask(task).catch(error => console.warn("Unable to roll task forward", error)); }} /> : activeTab === "Reminders" ? <ReminderCenter reminders={reminders} permissionGranted={permissionGranted} onRequestPermission={handleRequestNotifications} onCreate={createReminder} onSnooze={snoozeReminder} onComplete={completeReminder} onDelete={deleteReminder} /> : activeTab === "Sharing" ? <SharingCenter events={sharingEntities} onImport={importICSItems} onRSVP={updateEventRSVP} /> : <AccountCenter database={database} onSynced={refreshAfterSync} onWorkspaceChanged={refreshWorkspaceData} />}
 
       <EventEditor
         visible={activeTab === "Calendar" && eventEditorVisible}
@@ -897,6 +965,7 @@ function CalendarApp() {
           { glyph: "▦", label: "Calendar", active: true },
           { glyph: "✓", label: "Tasks", active: false },
           { glyph: "◷", label: "Reminders", active: false },
+          { glyph: "⇄", label: "Sharing", active: false },
           { glyph: "◉", label: "Spaces", active: false },
         ].map(item => (
           <Pressable key={item.label} onPress={() => setActiveTab(item.label as MainTab)} accessibilityRole="button" accessibilityState={{ selected: activeTab === item.label }} style={styles.navItem}>
