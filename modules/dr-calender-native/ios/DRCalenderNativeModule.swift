@@ -76,7 +76,7 @@ public final class DRCalenderNativeModule: Module {
     AsyncFunction("cancelAllManualAlarms") { () async -> Int in
       let center = UNUserNotificationCenter.current()
       let pending = await center.pendingNotificationRequests()
-      let manualIDs = pending.map(\\.identifier).filter { $0.hasPrefix("native-event-manual-") }
+      let manualIDs = pending.map(\.identifier).filter { $0.hasPrefix("native-event-manual-") }
       center.removePendingNotificationRequests(withIdentifiers: manualIDs)
       center.removeDeliveredNotifications(withIdentifiers: manualIDs)
       return manualIDs.count
