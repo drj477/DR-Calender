@@ -176,7 +176,7 @@ function CalendarApp() {
         let entitiesForReconciliation = storedEntities;
         // On Android, exact AlarmManager delivery replaces the Expo reminder for
         // the same event. Clear those Expo requests first to prevent duplicate alerts.
-        if (Platform.OS === "android" && isNativeBridgeAvailable() && await isExactAlarmAllowed()) {
+        if (Platform.OS === "android" && isNativeBridgeAvailable() && await isExactAlarmAllowed() && (await Notifications.getPermissionsAsync()).granted) {
           const updates: TemporalEntity[] = [];
           for (const entity of storedEntities) {
             const meta = entity.metadata?.event;
