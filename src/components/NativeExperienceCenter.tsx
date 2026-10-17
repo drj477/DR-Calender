@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import * as Notifications from "expo-notifications";
 import type { TemporalEntity } from "../temporal/types";
 import { cancelNativeAlarm, isExactAlarmAllowed, isNativeBridgeAvailable, requestExactAlarmPermission, scheduleNativeAlarm } from "../native/nativeExperience";
 
@@ -9,16 +10,27 @@ type Props={entities:TemporalEntity[]};
 export function NativeExperienceCenter({entities}:Props){
   const [bridgeAvailable,setBridgeAvailable]=useState(false);
   const [exactAllowed,setExactAllowed]=useState(false);
+  const [notificationAllowed,setNotificationAllowed]=useState(false);
   const [busyId,setBusyId]=useState<string|null>(null);
   const [scheduled,setScheduled]=useState<Record<string,boolean>>({});
   const [message,setMessage]=useState("");
   const upcoming=useMemo(()=>entities.filter(e=>e.itemType==="event"&&e.deletedAt===null&&!e.isCompleted&&e.scheduledAt!==null&&e.scheduledAt>Date.now()).sort((a,b)=>(a.scheduledAt??0)-(b.scheduledAt??0)).slice(0,12),[entities]);
-  useEffect(()=>{let active=true;setBridgeAvailable(isNativeBridgeAvailable());void isExactAlarmAllowed().then(value=>{if(active)setExactAllowed(value)}).catch(()=>{if(active)setExactAllowed(false)});return()=>{active=false}},[]);
+  useEffect(()=>{let active=true;setBridgeAvailable(isNativeBridgeAvailable());void isExactAlarmAllowed().then(value=>{if(active)setExactAllowed(value)}).catch(()=>{if(active)setExactAllowed(false)});void Notifications.getPermissionsAsync().then(value=>{if(active)setNotificationAllowed(value.granted)}).catch(()=>{if(active)setNotificationAllowed(false)});return()=>{active=false}},[]);
   const requestPermission=async()=>{
     setMessage("");setBusyId("permission");
-    try{const result=await requestExactAlarmPermission();setMessage(result?"Native alarm permission flow completed. Reopen this screen after returning from Settings to refresh permission status.": "Native module unavailable. Rebuild and install the native app; Expo Go cannot load this module.");}
+    try{
+      const currentNotifications=await Notifications.getPermissionsAsync();
+      const notificationsGranted=currentNotifications.granted || (await Notifications.requestPermissionsAsync()).granted;
+      const result=await requestExactAlarmPermission();
+      setNotificationAllowed(notificationsGranted);
+      setMessage(result&&notificationsGranted?"Native alarm and notification permissions are available.": "Return from system Settings and reopen this screen to refresh permission status.");
+    }
     catch(error){setMessage(error instanceof Error?error.message:String(error))}
-    finally{setBusyId(null);void isExactAlarmAllowed().then(setExactAllowed).catch(()=>setExactAllowed(false))}
+    finally{
+      setBusyId(null);
+      void isExactAlarmAllowed().then(setExactAllowed).catch(()=>setExactAllowed(false));
+      void Notifications.getPermissionsAsync().then(value=>setNotificationAllowed(value.granted)).catch(()=>setNotificationAllowed(false));
+    }
   };
   const schedule=async(event:TemporalEntity)=>{
     if(event.metadata?.event?.reminderMinutesBefore!=null) {
@@ -45,8 +57,8 @@ export function NativeExperienceCenter({entities}:Props){
   };
   return <ScrollView style={s.root} contentContainerStyle={s.content}>
     <View style={s.hero}><Text style={s.kicker}>NATIVE EXPERIENCE</Text><Text style={s.heading}>Widgets & alarms</Text><Text style={s.subtitle}>Publish the next task to the Android home-screen widget and manage native alarm-clock scheduling where supported.</Text></View>
-    <View style={s.card}><View style={s.row}><Text style={s.title}>Native bridge</Text><Text style={[s.badge,{color:bridgeAvailable?C.green:C.danger}]}>{bridgeAvailable?"AVAILABLE":"NOT INSTALLED"}</Text></View><Text style={s.muted}>{bridgeAvailable?"The installed native build exposes alarm and widget APIs.":"This feature requires a rebuilt development/production app. It is not available in Expo Go."}</Text><View style={s.row}><Text style={s.title}>Exact alarm access</Text><Text style={[s.badge,{color:exactAllowed?C.green:C.accent}]}>{exactAllowed?"GRANTED":"NOT CONFIRMED"}</Text></View><Text style={s.muted}>Android exact alarm permission is user-controlled and may open system Settings. iOS uses standard local notifications; it does not provide an Android-style exact-alarm permission.</Text><Pressable disabled={!bridgeAvailable||busyId!==null} onPress={()=>{void requestPermission()}} style={[s.button,(!bridgeAvailable||busyId!==null)&&s.disabled]}><Text style={s.buttonText}>{busyId==="permission"?"Opening…":"Request / check native alarm permission"}</Text></Pressable></View>
-    <View style={s.card}><Text style={s.title}>Upcoming events</Text><Text style={s.muted}>Schedule or cancel a native alarm for an event. Existing Expo notifications remain separate and are not automatically duplicated by this screen.</Text>{upcoming.length?upcoming.map(event=><View key={event.id} style={s.event}><View style={{flex:1,gap:4}}><Text style={s.eventTitle}>{event.title}</Text><Text style={s.muted}>{new Date(event.scheduledAt??0).toLocaleString()}</Text></View><Pressable disabled={!bridgeAvailable||!exactAllowed||busyId!==null||event.metadata?.event?.reminderMinutesBefore!=null} onPress={()=>{void schedule(event)}} style={[s.mini,(!bridgeAvailable||!exactAllowed||busyId!==null||event.metadata?.event?.reminderMinutesBefore!=null)&&s.disabled]}><Text style={s.miniText}>{busyId==="event-"+event.id?"…":event.metadata?.event?.reminderMinutesBefore!=null?"Automatic":"Schedule"}</Text></Pressable>{scheduled[event.id]?<Pressable disabled={busyId!==null} onPress={()=>{void cancel(event)}} style={s.mini}><Text style={s.miniText}>Cancel</Text></Pressable>:null}</View>):<Text style={s.muted}>No upcoming scheduled events in the active workspace.</Text>}</View>
+    <View style={s.card}><View style={s.row}><Text style={s.title}>Native bridge</Text><Text style={[s.badge,{color:bridgeAvailable?C.green:C.danger}]}>{bridgeAvailable?"AVAILABLE":"NOT INSTALLED"}</Text></View><Text style={s.muted}>{bridgeAvailable?"The installed native build exposes alarm and widget APIs.":"This feature requires a rebuilt development/production app. It is not available in Expo Go."}</Text><View style={s.row}><Text style={s.title}>Exact alarm access</Text><Text style={[s.badge,{color:exactAllowed?C.green:C.accent}]}>{exactAllowed?"GRANTED":"NOT CONFIRMED"}</Text></View><View style={s.row}><Text style={s.title}>Notification permission</Text><Text style={[s.badge,{color:notificationAllowed?C.green:C.accent}]}>{notificationAllowed?"GRANTED":"NOT GRANTED"}</Text></View><Text style={s.muted}>Android exact alarm permission is user-controlled and may open system Settings. Alarm delivery also requires notification permission. iOS uses standard local notifications; it does not provide an Android-style exact-alarm permission.</Text><Pressable disabled={!bridgeAvailable||busyId!==null} onPress={()=>{void requestPermission()}} style={[s.button,(!bridgeAvailable||busyId!==null)&&s.disabled]}><Text style={s.buttonText}>{busyId==="permission"?"Opening…":"Request / check native alarm permission"}</Text></Pressable></View>
+    <View style={s.card}><Text style={s.title}>Upcoming events</Text><Text style={s.muted}>Schedule or cancel a native alarm for an event. Existing Expo notifications remain separate and are not automatically duplicated by this screen.</Text>{upcoming.length?upcoming.map(event=><View key={event.id} style={s.event}><View style={{flex:1,gap:4}}><Text style={s.eventTitle}>{event.title}</Text><Text style={s.muted}>{new Date(event.scheduledAt??0).toLocaleString()}</Text></View><Pressable disabled={!bridgeAvailable||!exactAllowed||!notificationAllowed||busyId!==null||event.metadata?.event?.reminderMinutesBefore!=null} onPress={()=>{void schedule(event)}} style={[s.mini,(!bridgeAvailable||!exactAllowed||busyId!==null||event.metadata?.event?.reminderMinutesBefore!=null)&&s.disabled]}><Text style={s.miniText}>{busyId==="event-"+event.id?"…":event.metadata?.event?.reminderMinutesBefore!=null?"Automatic":"Schedule"}</Text></Pressable>{scheduled[event.id]?<Pressable disabled={busyId!==null} onPress={()=>{void cancel(event)}} style={s.mini}><Text style={s.miniText}>Cancel</Text></Pressable>:null}</View>):<Text style={s.muted}>No upcoming scheduled events in the active workspace.</Text>}</View>
     {message?<View style={s.message}><Text style={s.messageText}>{message}</Text></View>:null}
     <View style={s.foot}><Text style={s.title}>Platform limits</Text><Text style={s.muted}>Android uses AlarmManager.setAlarmClock and a native broadcast receiver. Delivery still depends on OS policy and notification permission. iOS schedules standard notifications; critical-alert privileges and a WidgetKit extension target require separate Apple-side setup.</Text></View>
   </ScrollView>
