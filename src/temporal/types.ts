@@ -60,6 +60,8 @@ export interface EventMetadata {
   attendeeUserIds: string[];
   travelBufferMinutes: number | null;
   cooldownBufferMinutes: number | null;
+  reminderMinutesBefore?: number | null;
+  notificationIds?: string[];
 }
 
 export interface ReminderMetadata {
@@ -69,6 +71,7 @@ export interface ReminderMetadata {
     | { kind: "geofence-exit"; address: string; latitude?: number; longitude?: number };
   snoozeUntil: number | null;
   snoozeCount: number;
+  notificationId?: string | null;
 }
 
 export interface AlarmMetadata {
