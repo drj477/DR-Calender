@@ -21,7 +21,7 @@ A premium, offline-first calendar and scheduling application for iOS and Android
 - Strict task DTO with title, due date, and assignee.
 - Interval overlap layout engine for concurrent calendar blocks.
 - Elastic event first-fit rescheduling and ghost-cluster expiry/confirmation results.
-- Bounded RRULE expansion for common DAILY, WEEKLY, and MONTHLY recurrence patterns.
+- Bounded RRULE expansion for common DAILY, WEEKLY, and MONTHLY recurrence patterns. Plain MONTHLY rules repeat on the DTSTART day-of-month; months without that date are skipped instead of clamping to month-end.
 - Free-slot finder, drag snapping/resizing helpers, and incomplete-task rollover planning.
 - RFC 5545 ICS parsing and invitation / RSVP payload generation.
 
