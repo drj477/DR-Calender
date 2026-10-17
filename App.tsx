@@ -322,6 +322,79 @@ function CalendarApp() {
     setEventEditorVisible(true);
   };
 
+  const persistReminderUpdate = async (entity: TemporalEntity, mutationId: string) => {
+    useCalendarStore.getState().upsertEntity(entity, mutationId);
+    if (database) await database.repository.upsert(entity, mutationId);
+  };
+
+  const handleRequestNotifications = async () => {
+    const granted = await requestNotificationPermission();
+    setPermissionGranted(granted);
+    if (!granted) { await Linking.openSettings(); return; }
+    if (!database) return;
+    const all = await database.repository.queryRange(database.workspaceId, 0, 4102444800000);
+    for (const entity of all) {
+      if (entity.deletedAt !== null) continue;
+      if (entity.itemType === "reminder" && entity.metadata?.reminder) {
+        const meta = entity.metadata.reminder;
+        const at = meta.snoozeUntil ?? (meta.trigger.kind === "time" ? meta.trigger.at : null);
+        if (at && at > Date.now()) {
+          await cancelNotificationIds(meta.notificationId ? [meta.notificationId] : []);
+          const notificationId = await scheduleReminderNotification(entity, at);
+          const updated = { ...entity, syncVersion: entity.syncVersion + 1, updatedAt: Date.now(), metadata: { ...entity.metadata, reminder: { ...meta, notificationId } } };
+          await persistReminderUpdate(updated, "reminder-permission-" + entity.id + "-" + updated.syncVersion);
+        }
+      } else if (entity.itemType === "event" && entity.metadata?.event?.reminderMinutesBefore != null) {
+        const notificationIds = await scheduleEventNotifications(entity);
+        const updated = { ...entity, syncVersion: entity.syncVersion + 1, updatedAt: Date.now(), metadata: { ...entity.metadata, event: { ...entity.metadata.event, notificationIds } } };
+        await persistReminderUpdate(updated, "event-permission-" + entity.id + "-" + updated.syncVersion);
+      }
+    }
+  };
+
+  const createReminder = async (title: string, at: number) => {
+    if (!database) return;
+    const now = Date.now();
+    const id = "reminder-" + now + "-" + Math.random().toString(36).slice(2, 7);
+    const entity: TemporalEntity = {
+      id, workspaceId: database.workspaceId, itemType: "reminder", title, scheduledAt: at, endAt: null,
+      isCompleted: false, priority: "normal", isShielded: false, isElastic: false, isGhost: false, ghostClusterId: null,
+      assignedUserIds: ["local-user"], rrule: null, syncVersion: 1, createdAt: now, updatedAt: now, deletedAt: null,
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+      metadata: { reminder: { trigger: { kind: "time", at }, snoozeUntil: null, snoozeCount: 0, notificationId: null } },
+    };
+    const granted = permissionGranted === true || await requestNotificationPermission();
+    setPermissionGranted(granted);
+    const notificationId = granted ? await scheduleReminderNotification(entity, at) : null;
+    const saved = { ...entity, metadata: { ...entity.metadata, reminder: { ...entity.metadata!.reminder!, notificationId } } };
+    await persistReminderUpdate(saved, "reminder-create-" + id);
+  };
+
+  const snoozeReminder = async (reminder: TemporalEntity, minutes: number) => {
+    const current = reminder.metadata?.reminder;
+    if (!current) return;
+    await cancelNotificationIds(current.notificationId ? [current.notificationId] : []);
+    const snoozeUntil = Date.now() + minutes * 60_000;
+    const base = { ...reminder, updatedAt: Date.now(), syncVersion: reminder.syncVersion + 1, isCompleted: false };
+    const notificationId = permissionGranted ? await scheduleReminderNotification(base, snoozeUntil) : null;
+    const updated = { ...base, metadata: { ...base.metadata, reminder: { ...current, snoozeUntil, snoozeCount: current.snoozeCount + 1, notificationId } } };
+    await persistReminderUpdate(updated, "reminder-snooze-" + reminder.id + "-" + updated.syncVersion);
+  };
+
+  const completeReminder = async (reminder: TemporalEntity) => {
+    await cancelNotificationIds(reminder.metadata?.reminder?.notificationId ? [reminder.metadata.reminder.notificationId] : []);
+    const current = reminder.metadata?.reminder;
+    const updated = { ...reminder, isCompleted: true, updatedAt: Date.now(), syncVersion: reminder.syncVersion + 1, metadata: { ...reminder.metadata, reminder: current ? { ...current, notificationId: null } : undefined } };
+    await persistReminderUpdate(updated, "reminder-complete-" + reminder.id + "-" + updated.syncVersion);
+  };
+
+  const deleteReminder = async (reminder: TemporalEntity) => {
+    await cancelNotificationIds(reminder.metadata?.reminder?.notificationId ? [reminder.metadata.reminder.notificationId] : []);
+    if (!database) return;
+    const mutationId = "reminder-delete-" + reminder.id + "-" + (reminder.syncVersion + 1);
+    const tombstone = await database.repository.softDelete(reminder.id, mutationId);
+    if (tombstone) useCalendarStore.getState().deleteEntity(reminder.id, mutationId, reminder.workspaceId, "reminder");
+  };
   const saveEvent = (draft: EventDraft) => {
     const now = Date.now();
     const existing = editingEvent;
