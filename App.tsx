@@ -790,7 +790,13 @@ function CalendarApp() {
   const refreshEventNotifications = async (entity: TemporalEntity) => {
     const eventMeta = entity.metadata?.event;
     if (!eventMeta || (eventMeta.reminderMinutesBefore == null && !eventMeta.notificationIds?.length)) return;
-    const notificationIds = await scheduleEventNotifications(entity);
+    let notificationIds: string[];
+    if (Platform.OS === "android" && isNativeBridgeAvailable() && await isExactAlarmAllowed() && eventMeta.reminderMinutesBefore != null) {
+      await cancelNotificationIds(eventMeta.notificationIds);
+      notificationIds = [];
+    } else {
+      notificationIds = await scheduleEventNotifications(entity);
+    }
     const updated = { ...entity, syncVersion: entity.syncVersion + 1, updatedAt: Date.now(), metadata: { ...entity.metadata, event: { ...eventMeta, notificationIds } } };
     await persistReminderUpdate(updated, "event-notifications-refresh-" + entity.id + "-" + updated.syncVersion);
     const permission = await Notifications.getPermissionsAsync();
