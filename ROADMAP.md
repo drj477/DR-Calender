@@ -20,7 +20,7 @@ The project will be built in substantial, user-facing phases. Implementation com
 - Add notification scheduling/cancellation when events are created, edited, moved, completed, or deleted. **Implemented for events and task completion:** reconciliation handles event moves, series changes, occurrence edits/exclusions, and deletion.
 - Handle recurring occurrence reminders and edits/exclusions without duplicate notifications. **Implemented:** rolling 14-day scheduling filters exclusions and uses moved occurrence overrides.
 - Add permission onboarding, notification preferences, and a reminder management surface. **Implemented:** permission flow and a Reminders screen with create, snooze, complete, and delete actions.
-- Native exact-alarm bridge remains open: the existing iOS/Android alarm templates are not registered as a native Expo module. Phase 2 currently uses standard OS local notifications; exact Android alarms, receiver/full-screen behavior, and iOS critical alerts remain native-target integration work.
+- Native exact-alarm bridge is now registered as a local Expo module in source. Android exact alarms, a high-priority receiver, and persisted reboot/time-change recovery are implemented in source but remain uncompiled/unverified. iOS uses standard local notifications, not Android-style exact alarms or critical alerts. Native full-screen behavior and automatic event-edit reconciliation remain open.
 
 ## Phase 3 — Tasks and daily planning
 **Goal:** Make the app useful as a daily planner, not just a calendar grid.
@@ -49,7 +49,7 @@ The project will be built in substantial, user-facing phases. Implementation com
 - **Implemented:** Event invitation sharing through the system share sheet, attendee addition, RSVP status updates, and local outbox persistence so changes sync with the workspace.
 - **Implemented:** Public HTTPS calendar subscription management with saved feed URLs, manual refresh, last-refresh/error status, and UID-based update behavior.
 - **Permission boundary:** Workspace access is governed by Phase 4 workspace roles. Event attendees are invitation metadata and do not independently grant access to private workspace data.
-- **Remaining:** Native document/file picker import and direct .ics attachment creation, authenticated calendar feeds, full VTIMEZONE component generation, per-event ACLs, and push-based subscription refresh. No tests/build/type checks have been run by request.
+- **Remaining:** Direct .ics attachment creation, authenticated calendar feeds, full VTIMEZONE component generation, per-event ACLs, and push-based subscription refresh. Backup restore separately uses a native document picker. No tests/build/type checks have been run by request.
 
 ## Phase 6 — Native experience and widgets
 **Goal:** Make DR-Calender feel integrated with the operating system.
