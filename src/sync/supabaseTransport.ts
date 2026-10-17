@@ -140,3 +140,23 @@ export function revokeRemoteWorkspaceInvite(config: SupabaseConfig, inviteId: st
 export function acceptRemoteWorkspaceInvite(config: SupabaseConfig, inviteId: string): Promise<RemoteWorkspace> {
   return workspaceRpc(config, "dr_accept_workspace_invite", { p_invite_id: inviteId });
 }
+
+/** Sends an invitation through the optional trusted Edge Function. No service-role key is used by the app. */
+export async function sendRemoteWorkspaceInviteEmail(
+  config: SupabaseConfig,
+  workspaceId: string,
+  email: string,
+  role: "editor" | "viewer",
+): Promise<RemoteWorkspaceInvite> {
+  const session = await getValidSession(config);
+  if (!session) throw new Error("Sign in to send a workspace invitation.");
+  const response = await fetch(config.url.replace(/\/+$/, "") + "/functions/v1/send-workspace-invite", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: config.anonKey, Authorization: "Bearer " + session.accessToken },
+    body: JSON.stringify({ workspaceId, email: email.trim().toLowerCase(), role }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Email delivery failed (" + response.status + ").");
+  if (!data.invite?.id) throw new Error("The email provider returned an invalid invitation response.");
+  return data.invite as RemoteWorkspaceInvite;
+}
