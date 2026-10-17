@@ -10,6 +10,7 @@ type Props = {
   onRequestPermission: () => void;
   onCreate: (title: string, at: number) => void;
   onSnooze: (reminder: TemporalEntity, minutes: number) => void;
+  onComplete: (reminder: TemporalEntity) => void;
   onDelete: (reminder: TemporalEntity) => void;
 };
 
@@ -20,13 +21,14 @@ function timeInputValue(date: Date) {
   return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
-export function ReminderCenter({ reminders, permissionGranted, onRequestPermission, onCreate, onSnooze, onDelete }: Props) {
+export function ReminderCenter({ reminders, permissionGranted, onRequestPermission, onCreate, onSnooze, onComplete, onDelete }: Props) {
   const initial = useMemo(() => new Date(Date.now() + 60 * 60_000), []);
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(() => dateInputValue(initial));
   const [time, setTime] = useState(() => timeInputValue(initial));
   const [error, setError] = useState("");
-  const upcoming = reminders.filter(item => !item.isCompleted && item.deletedAt === null).sort((a, b) => (a.metadata?.reminder?.snoozeUntil ?? a.metadata?.reminder?.trigger.kind === "time" && a.metadata.reminder.trigger.at) - (b.metadata?.reminder?.snoozeUntil ?? b.metadata?.reminder?.trigger.kind === "time" && b.metadata.reminder.trigger.at));
+  const reminderTime = (item: TemporalEntity) => item.metadata?.reminder?.snoozeUntil ?? (item.metadata?.reminder?.trigger.kind === "time" ? item.metadata.reminder.trigger.at : item.scheduledAt ?? 0);
+  const upcoming = reminders.filter(item => !item.isCompleted && item.deletedAt === null).sort((a, b) => reminderTime(a) - reminderTime(b));
   const completed = reminders.filter(item => item.isCompleted && item.deletedAt === null);
 
   const submit = () => {
@@ -70,11 +72,11 @@ export function ReminderCenter({ reminders, permissionGranted, onRequestPermissi
       <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Upcoming</Text><Text style={styles.count}>{upcoming.length}</Text></View>
       {upcoming.length ? upcoming.map(item => {
         const trigger = item.metadata?.reminder?.trigger;
-        const at = item.metadata?.reminder?.snoozeUntil ?? (trigger?.kind === "time" ? trigger.at : item.scheduledAt ?? Date.now());
+        const at = reminderTime(item);
         return <View key={item.id} style={styles.reminderCard}>
           <View style={styles.reminderMark}><Text style={styles.reminderMarkText}>◷</Text></View>
           <View style={styles.reminderCopy}><Text style={styles.reminderTitle}>{item.title}</Text><Text style={styles.reminderDate}>{new Date(at).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</Text>
-            <View style={styles.actions}><Pressable onPress={() => onSnooze(item, 10)} style={styles.smallButton}><Text style={styles.smallButtonText}>Snooze 10m</Text></Pressable><Pressable onPress={() => onSnooze(item, 60)} style={styles.smallButton}><Text style={styles.smallButtonText}>Snooze 1h</Text></Pressable><Pressable onPress={() => onDelete(item)} style={styles.deleteButton}><Text style={styles.deleteText}>Delete</Text></Pressable></View>
+            <View style={styles.actions}><Pressable onPress={() => onComplete(item)} style={styles.doneButton}><Text style={styles.doneText}>Done</Text></Pressable><Pressable onPress={() => onSnooze(item, 10)} style={styles.smallButton}><Text style={styles.smallButtonText}>Snooze 10m</Text></Pressable><Pressable onPress={() => onSnooze(item, 60)} style={styles.smallButton}><Text style={styles.smallButtonText}>Snooze 1h</Text></Pressable><Pressable onPress={() => onDelete(item)} style={styles.deleteButton}><Text style={styles.deleteText}>Delete</Text></Pressable></View>
           </View>
         </View>;
       }) : <View style={styles.empty}><Text style={styles.emptyTitle}>Nothing on the reminder list</Text><Text style={styles.hint}>Create a reminder above and it will be saved on this device.</Text></View>}
@@ -103,7 +105,7 @@ const styles = StyleSheet.create({
   reminderMark: { width: 34, height: 34, alignItems: "center", justifyContent: "center", borderRadius: 11, backgroundColor: C.wash }, reminderMarkText: { color: C.accent, fontSize: 20 },
   reminderCopy: { flex: 1, gap: 6 }, reminderTitle: { color: C.text, fontSize: 12, fontWeight: "800" }, reminderDate: { color: C.muted, fontSize: 10 },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 4 }, smallButton: { paddingHorizontal: 9, paddingVertical: 7, borderRadius: 8, backgroundColor: C.raised, borderWidth: 1, borderColor: C.border },
-  smallButtonText: { color: C.text, fontSize: 9, fontWeight: "700" }, deleteButton: { paddingHorizontal: 9, paddingVertical: 7, borderRadius: 8, backgroundColor: "#3A2525" }, deleteText: { color: C.danger, fontSize: 9, fontWeight: "800" },
+  smallButtonText: { color: C.text, fontSize: 9, fontWeight: "700" }, doneButton: { paddingHorizontal: 9, paddingVertical: 7, borderRadius: 8, backgroundColor: "#17372B", borderWidth: 1, borderColor: "#2D6248" }, doneText: { color: "#72D6A1", fontSize: 9, fontWeight: "800" }, deleteButton: { paddingHorizontal: 9, paddingVertical: 7, borderRadius: 8, backgroundColor: "#3A2525" }, deleteText: { color: C.danger, fontSize: 9, fontWeight: "800" },
   empty: { padding: 18, gap: 6, borderRadius: 14, backgroundColor: C.surface, borderWidth: 1, borderStyle: "dashed", borderColor: C.border }, emptyTitle: { color: C.text, fontSize: 12, fontWeight: "700" },
   completedCard: { opacity: 0.65 }, hint: { color: C.muted, fontSize: 10, lineHeight: 15 }, footer: { color: C.muted, fontSize: 9, textAlign: "center", paddingTop: 8 },
 });
