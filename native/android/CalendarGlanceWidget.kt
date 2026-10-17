@@ -4,10 +4,8 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
-import androidx.glance.action.actionStartActivity
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
-import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -23,12 +21,8 @@ import androidx.glance.unit.ColorProvider
 import androidx.glance.unit.dp
 import androidx.glance.unit.sp
 import android.graphics.Color
-import android.content.Intent
-import android.net.Uri
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.action.actionStartActivity
-import androidx.glance.appwidget.action.actionStartActivity
-import androidx.glance.layout.fillMaxWidth
 
 class CalendarGlanceWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
@@ -44,7 +38,6 @@ private fun CalendarWidgetContent(context: Context) {
     val title = prefs.getString("task_title", "Nothing urgent") ?: "Nothing urgent"
     val due = prefs.getString("task_due", "You're all caught up") ?: "You're all caught up"
     val assignee = prefs.getString("task_assignee", "DR") ?: "DR"
-    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("drcalender://tasks"))
 
     Column(
         modifier = GlanceModifier
