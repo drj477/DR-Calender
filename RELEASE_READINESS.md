@@ -17,7 +17,13 @@ This document records source implementation and outstanding validation. It is **
 - [x] Android native alarm persistence and restoration receiver for reboot/time/time-zone/exact-alarm permission changes.
 - [x] iOS WidgetKit extension source is present.
 - [x] iOS WidgetKit target generation is configured with `@bacons/apple-targets`, an extension target folder, and a shared App Group entitlement.
-- [x] Sync and backup restore are coordinated through a shared operation gate; restore refreshes the active database workspace and in-memory stores before releasing the gate.\n- [x] Event editor supports an explicit IANA time zone; event wall-clock values are resolved in that zone, and recurring occurrences use deterministic DST fold/gap handling.\n- [x] ICS export includes `VTIMEZONE` observances for exported IANA time zones across the event-year range.\n- [x] ICS import preserves `VTIMEZONE` components and resolves custom zone offsets for explicit transitions and common yearly transition rules.\n- [x] Task duration is editable and used to calculate planned end times and daily free-slot allocation.\n- [x] Workspace lifecycle migration adds member listing, role changes, removal, invitation expiry, revocation, and email-bound acceptance through authenticated RPCs.\n- [x] Authenticated Edge Function sends workspace invitations through Resend without exposing service-role credentials to the mobile client; app falls back to sharing the invite ID when delivery is unavailable.
+- [x] Sync and backup restore are coordinated through a shared operation gate; restore refreshes the active database workspace and in-memory stores before releasing the gate.
+- [x] Event editor supports an explicit IANA time zone; event wall-clock values are resolved in that zone, and recurring occurrences use deterministic DST fold/gap handling.
+- [x] ICS export includes `VTIMEZONE` observances for exported IANA time zones across the event-year range.
+- [x] ICS import preserves `VTIMEZONE` components and resolves custom zone offsets for explicit transitions and common yearly transition rules.
+- [x] Task duration is editable and used to calculate planned end times and daily free-slot allocation.
+- [x] Workspace lifecycle migration adds member listing, role changes, removal, invitation expiry, revocation, and email-bound acceptance through authenticated RPCs.
+- [x] Authenticated Edge Function sends workspace invitations through Resend without exposing service-role credentials to the mobile client; app falls back to sharing the invite ID when delivery is unavailable.
 
 - [x] Source-level rolling native alarm reconciliation for recurring event occurrences, moved overrides, exclusions, and stale alarm cancellation.
 - [x] App deep-link routing for task/event widget links and Android/iOS event notification taps.
@@ -40,7 +46,9 @@ This document records source implementation and outstanding validation. It is **
 - [ ] Define a backup compatibility policy before future schema changes, including how old backups are upgraded or rejected.
 - [ ] Review accessibility labels/focus order, dynamic type, color contrast, long lists, and low-memory behavior.
 - [ ] Review local logs and define privacy-reviewed telemetry before adding remote crash reporting.
-- [ ] Verify store metadata, privacy disclosures, permissions, and platform policy compliance.\n- [ ] Configure trusted email delivery for workspace invitations if automated delivery is required; the mobile share-sheet flow alone does not send email.\n- [ ] Validate ICS imports from providers that embed unusual custom `VTIMEZONE` observances, `RDATE` transitions, or Windows-style TZID aliases.
+- [ ] Verify store metadata, privacy disclosures, permissions, and platform policy compliance.
+- [ ] Configure trusted email delivery for workspace invitations if automated delivery is required; the mobile share-sheet flow alone does not send email.
+- [ ] Validate ICS imports from providers that embed unusual custom `VTIMEZONE` observances, `RDATE` transitions, or Windows-style TZID aliases.
 
 ## Backup format
 
