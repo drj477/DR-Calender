@@ -138,6 +138,14 @@ function CalendarApp() {
   const pendingCount = useCalendarStore(state => state.pendingMutations.length);
   const storedEntities = useCalendarStore(state => Object.values(state.entitiesById));
 
+  const [appForegroundRevision, setAppForegroundRevision] = useState(0);
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", state => {
+      if (state === "active") setAppForegroundRevision(value => value + 1);
+    });
+    return () => subscription.remove();
+  }, []);
+
   useEffect(() => {
     const now = Date.now();
     const live = storedEntities.filter(entity => entity.deletedAt === null && !entity.isCompleted);
@@ -202,13 +210,6 @@ function CalendarApp() {
   // Widgets and alarm notifications open the app through the drcalender:// scheme.
   // Resolve event IDs after hydration so cold-start links are not lost.
   const [pendingDeepLink, setPendingDeepLink] = useState<string | null>(null);
-  const [appForegroundRevision, setAppForegroundRevision] = useState(0);
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", state => {
-      if (state === "active") setAppForegroundRevision(value => value + 1);
-    });
-    return () => subscription.remove();
-  }, []);
   useEffect(() => {
     const openNotificationRoute = (response: Notifications.NotificationResponse | null) => {
       const value = response?.notification.request.content.data?.deepLink;
