@@ -45,6 +45,16 @@ public final class DRCalenderNativeModule: Module {
       return true
     }
 
+    AsyncFunction("cancelExactAlarmsExcept") { (keepIds: [String]) async -> Int in
+      let center = UNUserNotificationCenter.current()
+      let keep = Set(keepIds)
+      let pending = await center.pendingNotificationRequests()
+      let stale = pending.map(\\.identifier).filter { $0.hasPrefix("native-event-") && !keep.contains($0) }
+      center.removePendingNotificationRequests(withIdentifiers: stale)
+      center.removeDeliveredNotifications(withIdentifiers: stale)
+      return stale.count
+    }
+
     AsyncFunction("publishWidgetSnapshot") { (title: String, dueLabel: String, assignee: String, deepLink: String) async -> Bool in
       guard let defaults = UserDefaults(suiteName: "group.com.drj477.drcalender") else {
         throw NSError(domain: "DRCalenderNative", code: 2,
