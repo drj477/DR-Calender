@@ -7,7 +7,7 @@ const MAX_EXPORT_BYTES=2_000_000;
 type Diagnostics={workspaceCount:number;entityCount:number;liveEntityCount:number;pendingMutations:number;failedMutations:number;checklistCount:number;invalidSchedules:number;orphanedChecklistItems:number;foreignKeyIssues:number;activeWorkspace:string;checkedAt:number};
 type Props={database:LocalCalendarDatabase|null};
 
-function bytes(value:string):number{return new TextEncoder().encode(value).length;}
+function bytes(value:string):number{return value.length*2;}
 function safeError(error:unknown):string{return error instanceof Error?error.message:String(error);}
 
 export function DataSafetyCenter({database}:Props){
