@@ -11,7 +11,7 @@ export interface SQLiteDatabaseAdapter {
   runAsync(sql: string, ...params: Array<string | number | null | Uint8Array>): Promise<SQLiteRunResult>;
   getAllAsync<T>(sql: string, ...params: Array<string | number | null | Uint8Array>): Promise<T[]>;
   getFirstAsync<T>(sql: string, ...params: Array<string | number | null | Uint8Array>): Promise<T | null>;
-  withTransactionAsync<T>(task: () => Promise<T>): Promise<T>;
+  withTransactionAsync(task: () => Promise<void>): Promise<void>;
 }
 
 interface TemporalRow {
@@ -38,7 +38,7 @@ interface TemporalRow {
 }
 
 function toEntity(row: TemporalRow): TemporalEntity {
-  const metadata = JSON.parse(row.metadata_json) as TemporalEntity["metadata"];
+  const metadata = JSON.parse(row.metadata_json) as NonNullable<TemporalEntity["metadata"]>;
   return {
     id: row.id,
     workspaceId: row.workspace_id,
