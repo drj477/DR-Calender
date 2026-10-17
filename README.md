@@ -31,7 +31,7 @@ A premium, offline-first calendar and scheduling application for iOS and Android
 - SQLite schema with workspace membership, temporal entities, ghost clusters, checklists, sync outbox, sync cursors, and query-oriented indexes.
 - SQLite repository adapter for local-first writes, range queries, and outbox delivery bookkeeping.
 - Hybrid Logical Clock primitives, deterministic LWW merge helper, and transport-agnostic sync coordinator.
-- Remote sync transport is an interface; a production Supabase/PowerSync adapter and server authorization policies still need to be wired in.
+- Supabase Auth session handling, SecureStore persistence, authenticated RPC sync transport, workspace-scoped outbox batches, SQLite cursors/HLC metadata, and remote merge application are implemented. Apply the SQL migration and configure a Supabase project before using cloud sync.
 
 ### Native source templates
 
@@ -46,7 +46,7 @@ A premium, offline-first calendar and scheduling application for iOS and Android
 - `src/temporal/` — temporal models, scheduling, recurrence, ICS, drag helpers, and SQLite DDL.
 - `src/store/` — Zustand calendar state.
 - `src/persistence/` — SQLite repository abstraction.
-- `src/sync/` — HLC, deterministic merge, and sync orchestration contracts.
+- `src/sync/` — HLC, deterministic merge, sync orchestration, Supabase Auth/session handling, and authenticated sync transport.\n- `supabase/migrations/` — server-side workspace membership, authorization, and sync RPC schema.\n- `SUPABASE_SETUP.md` — deployment and account setup instructions.
 - `native/ios/` and `native/android/` — native widget/alarm source templates.
 
 ## Run locally
@@ -116,3 +116,14 @@ The calendar UI uses a midnight-navy and warm-amber palette inspired by the supp
 - Added “Plan my day”: unscheduled and overdue tasks are placed into free 30-minute slots between 9 AM and 6 PM, ordered by priority and respecting existing timed events and tasks. The planner uses the device’s local time zone and writes every placement through the local repository/outbox.
 - Task checklist items are persisted inside task metadata, avoiding a separate migration for existing installations.
 - Configurable task durations, advanced recurring task rules, and richer day-agenda summaries remain future improvements.
+
+
+## Phase 4 delivery notes — accounts and sync
+
+- Added Supabase email authentication with secure session storage, refresh-token handling, and sign-out.
+- Added an Account & sync screen in the Spaces tab. It stores the Supabase project URL and public key securely, supports sign-up/sign-in, lists and creates workspaces, switches the active local workspace, and reports sync status/errors.
+- Added an authenticated Supabase RPC transport for outbox push and revision-cursor pull. Server acknowledgements are idempotent per workspace/mutation ID.
+- Connected the SQLite repository to per-workspace cursors and per-entity HLC records. Remote application writes do not enqueue an echo mutation; outgoing batches are filtered by the selected workspace to prevent another workspace's queue from starving the active one.
+- Added `supabase/migrations/202610180001_phase4_sync_workspaces.sql` with workspace/member tables, server-side membership checks, and push/pull/workspace RPCs.
+- **Required deployment step:** apply the migration and configure a Supabase project. See `SUPABASE_SETUP.md`. No hosted backend is provisioned by repository changes alone.
+- Current boundaries: workspace creator membership only (no invite/member-management UI), deterministic HLC/LWW rather than field-level merge, and foreground/manual sync rather than background sync. Tests, builds, and TypeScript checks remain intentionally unrun.
