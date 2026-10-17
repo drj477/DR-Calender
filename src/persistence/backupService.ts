@@ -43,11 +43,13 @@ export async function createBackup(db:SQLiteDatabase, activeWorkspaceId:string):
 export function validateBackup(input:unknown):Backup {
   assert(isRecord(input),"Backup root must be a JSON object.");
   assert(input.format===BACKUP_FORMAT,"This file is not a DR Calender backup.");
+  for(const key of Object.keys(input)) assert(["format","schemaVersion","generatedAt","activeWorkspaceId","data","security"].includes(key),"Unexpected backup field: "+key+".");
   assert(Number.isInteger(input.schemaVersion) && Number(input.schemaVersion)>=1 && Number(input.schemaVersion)<=BACKUP_SCHEMA_VERSION,
     "Unsupported backup schema version. Update the app before restoring this file.");
   assert(typeof input.activeWorkspaceId==="string" && input.activeWorkspaceId.length>0,"Backup active workspace is missing.");
   assert(isRecord(input.data),"Backup data section is missing.");
   const data=input.data as Record<string,unknown>;
+  for(const key of Object.keys(data)) assert(Object.prototype.hasOwnProperty.call(TABLES,key),"Unexpected backup data section: "+key+".");
   for(const key of Object.keys(TABLES) as TableKey[]){
     assert(Array.isArray(data[key]),"Backup section '"+key+"' must be an array.");
     for(const [index,row] of (data[key] as unknown[]).entries()){
@@ -80,6 +82,10 @@ export function validateBackup(input:unknown):Backup {
     try{JSON.parse(String(row.metadata_json));JSON.parse(String(row.assigned_user_ids_json));}catch{throw new Error("Entity metadata is not valid JSON.");}
   }
   for(const row of data.outbox as Array<Record<string,unknown>>){try{JSON.parse(String(row.payload_json));}catch{throw new Error("A pending sync payload is not valid JSON.");}}
+  for(const row of data.settings as Array<Record<string,unknown>>){
+    assert(typeof row.key==="string" && typeof row.value==="string","A setting has an invalid key or value.");
+    assert(!/(token|secret|password)/i.test(row.key),"Backup import cannot write credential-like setting keys.");
+  }
   return input as unknown as Backup;
 }
 
@@ -99,7 +105,9 @@ export async function exportBackupToFile(db:SQLiteDatabase,activeWorkspaceId:str
 export async function restoreBackupFromFile(db:SQLiteDatabase):Promise<{activeWorkspaceId:string;rowCount:number}>{
   const picked=await DocumentPicker.getDocumentAsync({type:["application/json","text/json","public.json"],copyToCacheDirectory:true,multiple:false});
   if(picked.canceled || !picked.assets?.[0]) throw new Error("Backup import was cancelled.");
-  const serialized=await FileSystem.readAsStringAsync(picked.assets[0].uri,{encoding:FileSystem.EncodingType.UTF8});
+  const asset=picked.assets[0];
+  assert(asset.size===undefined || asset.size<=50_000_000,"Backup file exceeds the 50 MB import safety limit.");
+  const serialized=await FileSystem.readAsStringAsync(asset.uri,{encoding:FileSystem.EncodingType.UTF8});
   let parsed:unknown;
   try{parsed=JSON.parse(serialized);}catch{throw new Error("The selected file is not valid JSON.");}
   const backup=validateBackup(parsed);
