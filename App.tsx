@@ -243,11 +243,11 @@ function CalendarApp() {
       if (!active) return;
       setDatabase(local);
       const now = new Date();
-      const start = new Date(now.getFullYear(), now.getMonth(), 1).getTime() - 31 * 24 * 60 * 60_000;
-      const end = new Date(now.getFullYear(), now.getMonth() + 2, 1).getTime();
+      const start = new Date(now.getFullYear() - 1, now.getMonth(), 1).getTime();
+      const end = new Date(now.getFullYear() + 5, now.getMonth() + 1, 1).getTime();
       let entities = await local.repository.queryRange(local.workspaceId, start, end);
       if (entities.length === 0) {
-        const today = new Date(start);
+        const today = new Date();
         const dueTimes = [
           new Date(today.getTime() + 11 * 60 * 60_000 + 30 * 60_000).getTime(),
           new Date(today.getTime() + 14 * 60 * 60_000).getTime(),
