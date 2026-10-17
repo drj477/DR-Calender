@@ -8,7 +8,7 @@ A premium, offline-first calendar and scheduling application for iOS and Android
 
 - Expo application configured for the React Native New Architecture.
 - Midnight-navy and warm-amber calendar UI with layered card shadows, clearer type hierarchy, restrained italic supporting copy, bold action/status emphasis, pressed states, accessible selected-state labels, and Day / Week / Month controls, month paging, Today shortcut, horizontal date selection, task completion animation, and quick task creation.
-- Event creation/editing sheet with title, date, timed or all-day scheduling, duration, location, focus shield, flexible-event settings, and Never / Daily / Weekdays / Weekly / Monthly recurrence presets; all-day events use local midnight boundaries and render in a dedicated day-view lane; recurrence rules persist with the event and enter the sync outbox. The day, week, and month views expand supported recurrence rules into visible occurrences.
+- Event creation/editing sheet with title, date, timed or all-day scheduling, duration, location, focus shield, flexible-event settings, reminder offsets, and Never / Daily / Weekdays / Weekly / Monthly recurrence presets; all-day events use local midnight boundaries and render in a dedicated day-view lane; recurrence rules persist with the event and enter the sync outbox. The day, week, and month views expand supported recurrence rules into visible occurrences.
 - Event deletion uses a local tombstone and a delete mutation; agenda cards render persisted events for the selected day.
 - Proportional day timeline with overlap-aware columns, 15-minute drag-to-move, horizontal cross-date shifting, draggable start/end resize grips, a seven-day week overview, and a 42-cell month grid with event indicators.
 - React Native Reanimated 3 spring presets and Gesture Handler root integration.
@@ -95,3 +95,14 @@ The calendar UI uses a midnight-navy and warm-amber palette inspired by the supp
 - Kept schedule validation in the editor for required titles, valid 24-hour times, timed-event duration bounds, and all-day duration bounds.
 - Improved recurrence range fast-forwarding so an unbounded rule does not begin before DTSTART and accidentally shift its interval phase.
 - Monthly default recurrence repeats on the DTSTART day; months that do not contain that day are skipped. Full RFC 5545 support, selectable per-event time zones, and exhaustive DST gap/fold disambiguation remain out of scope for this bounded engine.
+
+## Phase 2 — Reminders and notifications
+
+- Added a Reminders navigation screen with local reminder creation, scheduled date/time validation, upcoming and completed lists, snooze actions, completion, and deletion.
+- Added Expo local notification setup and an Android reminders channel. Permission state is surfaced in the Reminders screen; if access is denied, the user can open system settings.
+- Event editor supports Off, At start, 5 minutes, 15 minutes, 30 minutes, 1 hour, and 1 day reminder offsets. Event notifications are reconciled after edits, moves, series-rule changes, occurrence edits/exclusions, and deletion.
+- Recurring event notifications are scheduled over a rolling 14-day window. Launch-time reconciliation restores pending reminder/task/event notifications without intentionally rescheduling completed reminders.
+- Task rows can toggle a 15-minute-before-due alert when the task has a due time. Completing a task cancels its pending alert; reopening it can restore the alert.
+- Local reminder records and notification identifiers are stored in the existing temporal entity metadata, so reminders remain visible offline.
+
+**Native alarm boundary:** the iOS and Android exact-alarm source files remain templates and are not yet registered as a native Expo module. Phase 2 uses standard OS local notifications; exact Android alarm scheduling, alarm receiver/full-screen behavior, and iOS critical-alert entitlements still require native-target integration and platform-specific permission handling. Standard notifications cannot guarantee bypassing silent mode or Focus.
