@@ -262,13 +262,13 @@ export type CustomZoneTransition = { at:number; local:number; offsetFrom:number;
 const customTimeZones = new Map<string, CustomZoneTransition[]>();
 function parseOffset(value:string|undefined):number|null {
   if(!value)return null;
-  const match=/^([+-])(\\d{2})(\\d{2})(?:\\d{2})?$/.exec(value);
+  const match=/^([+-])(\d{2})(\d{2})(?:\d{2})?$/.exec(value);
   if(!match)return null;
   const minutes=Number(match[2])*60+Number(match[3]);
   return (match[1]==="-"?-1:1)*minutes;
 }
 function wallParts(value:string):{year:number;month:number;day:number;hour:number;minute:number;second:number}|null {
-  const match=/^(\\d{4})(\\d{2})(\\d{2})T(\\d{2})(\\d{2})(\\d{2})?$/.exec(value);
+  const match=/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})?$/.exec(value);
   if(!match)return null;
   return {year:Number(match[1]),month:Number(match[2]),day:Number(match[3]),hour:Number(match[4]),minute:Number(match[5]),second:Number(match[6]??0)};
 }
@@ -301,7 +301,7 @@ function loadCustomTimeZones(lines:string[]):void {
       if(fields.FREQ!=="YEARLY")continue;
       const month=Number(fields.BYMONTH??start.month);
       if(!Number.isInteger(month)||month<1||month>12)continue;
-      const weekdayRule=/^([+-]?\\d)?(SU|MO|TU|WE|TH|FR|SA)$/.exec(fields.BYDAY??"");
+      const weekdayRule=/^([+-]?\d)?(SU|MO|TU|WE|TH|FR|SA)$/.exec(fields.BYDAY??"");
       const weekdays:Record<string,number>={SU:0,MO:1,TU:2,WE:3,TH:4,FR:5,SA:6};
       for(let year=Math.max(start.year+1,1970);year<=2100;year++){
         let day:number;
