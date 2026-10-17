@@ -42,7 +42,7 @@ export async function scheduleReminderNotification(
       body: "Your DR Calender reminder is due.",
       sound: "default",
       ...(Platform.OS === "android" ? { channelId: "reminders" } : {}),
-      data: { entityId: entity.id, itemType: entity.itemType, deepLink: `drcalender://reminders/${entity.id}` },
+      data: { entityId: entity.id, itemType: entity.itemType, deepLink: entity.itemType === "task" ? "drcalender://tasks/" + encodeURIComponent(entity.id) : "drcalender://reminders/" + encodeURIComponent(entity.id) },
     },
     trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(at) },
   });
