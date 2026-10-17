@@ -28,7 +28,7 @@ import { ReminderCenter } from "./src/components/ReminderCenter";
 import { TaskCenter, type TaskDraft } from "./src/components/TaskCenter";
 import { AccountCenter } from "./src/components/AccountCenter";
 import { SharingCenter } from "./src/components/SharingCenter";
-import type { ParsedICSEvent } from "./src/temporal/ics";
+import { parseICSDateTime, type ParsedICSEvent } from "./src/temporal/ics";
 import type { RSVPStatus } from "./src/temporal/types";
 import { cancelNotificationIds, requestNotificationPermission, scheduleEventNotifications, scheduleReminderNotification } from "./src/notifications/notificationService";
 import * as Notifications from "expo-notifications";
@@ -436,10 +436,10 @@ function CalendarApp() {
     let imported = 0;
     for (const item of masters) {
       if (!item.start) continue;
-      const startAt = new Date(item.start).getTime();
+      const startAt = parseICSDateTime(item.start,item.timeZone);
       if (!Number.isFinite(startAt)) continue;
       const allDay = item.isAllDay;
-      const endAt = item.end ? new Date(item.end).getTime() : startAt + (allDay ? 86_400_000 : 3_600_000);
+      const endAt = item.end ? parseICSDateTime(item.end,item.timeZone) : startAt + (allDay ? 86_400_000 : 3_600_000);
       if (!Number.isFinite(endAt) || endAt <= startAt) continue;
       const existing = current.find(entity => entity.itemType === "event" && entity.metadata?.invite?.icsUid === item.uid);
       if (existing && strategy === "skip") continue;
@@ -450,13 +450,13 @@ function CalendarApp() {
       const overrides: Record<string, { startAt:number; endAt:number; title:string; location:string|null; isShielded:boolean; isElastic:boolean; isAllDay?:boolean }> = {};
       for (const exception of matchingExceptions) {
         if (!exception.recurrenceId || !exception.start) continue;
-        const originalAt = new Date(exception.recurrenceId).getTime();
-        const movedAt = new Date(exception.start).getTime();
+        const originalAt = parseICSDateTime(exception.recurrenceId,exception.timeZone ?? item.timeZone);
+        const movedAt = parseICSDateTime(exception.start,exception.timeZone ?? item.timeZone);
         if (!Number.isFinite(originalAt) || !Number.isFinite(movedAt)) continue;
-        const exceptionEnd = exception.end ? new Date(exception.end).getTime() : movedAt + (allDay ? 86_400_000 : 3_600_000);
+        const exceptionEnd = exception.end ? parseICSDateTime(exception.end,exception.timeZone ?? item.timeZone) : movedAt + (allDay ? 86_400_000 : 3_600_000);
         overrides[String(originalAt)] = { startAt:movedAt, endAt:exceptionEnd, title:exception.summary || item.summary, location:exception.location ?? item.location, isShielded:false, isElastic:false, isAllDay:exception.isAllDay };
       }
-      const excludedStartsAt = item.excludedDates.map(value => new Date(value).getTime()).filter(Number.isFinite);
+      const excludedStartsAt = item.excludedDates.map(value => parseICSDateTime(value,item.timeZone)).filter(Number.isFinite);
       const entity: TemporalEntity = {
         id, workspaceId:database.workspaceId, itemType:"event", title:item.summary || "(Untitled event)",
         scheduledAt:startAt, endAt, isCompleted:item.status==="CANCELLED", priority:existing?.priority??"normal",
