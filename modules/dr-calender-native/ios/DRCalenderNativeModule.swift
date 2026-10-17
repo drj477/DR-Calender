@@ -36,7 +36,9 @@ public final class DRCalenderNativeModule: Module {
         let payload = String(id.dropFirst("native-event-".count))
         if let separator = payload.lastIndex(of: "-") {
           let eventID = String(payload[..<separator])
-          content.userInfo["deepLink"] = "drcalender://events/" + eventID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)!.replacingOccurrences(of: "/", with: "%2F")
+          let occurrenceStart = String(payload[payload.index(after: separator)...])
+          let routeID = eventID + "::" + occurrenceStart
+          content.userInfo["deepLink"] = "drcalender://events/" + routeID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)!.replacingOccurrences(of: "/", with: "%2F")
         }
       }
       let trigger = UNCalendarNotificationTrigger(dateMatching: Calendar.current.dateComponents(
