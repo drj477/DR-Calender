@@ -1,11 +1,11 @@
 import type { SyncMutation } from "../temporal/types";
 import type { AuthSession, SupabaseConfig } from "./authService";
 import type { RemoteTemporalRecord, SyncTransport } from "./syncCoordinator";
-import { getValidSession, loadSession, refreshSession } from "./authService";
+import { getValidSession } from "./authService";
 
 type RemoteRow = { entity_id: string; entity_payload: unknown; clock: unknown; revision: number };
 export class SupabaseSyncTransport implements SyncTransport {
-  constructor(private readonly config: SupabaseConfig, private readonly initialSession: AuthSession) {}
+  constructor(private readonly config: SupabaseConfig, _initialSession: AuthSession) {}
   private async credentials(): Promise<AuthSession> {
     const current = await getValidSession(this.config);
     if (!current) throw new Error("Your session expired. Sign in again to sync.");
