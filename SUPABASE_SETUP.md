@@ -6,7 +6,9 @@ Phase 4 uses Supabase Auth for account sessions and PostgreSQL RPC functions for
 
 Open the Supabase project SQL Editor and run the complete migration:
 
-`supabase/migrations/202610180001_phase4_sync_workspaces.sql`\n`supabase/migrations/202610180002_phase7_security_hardening.sql`\n`supabase/migrations/202610180003_phase9_workspace_lifecycle.sql`
+`supabase/migrations/202610180001_phase4_sync_workspaces.sql`
+`supabase/migrations/202610180002_phase7_security_hardening.sql`
+`supabase/migrations/202610180003_phase9_workspace_lifecycle.sql`
 
 It creates workspace and membership tables, an idempotency ledger, versioned temporal entity storage, row-level security, and server-side RPC functions for workspace listing/creation and sync push/pull.
 
@@ -47,7 +49,10 @@ Apply migrations in order to a **staging** project first:
 
 1. `202610180001_phase4_sync_workspaces.sql`
 2. `202610180002_phase7_security_hardening.sql`
+3. `202610180003_phase9_workspace_lifecycle.sql`
 
-The second migration removes direct table privileges from the mobile roles and hardens the authenticated sync-push RPC. Review `SUPABASE_SECURITY_REVIEW.md` and complete its role/permission and malformed-payload checklist before production. Repository source cannot confirm which migrations are applied to your hosted project; verify in the Supabase SQL editor and inspect effective grants/function definitions.
+The second migration removes direct table privileges from the mobile roles and hardens the authenticated sync-push RPC. The third adds authenticated workspace membership and invitation lifecycle RPCs. Review `SUPABASE_SECURITY_REVIEW.md` and complete its role/permission and malformed-payload checklist before production. Repository source cannot confirm which migrations are applied to your hosted project; verify in the Supabase SQL editor and inspect effective grants/function definitions.
+
+To enable email invitations, deploy `supabase/functions/send-workspace-invite/index.ts` and set `RESEND_API_KEY` and `INVITE_FROM_EMAIL` as Supabase Function secrets. The platform supplies `SUPABASE_URL` and `SUPABASE_ANON_KEY`. The app continues to support share-sheet invitations if email delivery is unavailable.
 
 Never place a Supabase service-role key in the mobile app. Use only the project URL, publishable/anon key, and authenticated user session.
