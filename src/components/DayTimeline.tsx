@@ -147,14 +147,17 @@ export function DayTimeline({ date, events, onEventPress, onEventMove }: DayTime
   const timelineStart = new Date(date.getFullYear(), date.getMonth(), date.getDate(), START_HOUR).getTime();
   const timelineEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate(), END_HOUR).getTime();
   const totalHeight = (END_HOUR - START_HOUR) * HOUR_HEIGHT;
+  const allDayEvents = events.filter(event => event.metadata?.event?.kind === "all-day");
+  const timedEvents = events.filter(event => event.metadata?.event?.kind !== "all-day");
   const layout = useMemo(
-    () => calculateOverlappingLayout(events, new Date(timelineStart), { dayEnd: new Date(timelineEnd) }),
-    [events, timelineEnd, timelineStart],
+    () => calculateOverlappingLayout(timedEvents, new Date(timelineStart), { dayEnd: new Date(timelineEnd) }),
+    [timedEvents, timelineEnd, timelineStart],
   );
   const layoutById = new Map(layout.map(item => [item.id, item]));
 
   return (
     <ScrollView horizontal={false} nestedScrollEnabled showsVerticalScrollIndicator={false} style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+      {allDayEvents.length > 0 ? <View style={styles.allDayLane}><Text style={styles.allDayLabel}>ALL DAY</Text><View style={styles.allDayList}>{allDayEvents.map(event => <Pressable key={event.id} onPress={() => onEventPress(event)} accessibilityRole="button" accessibilityLabel={`Edit all-day event ${event.title}`} style={styles.allDayChip}><Text numberOfLines={1} style={styles.allDayChipText}>{event.title}</Text></Pressable>)}</View></View> : null}
       <View style={[styles.timeline, { height: totalHeight }]}>
         <View style={styles.timeRail}>
           {Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, index) => {
@@ -171,7 +174,7 @@ export function DayTimeline({ date, events, onEventPress, onEventMove }: DayTime
           {Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, index) => (
             <View key={index} style={[styles.gridLine, { top: index * HOUR_HEIGHT }]} />
           ))}
-          {events.map(event => {
+          {timedEvents.map(event => {
             const position = layoutById.get(event.id);
             if (!position) return null;
             const top = (position.startAt - timelineStart) * MINUTE_HEIGHT / 60_000;
@@ -201,6 +204,11 @@ export function DayTimeline({ date, events, onEventPress, onEventMove }: DayTime
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 6 },
+  allDayLane: { flexDirection: "row", gap: 10, padding: 10, marginBottom: 10, backgroundColor: "#171C28", borderRadius: 12, borderWidth: 1, borderColor: COLORS.border },
+  allDayLabel: { color: COLORS.accent, fontSize: 9, fontWeight: "800", width: LABEL_WIDTH - 8, paddingTop: 6 },
+  allDayList: { flex: 1, gap: 5 },
+  allDayChip: { paddingHorizontal: 10, paddingVertical: 7, borderRadius: 8, backgroundColor: "#322817", borderLeftWidth: 3, borderLeftColor: COLORS.accent },
+  allDayChipText: { color: COLORS.text, fontSize: 11, fontWeight: "700" },
   timeline: { flexDirection: "row" },
   timeRail: { width: LABEL_WIDTH },
   hourLabel: { position: "absolute", right: 6, height: 18, marginTop: -7 },
