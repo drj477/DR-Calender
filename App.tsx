@@ -475,6 +475,7 @@ function CalendarApp() {
           } else if (entity.itemType === "event" && entity.metadata?.event?.reminderMinutesBefore != null) {
             const eventMeta = entity.metadata.event;
             const useNativeAndroidAlarm = Platform.OS === "android" && isNativeBridgeAvailable() && await isExactAlarmAllowed();
+            if (useNativeAndroidAlarm && !eventMeta.notificationIds?.length) continue;
             let notificationIds: string[];
             if (useNativeAndroidAlarm) {
               await cancelNotificationIds(eventMeta.notificationIds);
