@@ -39,6 +39,7 @@ export interface EventDraft {
   rrule: string | null;
   scope: "occurrence" | "series";
   occurrenceStartAt: number | null;
+  timeZone: string;
 }
 
 interface EventEditorProps {
@@ -51,10 +52,38 @@ interface EventEditorProps {
   onDelete?: (event: TemporalEntity, scope: "occurrence" | "series", occurrenceStartAt: number | null) => void;
 }
 
-function formatClock(date: Date): string {
-  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+function formatClock(date: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(date);
+  const value = (type: string) => parts.find(part => part.type === type)?.value ?? "00";
+  return value("hour") + ":" + value("minute");
 }
-
+function zonedParts(timestamp: number, timeZone: string): Record<string, string> {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone, year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", second:"2-digit", hourCycle:"h23" }).formatToParts(new Date(timestamp));
+  return Object.fromEntries(parts.filter(part => part.type !== "literal").map(part => [part.type, part.value]));
+}
+function zonedEpoch(year:number,month:number,day:number,hour:number,minute:number,timeZone:string):number {
+  const resolve = (target:number):number[] => {
+    const offsets=new Set<number>();
+    for(const delta of [-36,-12,0,12,36]){
+      const sample=target+delta*60*60_000;
+      const p=zonedParts(sample,timeZone);
+      const represented=Date.UTC(Number(p.year),Number(p.month)-1,Number(p.day),Number(p.hour),Number(p.minute));
+      offsets.add(represented-sample);
+    }
+    return [...offsets].map(offset=>target-offset).filter(candidate=>{
+      const p=zonedParts(candidate,timeZone);
+      return Date.UTC(Number(p.year),Number(p.month)-1,Number(p.day),Number(p.hour),Number(p.minute))===target;
+    }).sort((a,b)=>a-b);
+  };
+  const target=Date.UTC(year,month-1,day,hour,minute);
+  const exact=resolve(target);
+  if(exact.length)return exact[0];
+  for(let offset=1;offset<=180;offset++){
+    const candidates=resolve(target+offset*60_000);
+    if(candidates.length)return candidates[0];
+  }
+  throw new RangeError("Could not resolve this local time in the selected time zone.");
+}
 function ruleFromRecurrence(value: string): string | null {
   if (value === "daily") return "FREQ=DAILY";
   if (value === "weekdays") return "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR";
@@ -76,7 +105,8 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
   const [title, setTitle] = useState("");
   const [startClock, setStartClock] = useState("09:00");
   const [duration, setDuration] = useState("60");
-  const [location, setLocation] = useState("");\n  const [timeZone, setTimeZone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
+  const [location, setLocation] = useState("");
+  const [timeZone, setTimeZone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
   const [shielded, setShielded] = useState(false);
   const [elastic, setElastic] = useState(false);
   const [allDay, setAllDay] = useState(false);
@@ -88,7 +118,9 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
 
   useEffect(() => {
     if (!visible) return;
-    setTitle(event?.title ?? "");\n    const zone = event?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";\n    setTimeZone(zone);
+    setTitle(event?.title ?? "");
+    const zone = event?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    setTimeZone(zone);
     setScope(occurrenceStartAt !== null && event?.rrule ? "occurrence" : "series");
     const override = occurrenceStartAt !== null ? event?.metadata?.recurrence?.overrides[String(occurrenceStartAt)] : undefined;
     const start = override?.startAt ?? occurrenceStartAt ?? event?.scheduledAt ?? new Date(
@@ -137,7 +169,8 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
   };
 
   const save = () => {
-    const cleanTitle = title.trim();\n    try { new Intl.DateTimeFormat("en-US", { timeZone }).format(new Date()); } catch { setError("Enter a valid IANA time zone, such as Asia/Kolkata or America/New_York."); return; }
+    const cleanTitle = title.trim();
+    try { new Intl.DateTimeFormat("en-US", { timeZone }).format(new Date()); } catch { setError("Enter a valid IANA time zone, such as Asia/Kolkata or America/New_York."); return; }
     const timeMatch = /^(\d{1,2}):(\d{2})$/.exec(startClock.trim());
     const minutes = Number(duration);
     if (!cleanTitle) {
@@ -161,10 +194,16 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
     const dateForSave = scope === "series" && occurrenceStartAt !== null && event?.scheduledAt !== null && event?.scheduledAt !== undefined
       ? new Date(event.scheduledAt)
       : selectedDate;
+    const useSeriesWallDate = scope === "series" && occurrenceStartAt !== null && event?.scheduledAt !== null && event?.scheduledAt !== undefined;
+    const parts = useSeriesWallDate ? zonedParts(dateForSave.getTime(), timeZone) : null;
+    const year = parts ? Number(parts.year) : dateForSave.getFullYear();
+    const month = parts ? Number(parts.month) : dateForSave.getMonth() + 1;
+    const day = parts ? Number(parts.day) : dateForSave.getDate();
     const startAt = allDay
-      ? new Date(dateForSave.getFullYear(), dateForSave.getMonth(), dateForSave.getDate()).getTime()
-      : new Date(dateForSave.getFullYear(), dateForSave.getMonth(), dateForSave.getDate(), Number(timeMatch![1]), Number(timeMatch![2]), 0, 0).getTime();
-    const allDayEnd = new Date(dateForSave.getFullYear(), dateForSave.getMonth(), dateForSave.getDate() + (allDay ? days : 1)).getTime();
+      ? zonedEpoch(year, month, day, 0, 0, timeZone)
+      : zonedEpoch(year, month, day, Number(timeMatch![1]), Number(timeMatch![2]), timeZone);
+    const endDate = new Date(Date.UTC(year, month - 1, day + (allDay ? days : 1)));
+    const allDayEnd = zonedEpoch(endDate.getUTCFullYear(), endDate.getUTCMonth() + 1, endDate.getUTCDate(), 0, 0, timeZone);
     onSave({
       title: cleanTitle,
       startAt,
@@ -176,7 +215,8 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
       reminderMinutesBefore,
       rrule: ruleFromRecurrence(recurrence),
       scope: event?.rrule && occurrenceStartAt !== null ? scope : "series",
-      occurrenceStartAt: event?.rrule && occurrenceStartAt !== null ? occurrenceStartAt : null,\n      timeZone,
+      occurrenceStartAt: event?.rrule && occurrenceStartAt !== null ? occurrenceStartAt : null,
+      timeZone,
     });
   };
 
