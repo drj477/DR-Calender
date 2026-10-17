@@ -8,7 +8,7 @@ A premium, offline-first calendar and scheduling application for iOS and Android
 
 - Expo application configured for the React Native New Architecture.
 - Midnight-navy and warm-amber calendar UI with layered card shadows, clearer type hierarchy, restrained italic supporting copy, bold action/status emphasis, pressed states, accessible selected-state labels, and Day / Week / Month controls, month paging, Today shortcut, horizontal date selection, task completion animation, and quick task creation.
-- Event creation/editing sheet with title, date, start time, duration, location, focus shield, flexible-event settings, and Never / Daily / Weekdays / Weekly / Monthly recurrence presets; recurrence rules persist with the event and enter the sync outbox.
+- Event creation/editing sheet with title, date, start time, duration, location, focus shield, flexible-event settings, and Never / Daily / Weekdays / Weekly / Monthly recurrence presets; recurrence rules persist with the event and enter the sync outbox. The day, week, and month views expand supported recurrence rules into visible occurrences.
 - Event deletion uses a local tombstone and a delete mutation; agenda cards render persisted events for the selected day.
 - Proportional day timeline with overlap-aware columns, 15-minute drag-to-move, horizontal cross-date shifting, draggable start/end resize grips, a seven-day week overview, and a 42-cell month grid with event indicators.
 - React Native Reanimated 3 spring presets and Gesture Handler root integration.
@@ -60,7 +60,7 @@ npx expo start
 ## Important implementation boundaries
 
 - The day view now uses a proportional draggable grid and week/month views have distinct overviews. Month paging and a Today shortcut are implemented. Timeline resizing and horizontal cross-date movement are implemented; a full editor for recurrence/attendees remains to be implemented.
-- The RRULE expander is intentionally bounded and is not a complete RFC 5545 recurrence implementation. Event-editor recurrence presets currently save RRULE metadata; rendering generated occurrence instances throughout day/week/month views and editing a single occurrence versus the series remain follow-up work. Timezone/DST-sensitive recurrence should be expanded with a timezone-aware engine.
+- The RRULE expander is intentionally bounded and is not a complete RFC 5545 recurrence implementation. Day/week/month views now render generated instances for supported recurrence rules. Occurrence exceptions, editing or deleting only one occurrence, and explicit series-level versus occurrence-level controls remain follow-up work. Timezone/DST-sensitive recurrence should be expanded with a timezone-aware engine.
 - The free-slot finder uses a fixed offset, not a full IANA timezone database.
 - The sync coordinator requires a real transport and transactional local adapter before multiplayer behavior is production-ready.
 - iOS critical alerts require Apple's entitlement and user authorization. Android exact alarms and full-screen intents are subject to OS permissions and user settings; neither platform can guarantee overriding all silent/focus states.
@@ -78,3 +78,10 @@ The calendar UI uses a midnight-navy and warm-amber palette inspired by the supp
 - Strengthened visual hierarchy with heavier event titles, clearer section labels, amber-highlighted counts, and limited italic supporting copy.
 - Added pressed feedback and selected accessibility states to calendar mode/date controls, larger primary create-event affordance, and improved contrast for focus-shield and selected recurrence states.
 - Kept amber for primary actions/selection, coral for flexible-event emphasis, and green for the healthy offline/sync-ready indicator.
+
+
+### Recurrence rendering
+
+- Calendar views use the bounded RRULE expander to generate event instances within the visible date range; the stored series remains the source of truth.
+- Unsupported or malformed recurrence rules are logged and skipped rather than crashing the calendar render.
+- Per-occurrence overrides/exceptions and separate “this occurrence / entire series” editing flows are not implemented yet.
