@@ -459,10 +459,10 @@ function CalendarApp() {
       const excludedStartsAt = item.excludedDates.map(value => parseICSDateTime(value,item.timeZone)).filter(Number.isFinite);
       const entity: TemporalEntity = {
         id, workspaceId:database.workspaceId, itemType:"event", title:item.summary || "(Untitled event)",
-        scheduledAt:startAt, endAt, isCompleted:item.status==="CANCELLED", priority:existing?.priority??"normal",
+        scheduledAt:startAt, endAt, isCompleted:false, priority:existing?.priority??"normal",
         isShielded:existing?.isShielded??false, isElastic:existing?.isElastic??false, isGhost:false, ghostClusterId:null,
         assignedUserIds:existing?.assignedUserIds??["local-user"], rrule:item.recurrenceRule, syncVersion:(existing?.syncVersion??0)+1,
-        createdAt:existing?.createdAt??now, updatedAt:now, deletedAt:null, timeZone:item.timeZone??Intl.DateTimeFormat().resolvedOptions().timeZone??"UTC",
+        createdAt:existing?.createdAt??now, updatedAt:now, deletedAt:item.status==="CANCELLED"?now:null, timeZone:item.timeZone??Intl.DateTimeFormat().resolvedOptions().timeZone??"UTC",
         metadata:{
           ...existing?.metadata,
           recurrence: { excludedStartsAt, overrides:{ ...(existing?.metadata?.recurrence?.overrides??{}), ...overrides } },
