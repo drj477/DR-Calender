@@ -33,12 +33,15 @@ A premium, offline-first calendar and scheduling application for iOS and Android
 - Hybrid Logical Clock primitives, deterministic LWW merge helper, and transport-agnostic sync coordinator.
 - Supabase Auth session handling, SecureStore persistence, authenticated RPC sync transport, workspace-scoped outbox batches, SQLite cursors/HLC metadata, and remote merge application are implemented. Apply the SQL migration and configure a Supabase project before using cloud sync.
 
-### Native source templates
+### Native experience and widgets
 
-- iOS WidgetKit task widget source.
-- Android Jetpack Glance task widget source.
-- Native local alarm scheduler templates for iOS and Android.
-- Native files are templates and are not yet registered in generated Xcode / Android targets. Widget extension setup, entitlements, manifest entries, notification receivers, and an Expo config plugin remain integration work.
+- Local Expo native module in `modules/dr-calender-native`, configured for Android and Apple autolinking.
+- Android exact-alarm scheduling through `AlarmManager.setAlarmClock`, permission status/request flow, native alarm receiver, and high-priority alarm notifications.
+- Android Jetpack Glance home-screen widget with manifest receiver, provider metadata, shared-preference snapshot storage, and explicit refresh.
+- iOS native bridge for standard local notification scheduling/cancellation and App Group widget snapshot publication with WidgetKit timeline refresh.
+- `Native` tab exposes native bridge status and manual native alarm scheduling for upcoming events.
+- App-level entity changes publish the next task/event snapshot for widgets. Widget taps use the `drcalender://` URL scheme.
+- The native bridge is unavailable in Expo Go; a rebuilt development/production app is required. The iOS WidgetKit extension target and its own App Group entitlement still need Xcode/EAS native-target setup. Critical-alert privileges are not included.
 
 ## Project structure
 
