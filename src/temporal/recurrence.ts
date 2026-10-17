@@ -135,7 +135,23 @@ export function expandRecurrence(
       const occurrenceStart = wallClockToEpoch(wall, timeZone);
       if (occurrenceStart >= entity.scheduledAt && occurrenceStart <= until) {
         generated += 1;
-        const occurrenceEnd = duration === null ? null : occurrenceStart + duration;
+        let occurrenceEnd = duration === null ? null : occurrenceStart + duration;
+        if (duration !== null && entity.metadata?.event?.kind === "all-day") {
+          // All-day duration is a count of local calendar days, not 24-hour
+          // chunks; this preserves midnight boundaries across DST changes.
+          const endWall = getWallClockParts(entity.endAt!, timeZone);
+          const endDateUtc = Date.UTC(endWall.year, endWall.month - 1, endWall.day);
+          const startDateUtc = Date.UTC(startWall.year, startWall.month - 1, startWall.day);
+          const calendarDays = Math.max(1, Math.round((endDateUtc - startDateUtc) / DAY_MS));
+          const nextWallDate = new Date(Date.UTC(wall.year, wall.month - 1, wall.day + calendarDays));
+          occurrenceEnd = wallClockToEpoch({
+            ...wall,
+            year: nextWallDate.getUTCFullYear(),
+            month: nextWallDate.getUTCMonth() + 1,
+            day: nextWallDate.getUTCDate(),
+            hour: 0, minute: 0, second: 0, millisecond: 0,
+          }, timeZone);
+        }
         if (occurrenceStart < options.rangeEnd && (occurrenceEnd ?? occurrenceStart) >= options.rangeStart) {
           occurrences.push({
             entityId: entity.id,
