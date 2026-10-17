@@ -11,16 +11,16 @@ The project will be built in substantial, user-facing phases. Implementation com
 - Tighten occurrence-versus-series operations and preserve exception identity when the series changes.
 - Improve validation and clear user-facing errors for invalid schedules.
 
-**Current progress:** Monthly recurrence default-day behavior is implemented. All-day/multi-day semantics and broader editor integration remain.
+**Current progress:** Implemented: monthly default-day behavior, all-day/multi-day semantics across editor and calendar views, and recurrence occurrence exceptions. Per-event time-zone selection and exhaustive RFC 5545 DST gap/fold handling remain outside this phase.
 
 ## Phase 2 — Reminders and notifications
 **Goal:** Turn scheduled events into dependable reminders.
 
-- Persist reminder rules per event/task, including relative offsets and custom reminder times.
-- Add notification scheduling/cancellation when events are created, edited, moved, completed, or deleted.
-- Handle recurring occurrence reminders and edits/exclusions without duplicate notifications.
-- Add permission onboarding, notification preferences, and a reminder management surface.
-- Integrate the existing native alarm templates where platform capabilities and permissions allow.
+- Persist reminder rules per event/task, including relative offsets and custom reminder times. **Implemented:** event offsets and task due-time alerts are persisted locally.
+- Add notification scheduling/cancellation when events are created, edited, moved, completed, or deleted. **Implemented for events and task completion:** reconciliation handles event moves, series changes, occurrence edits/exclusions, and deletion.
+- Handle recurring occurrence reminders and edits/exclusions without duplicate notifications. **Implemented:** rolling 14-day scheduling filters exclusions and uses moved occurrence overrides.
+- Add permission onboarding, notification preferences, and a reminder management surface. **Implemented:** permission flow and a Reminders screen with create, snooze, complete, and delete actions.
+- Native exact-alarm bridge remains open: the existing iOS/Android alarm templates are not registered as a native Expo module. Phase 2 currently uses standard OS local notifications; exact Android alarms, receiver/full-screen behavior, and iOS critical alerts remain native-target integration work.
 
 ## Phase 3 — Tasks and daily planning
 **Goal:** Make the app useful as a daily planner, not just a calendar grid.
