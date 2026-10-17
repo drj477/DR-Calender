@@ -13,14 +13,14 @@ import {
 import type { TemporalEntity } from "../temporal/types";
 
 const palette = {
-  background: "#0C0F14",
-  surface: "#141922",
-  raised: "#1B222D",
-  border: "#252D39",
-  text: "#F3F5F8",
-  muted: "#8994A5",
-  accent: "#B8F36B",
-  danger: "#FFAD9B",
+  background: "#10141D",
+  surface: "#171C28",
+  raised: "#202838",
+  border: "#30394B",
+  text: "#F4F6FC",
+  muted: "#9BA7BA",
+  accent: "#FFC247",
+  danger: "#FF9A63",
 };
 
 export interface EventDraft {
@@ -184,6 +184,6 @@ const styles = StyleSheet.create({
   toggleThumb: { width: 17, height: 17, borderRadius: 9, backgroundColor: palette.muted },
   toggleThumbOn: { alignSelf: "flex-end", backgroundColor: palette.background },
   error: { color: palette.danger, fontSize: 12, marginTop: 8 },
-  deleteButton: { marginTop: 25, padding: 15, alignItems: "center", borderWidth: 1, borderColor: "#58382F", borderRadius: 13 },
+  deleteButton: { marginTop: 25, padding: 15, alignItems: "center", borderWidth: 1, borderColor: "#5A332A", borderRadius: 13 },
   deleteText: { color: palette.danger, fontSize: 13, fontWeight: "700" },
 });
