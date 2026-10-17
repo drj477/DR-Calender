@@ -29,7 +29,7 @@ The project will be built in substantial, user-facing phases. Implementation com
 - **Implemented:** overdue identification and one-tap rollover to today; task delete uses local tombstones and the sync outbox.
 - **Implemented:** “Plan my day” assigns unscheduled and overdue tasks into 30-minute free slots from 9 AM–6 PM, prioritizing critical/high tasks and respecting existing timed events/tasks.
 - **Implemented:** task edits, checklist changes, completion, rollover, deletion, and auto-planning are persisted locally through the temporal repository and enqueue outbox mutations.
-- Day agenda summaries and configurable task durations remain follow-up work; auto-planning currently uses a fixed 30-minute task block and local device time.
+- **Implemented in source:** configurable task durations (15, 30, 45, 60, 90, or 120 minutes) persist with the task, update the planned end time, and drive Plan my day’s free-slot allocation. Auto-planning still uses the local device time zone and fixed 9 AM–6 PM planning window.
 
 ## Phase 4 — Offline-first sync, accounts, and workspaces
 **Goal:** Safely synchronize data across devices and collaborators.
@@ -92,4 +92,4 @@ Finish one coherent phase or meaningful vertical slice at a time. Prefer changes
 
 **Implemented in source:** Event editing now exposes an IANA time-zone field and resolves wall-clock times in that zone. Recurrence expansion resolves DST folds consistently and advances nonexistent wall times to the first valid minute. ICS export now includes generated `VTIMEZONE` observances for each exported IANA zone and the relevant event-year range.
 
-**Still open (environment/deployment dependent):** Apply all Supabase migrations to staging and verify the role matrix; connect trusted email delivery if desired; finish import support for arbitrary custom VTIMEZONE definitions; configure Apple signing; generate/compile native projects and verify on physical devices; complete accessibility/performance review, automated tests, and production operations. These cannot be honestly marked complete from source-only edits.
+**Still open (environment/deployment dependent):** Apply all Supabase migrations to staging and verify the role matrix; connect trusted email delivery if desired; custom VTIMEZONE import supports explicit STANDARD/DAYLIGHT transitions and common yearly BYMONTH/BYDAY/BYMONTHDAY rules; unusual RDATE rules, custom observance edge cases, and provider-specific TZID aliases still need validation; configure Apple signing; generate/compile native projects and verify on physical devices; complete accessibility/performance review, automated tests, and production operations. These cannot be honestly marked complete from source-only edits.
