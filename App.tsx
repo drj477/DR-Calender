@@ -131,6 +131,7 @@ function CalendarApp() {
   const [database, setDatabase] = useState<LocalCalendarDatabase | null>(null);
   const [eventEditorVisible, setEventEditorVisible] = useState(false);
   const [editingEvent, setEditingEvent] = useState<TemporalEntity | null>(null);
+  const [editingOccurrenceStartAt, setEditingOccurrenceStartAt] = useState<number | null>(null);
   const pendingCount = useCalendarStore(state => state.pendingMutations.length);
   const storedEntities = useCalendarStore(state => Object.values(state.entitiesById));
 
@@ -206,9 +207,13 @@ function CalendarApp() {
         (item.id === eventId || eventId.startsWith(item.id + "::"))
       );
       if (event) {
+        const occurrenceSuffix = eventId.startsWith(event.id + "::") ? eventId.slice(event.id.length + 2) : null;
+        const occurrenceStartAt = occurrenceSuffix !== null && /^\\d+$/.test(occurrenceSuffix) ? Number(occurrenceSuffix) : null;
+        const override = occurrenceStartAt === null ? null : event.metadata?.recurrence?.overrides[String(occurrenceStartAt)];
         setActiveTab("Calendar");
-        setSelectedDate(new Date(event.scheduledAt ?? Date.now()));
+        setSelectedDate(new Date(override?.startAt ?? occurrenceStartAt ?? event.scheduledAt ?? Date.now()));
         setEditingEvent(event);
+        setEditingOccurrenceStartAt(occurrenceStartAt);
         setEventEditorVisible(true);
         setPendingDeepLink(null);
       } else if (database) {
