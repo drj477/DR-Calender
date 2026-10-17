@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from "expo-sqlite";
 import * as FileSystem from "expo-file-system/legacy";
 import * as DocumentPicker from "expo-document-picker";
-import { Share } from "react-native";
+import * as Sharing from "expo-sharing";
 
 export const BACKUP_FORMAT = "dr-calender-backup";
 export const BACKUP_SCHEMA_VERSION = 2;
@@ -90,7 +90,9 @@ export async function exportBackupToFile(db:SQLiteDatabase,activeWorkspaceId:str
   assert(directory,"App cache directory is unavailable.");
   const uri=directory+"dr-calender-backup-"+new Date().toISOString().replace(/[:.]/g,"-")+".json";
   await FileSystem.writeAsStringAsync(uri,serialized,{encoding:FileSystem.EncodingType.UTF8});
-  await Share.share({title:"DR Calender backup file",message:"DR Calender backup file created. Choose a trusted destination to save or share it.",url:uri});
+  const available=await Sharing.isAvailableAsync();
+  assert(available,"The system file-sharing service is unavailable on this device.");
+  await Sharing.shareAsync(uri,{mimeType:"application/json",dialogTitle:"Save or share DR Calender backup"});
   return {uri,bytes:serialized.length*2};
 }
 
