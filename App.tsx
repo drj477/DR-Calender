@@ -818,6 +818,7 @@ function CalendarApp() {
       deletedAt: null, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
       metadata: { ...existing?.metadata, task: {
         dueAt: draft.dueAt,
+        durationMinutes: draft.durationMinutes ?? oldTaskMeta?.durationMinutes ?? 30,
         assignee: oldTaskMeta?.assignee ?? { id: "local-user", name: "You", avatarUrl: null },
         checklist: draft.checklist,
         reminderMinutesBefore: oldTaskMeta?.reminderMinutesBefore ?? null,
@@ -895,21 +896,22 @@ function CalendarApp() {
     const workdayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 18, 0).getTime();
     let planned = 0;
     for (const task of pending) {
+      const durationMs = (task.metadata?.task?.durationMinutes ?? 30) * 60_000;
       let slot = cursor;
-      while (slot + 30 * 60_000 <= workdayEnd && busy.some(block => slot < block.end && block.start < slot + 30 * 60_000)) {
-        const blockerEnd = Math.max(...busy.filter(block => slot < block.end && block.start < slot + 30 * 60_000).map(block => block.end));
+      while (slot + durationMs <= workdayEnd && busy.some(block => slot < block.end && block.start < slot + durationMs)) {
+        const blockerEnd = Math.max(...busy.filter(block => slot < block.end && block.start < slot + durationMs).map(block => block.end));
         slot = Math.ceil(blockerEnd / (15 * 60_000)) * 15 * 60_000;
       }
-      if (slot + 30 * 60_000 > workdayEnd) break;
+      if (slot + durationMs > workdayEnd) break;
       const updated: TemporalEntity = {
-        ...task, scheduledAt: slot, endAt: slot + 30 * 60_000, updatedAt: Date.now(), syncVersion: task.syncVersion + 1,
-        metadata: { ...task.metadata, task: { ...task.metadata?.task!, dueAt: slot, assignee: task.metadata?.task?.assignee ?? { id: "local-user", name: "You", avatarUrl: null } } },
+        ...task, scheduledAt: slot, endAt: slot + durationMs, updatedAt: Date.now(), syncVersion: task.syncVersion + 1,
+        metadata: { ...task.metadata, task: { ...task.metadata?.task!, dueAt: slot, durationMinutes: task.metadata?.task?.durationMinutes ?? 30, assignee: task.metadata?.task?.assignee ?? { id: "local-user", name: "You", avatarUrl: null } } },
       };
       const mutationId = "task-plan-day-" + task.id + "-" + updated.syncVersion;
       await database.repository.upsert(updated, mutationId);
       useCalendarStore.getState().upsertEntity(updated, mutationId);
-      busy.push({ start: slot, end: slot + 30 * 60_000 });
-      cursor = slot + 30 * 60_000;
+      busy.push({ start: slot, end: slot + durationMs });
+      cursor = slot + durationMs;
       planned += 1;
     }
     setActiveTab("Tasks");
