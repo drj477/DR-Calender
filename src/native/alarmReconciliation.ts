@@ -37,7 +37,7 @@ export async function reconcileNativeEventAlarms(entities: TemporalEntity[]): Pr
         const startAt = override?.startAt ?? occurrence.startAt;
         const triggerAt = startAt - Math.max(0,reminder) * 60_000;
         if (triggerAt <= now || triggerAt > horizon) continue;
-        const id = "native-event-" + entity.id + "-" + occurrence.startAt;
+        const id = "native-event-auto-" + entity.id + "-" + occurrence.startAt;
         const title = override?.title ?? entity.title;
         desired.set(id,{id,title,body:reminder>0 ? title+" starts in "+reminder+" minute(s)." : title+" starts now.",triggerAt});
       }
@@ -48,7 +48,7 @@ export async function reconcileNativeEventAlarms(entities: TemporalEntity[]): Pr
         if (expandedOriginalStarts.has(originalStartKey) || entity.metadata?.recurrence?.excludedStartsAt.includes(originalStart)) continue;
         const triggerAt = override.startAt - Math.max(0,reminder) * 60_000;
         if (triggerAt <= now || triggerAt > horizon) continue;
-        const id = "native-event-" + entity.id + "-" + originalStartKey;
+        const id = "native-event-auto-" + entity.id + "-" + originalStartKey;
         const title = override.title ?? entity.title;
         desired.set(id,{id,title,body:reminder>0 ? title+" starts in "+reminder+" minute(s)." : title+" starts now.",triggerAt});
       }
