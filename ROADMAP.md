@@ -11,7 +11,7 @@ The project will be built in substantial, user-facing phases. Implementation com
 - Tighten occurrence-versus-series operations and preserve exception identity when the series changes.
 - Improve validation and clear user-facing errors for invalid schedules.
 
-**Current progress:** Implemented: monthly default-day behavior, all-day/multi-day semantics across editor and calendar views, recurrence occurrence exceptions, an editable IANA time-zone field, and deterministic recurring-occurrence DST fold/gap resolution (earlier instant for folds; first valid wall minute after gaps). The editor uses the selected zone to resolve event start/end instants. Exhaustive RFC 5545 edge-case compatibility and imports using arbitrary non-IANA VTIMEZONE identifiers still need validation/expansion.
+**Current progress:** Implemented: monthly default-day behavior, all-day/multi-day semantics across editor and calendar views, recurrence occurrence exceptions, an editable IANA time-zone field, and deterministic recurring-occurrence DST fold/gap resolution (earlier instant for folds; first valid wall minute after gaps). The editor uses the selected zone to resolve event start/end instants. Custom `VTIMEZONE` imports now resolve explicit transitions and common yearly rules; exhaustive RFC 5545 edge-case compatibility and unusual provider-specific time-zone aliases remain to be validated.
 
 ## Phase 2 — Reminders and notifications
 **Goal:** Turn scheduled events into dependable reminders.
