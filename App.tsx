@@ -28,16 +28,16 @@ type Task = { id: string; title: string; due: string; assignee: string; complete
 
 
 const COLORS = {
-  background: "#0C0F14",
-  surface: "#141922",
-  surfaceRaised: "#1B222D",
-  border: "#252D39",
-  text: "#F3F5F8",
-  muted: "#8994A5",
-  accent: "#B8F36B",
-  lavender: "#B7A5FF",
-  blue: "#86C7FF",
-  coral: "#FFAD9B",
+  background: "#10141D",
+  surface: "#171C28",
+  surfaceRaised: "#202838",
+  border: "#30394B",
+  text: "#F4F6FC",
+  muted: "#9BA7BA",
+  accent: "#FFC247",
+  lavender: "#F4C45E",
+  blue: "#E7B95A",
+  coral: "#FF9A63",
 };
 
 const INITIAL_TASKS: Task[] = [
@@ -432,7 +432,7 @@ const styles = StyleSheet.create({
   dayItem: { width: 42, height: 66, alignItems: "center", justifyContent: "center", borderRadius: 14, gap: 5 },
   dayItemActive: { backgroundColor: COLORS.accent },
   dayWeekday: { color: COLORS.muted, fontSize: 10, fontWeight: "600" },
-  dayWeekdayActive: { color: "#455A2A" },
+  dayWeekdayActive: { color: "#72551C" },
   dayNumber: { color: COLORS.text, fontSize: 15, fontWeight: "700" },
   dayNumberActive: { color: COLORS.background },
   dayDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: COLORS.lavender },
@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
   eventTime: { color: COLORS.muted, fontSize: 10, fontWeight: "600" },
   eventTitle: { color: COLORS.text, fontSize: 13, fontWeight: "700", marginTop: 8 },
   eventSubtitle: { color: COLORS.muted, fontSize: 10, marginTop: 4 },
-  shieldPill: { paddingHorizontal: 7, paddingVertical: 4, borderRadius: 6, backgroundColor: "#28351E" },
+  shieldPill: { paddingHorizontal: 7, paddingVertical: 4, borderRadius: 6, backgroundColor: "#322817" },
   shieldText: { color: COLORS.accent, fontSize: 8, fontWeight: "800", letterSpacing: 0.7 },
   emptyEvents: { marginLeft: 10, padding: 18, borderRadius: 14, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, gap: 7 },
   emptyEventsTitle: { color: COLORS.text, fontSize: 13, fontWeight: "700" },
@@ -465,7 +465,7 @@ const styles = StyleSheet.create({
   seeAll: { color: COLORS.accent, fontSize: 11, fontWeight: "700" },
   tasksCard: { backgroundColor: COLORS.surface, borderRadius: 17, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 14 },
   taskRow: { minHeight: 68, flexDirection: "row", alignItems: "center", gap: 11, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  checkbox: { width: 21, height: 21, borderRadius: 7, borderWidth: 1.5, borderColor: "#4B5666", alignItems: "center", justifyContent: "center" },
+  checkbox: { width: 21, height: 21, borderRadius: 7, borderWidth: 1.5, borderColor: "#475267", alignItems: "center", justifyContent: "center" },
   checkboxDone: { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
   checkGlyph: { color: COLORS.background, fontSize: 13, fontWeight: "900" },
   taskCopy: { flex: 1, gap: 5 },
