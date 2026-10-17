@@ -131,6 +131,7 @@ function CalendarApp() {
     for (const entity of eventSeries) {
       try {
         const occurrences = expandRecurrence(entity, { rangeStart, rangeEnd, maxOccurrences: 500 });
+        const expandedOriginalStarts = new Set(occurrences.map(occurrence => String(occurrence.startAt)));
         for (const occurrence of occurrences) {
           const exceptions = entity.metadata?.recurrence;
           if (exceptions?.excludedStartsAt.includes(occurrence.startAt)) continue;
@@ -140,7 +141,7 @@ function CalendarApp() {
           if (visibleStartAt >= rangeEnd || (visibleEndAt ?? visibleStartAt) < rangeStart) continue;
           expanded.push({
             ...entity,
-            id: entity.id,
+            id: entity.rrule ? entity.id + "::" + occurrence.startAt : entity.id,
             title: override?.title ?? entity.title,
             scheduledAt: visibleStartAt,
             endAt: visibleEndAt,
@@ -159,7 +160,36 @@ function CalendarApp() {
                 travelBufferMinutes: entity.metadata?.event?.travelBufferMinutes ?? null,
                 cooldownBufferMinutes: entity.metadata?.event?.cooldownBufferMinutes ?? null,
               },
-              recurrenceOccurrence: { startAt: occurrence.startAt, isRecurring: occurrence.isRecurring },
+              recurrenceOccurrence: { seriesId: entity.id, startAt: occurrence.startAt, isRecurring: occurrence.isRecurring },
+            },
+          });
+        }
+        // Render moved overrides even when their original RRULE date is outside this visible range.
+        for (const [originalStartKey, override] of Object.entries(entity.metadata?.recurrence?.overrides ?? {})) {
+          if (expandedOriginalStarts.has(originalStartKey)) continue;
+          if (override.startAt >= rangeEnd || (override.endAt ?? override.startAt) < rangeStart) continue;
+          expanded.push({
+            ...entity,
+            id: entity.id + "::" + originalStartKey,
+            title: override.title,
+            scheduledAt: override.startAt,
+            endAt: override.endAt,
+            isShielded: override.isShielded,
+            isElastic: override.isElastic,
+            metadata: {
+              ...entity.metadata,
+              event: {
+                ...entity.metadata?.event,
+                kind: entity.metadata?.event?.kind ?? "standard",
+                commitment: entity.metadata?.event?.commitment ?? (override.isElastic ? "elastic" : "hard"),
+                location: override.location,
+                meetingUrl: entity.metadata?.event?.meetingUrl ?? null,
+                organizerUserId: entity.metadata?.event?.organizerUserId ?? null,
+                attendeeUserIds: entity.metadata?.event?.attendeeUserIds ?? [],
+                travelBufferMinutes: entity.metadata?.event?.travelBufferMinutes ?? null,
+                cooldownBufferMinutes: entity.metadata?.event?.cooldownBufferMinutes ?? null,
+              },
+              recurrenceOccurrence: { seriesId: entity.id, startAt: Number(originalStartKey), isRecurring: true },
             },
           });
         }
@@ -480,7 +510,8 @@ function CalendarApp() {
               onEventPress={event => {
                 // Occurrence-level editing is not supported yet. Resolve the source entity so
                 // tapping an instance opens the series without shifting its DTSTART.
-                const sourceEvent = eventSeries.find(item => item.id === event.id) ?? event;
+                const seriesId = event.metadata?.recurrenceOccurrence?.seriesId ?? event.id;
+                const sourceEvent = eventSeries.find(item => item.id === seriesId) ?? event;
                 setEditingOccurrenceStartAt(event.metadata?.recurrenceOccurrence?.startAt ?? null);
                 setEditingEvent(sourceEvent);
                 setEventEditorVisible(true);
