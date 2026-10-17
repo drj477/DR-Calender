@@ -17,6 +17,11 @@ This document records source implementation and outstanding validation. It is **
 - [x] Android native alarm persistence and restoration receiver for reboot/time/time-zone/exact-alarm permission changes.
 - [x] iOS WidgetKit extension source is present.
 
+- [x] Source-level rolling native alarm reconciliation for recurring event occurrences, moved overrides, exclusions, and stale alarm cancellation.
+- [x] App deep-link routing for task/event widget links and Android event alarm notification taps.
+- [ ] Verify native alarm reconciliation after edits, deletion, completion, workspace switching, reboot, and time-zone changes on physical devices.
+- [ ] Verify cold-start and warm-start task/event deep links on Android and iOS.
+
 ## Required before production
 
 - [ ] Run TypeScript checks and resolve all reported issues.
