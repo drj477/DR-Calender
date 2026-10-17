@@ -4,13 +4,13 @@ import type { TemporalEntity } from "../temporal/types";
 import { calculateOverlappingLayout } from "../temporal/overlap";
 
 const COLORS = {
-  surface: "#141922",
-  border: "#252D39",
-  text: "#F3F5F8",
-  muted: "#8994A5",
-  accent: "#B8F36B",
-  lavender: "#B7A5FF",
-  coral: "#FFAD9B",
+  surface: "#171C28",
+  border: "#30394B",
+  text: "#F4F6FC",
+  muted: "#9BA7BA",
+  accent: "#FFC247",
+  lavender: "#F4C45E",
+  coral: "#FF9A63",
 };
 
 const START_HOUR = 6;
