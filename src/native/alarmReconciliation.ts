@@ -73,7 +73,7 @@ export async function reconcileNativeEventAlarms(entities: TemporalEntity[]): Pr
   return {scheduled,cancelled,skipped:false};
 }
 
-/** Cancels all native alarms for a deleted or disabled event series. */
+/** Cancels a user-managed native alarm; automatic occurrence alarms are removed by reconciliation. */
 export async function cancelNativeEventAlarms(eventId:string):Promise<void> {
   await cancelNativeAlarm("native-event-manual-"+eventId);
   // Occurrence alarms are removed by the next workspace reconciliation.
