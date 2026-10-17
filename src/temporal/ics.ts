@@ -11,7 +11,7 @@ export interface ParsedICSEvent {
   organizerEmail: string | null;
   attendees: InviteAttendee[];
   status: "CONFIRMED" | "TENTATIVE" | "CANCELLED" | null;
-  method: "REQUEST" | "REPLY" | "CANCEL" | "PUBLISH" | null;
+  method: "REQUEST" | "REPLY" | "CANCEL" | "PUBLISH" | null;\n  isAllDay: boolean;\n  timeZone: string | null;\n  recurrenceRule: string | null;\n  excludedDates: string[];\n  recurrenceId: string | null;
 }
 
 export interface BuildICSInviteInput {
@@ -176,7 +176,7 @@ export function parseICS(ics: string): ParsedICSEvent {
     organizerEmail: organizer?.replace(/^mailto:/i, "") ?? null,
     attendees,
     status: status === "CONFIRMED" || status === "TENTATIVE" || status === "CANCELLED" ? status : null,
-    method: method === "REQUEST" || method === "REPLY" || method === "CANCEL" || method === "PUBLISH" ? method : null,
+    method: method === "REQUEST" || method === "REPLY" || method === "CANCEL" || method === "PUBLISH" ? method : null,\n    isAllDay: first("DTSTART")?.params.VALUE?.toUpperCase() === "DATE" || /^\\d{8}$/.test(first("DTSTART")?.value ?? ""),\n    timeZone: first("DTSTART")?.params.TZID ?? null,\n    recurrenceRule: first("RRULE")?.value ?? null,\n    excludedDates: properties.filter(property => property?.name === "EXDATE").flatMap(property => property?.value.split(",").map(value => parseDateProperty(value) ?? value) ?? []),\n    recurrenceId: parseDateProperty(first("RECURRENCE-ID")?.value ?? ""),
   };
 }
 
@@ -232,4 +232,78 @@ export function buildICSReply(input: {
   if (input.summary) lines.push(`SUMMARY:${escapeICSText(input.summary)}`);
   lines.push("END:VEVENT", "END:VCALENDAR");
   return lines.map(foldLine).join("\r\n") + "\r\n";
+}
+
+import type { TemporalEntity, RecurrenceOverride } from "./types";
+
+function formatICSUTC(timestamp: number): string {
+  return new Date(timestamp).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+}
+function formatICSDate(timestamp: number): string {
+  const d = new Date(timestamp);
+  return String(d.getFullYear()).padStart(4, "0") + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0");
+}
+function buildEntityLines(entity: TemporalEntity, uid: string, sequence: number, override?: RecurrenceOverride, recurrenceId?: number): string[] {
+  const start = override?.startAt ?? entity.scheduledAt;
+  const end = override?.endAt ?? entity.endAt;
+  if (start === null || end === null || end <= start) return [];
+  const allDay = override?.isAllDay ?? entity.metadata?.event?.kind === "all-day";
+  const title = override?.title ?? entity.title;
+  const location = override?.location ?? entity.metadata?.event?.location;
+  const lines = ["BEGIN:VEVENT", `UID:${escapeICSText(uid)}`, `SEQUENCE:${Math.max(0, sequence)}`, `DTSTAMP:${formatICSUTC(Date.now())}`];
+  if (recurrenceId !== undefined) lines.push(`RECURRENCE-ID:${allDay ? `VALUE=DATE:${formatICSDate(recurrenceId)}` : formatICSUTC(recurrenceId)}`);
+  if (allDay) {
+    lines.push(`DTSTART;VALUE=DATE:${formatICSDate(start)}`, `DTEND;VALUE=DATE:${formatICSDate(end)}`);
+  } else {
+    lines.push(`DTSTART:${formatICSUTC(start)}`, `DTEND:${formatICSUTC(end)}`);
+  }
+  lines.push(`SUMMARY:${escapeICSText(title)}`);
+  if (location) lines.push(`LOCATION:${escapeICSText(location)}`);
+  if (entity.rrule && recurrenceId === undefined) lines.push(`RRULE:${entity.rrule.replace(/^RRULE:/i, "")}`);
+  return [...lines, "END:VEVENT"];
+}
+
+/** Export a full calendar, including recurrence exclusions and moved occurrence overrides. */
+export function buildICSCalendar(entities: TemporalEntity[], calendarName = "DR-Calender"): string {
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//DR-Calender//Temporal Engine//EN", "CALSCALE:GREGORIAN", `X-WR-CALNAME:${escapeICSText(calendarName)}`];
+  for (const entity of entities) {
+    if (entity.itemType !== "event" || entity.deletedAt !== null || entity.scheduledAt === null || entity.endAt === null) continue;
+    const uid = entity.metadata?.invite?.icsUid ?? `${entity.id}@dr-calender.local`;
+    const eventLines = buildEntityLines(entity, uid, entity.metadata?.invite?.sequence ?? entity.syncVersion);
+    if (!eventLines.length) continue;
+    const exceptions = entity.metadata?.recurrence;
+    const allDay = entity.metadata?.event?.kind === "all-day";
+    if (exceptions?.excludedStartsAt.length) {
+      const dates = exceptions.excludedStartsAt.map(at => allDay ? formatICSDate(at) : formatICSUTC(at));
+      eventLines.splice(eventLines.length - 1, 0, `${allDay ? "EXDATE;VALUE=DATE:" : "EXDATE:"}${dates.join(",")}`);
+    }
+    lines.push(...eventLines);
+    for (const [key, override] of Object.entries(exceptions?.overrides ?? {})) {
+      const occurrenceLines = buildEntityLines(entity, uid, entity.metadata?.invite?.sequence ?? entity.syncVersion, override, Number(key));
+      lines.push(...occurrenceLines);
+    }
+  }
+  lines.push("END:VCALENDAR");
+  return lines.map(foldLine).join("\r\n") + "\r\n";
+}
+
+/** Parses every VEVENT in a VCALENDAR instead of silently importing only the first. */
+export function parseICSCalendar(ics: string): ParsedICSEvent[] {
+  if (ics.length > 2_000_000) throw new Error("Calendar file is too large (maximum 2 MB).");
+  const unfolded = unfoldLines(ics);
+  const blocks: string[][] = [];
+  let current: string[] | null = null;
+  for (const line of unfolded) {
+    if (line.toUpperCase() === "BEGIN:VEVENT") {
+      if (current) throw new Error("Malformed ICS: nested VEVENT.");
+      current = ["BEGIN:VEVENT"];
+    } else if (line.toUpperCase() === "END:VEVENT") {
+      if (current) { current.push("END:VEVENT"); blocks.push(current); current = null; }
+    } else if (current) current.push(line);
+  }
+  if (current) throw new Error("Malformed ICS: unterminated VEVENT.");
+  if (!blocks.length) throw new Error("No events were found in this calendar.");
+  if (blocks.length > 1000) throw new Error("Calendar contains too many events (maximum 1000 per import).");
+  const method = unfolded.map(splitProperty).find(property => property?.name === "METHOD")?.value;
+  return blocks.map(block => parseICS(["BEGIN:VCALENDAR", ...(method ? [`METHOD:${method}`] : []), ...block, "END:VCALENDAR"].join("\r\n")));
 }
