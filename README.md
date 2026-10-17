@@ -7,7 +7,7 @@ A premium, offline-first calendar and scheduling application for iOS and Android
 ### Mobile application
 
 - Expo application configured for the React Native New Architecture.
-- Dark, thumb-friendly calendar UI with Day / Week / Month mode controls, previous/next month paging, a Today shortcut, horizontal date selection, agenda cards, task completion micro-animation, and quick task creation.
+- Midnight-navy and warm-amber calendar UI with layered card shadows, clearer type hierarchy, restrained italic supporting copy, bold action/status emphasis, pressed states, accessible selected-state labels, and Day / Week / Month controls, month paging, Today shortcut, horizontal date selection, task completion animation, and quick task creation.
 - Event creation/editing sheet with title, date, start time, duration, location, focus shield, flexible-event settings, and Never / Daily / Weekdays / Weekly / Monthly recurrence presets; recurrence rules persist with the event and enter the sync outbox.
 - Event deletion uses a local tombstone and a delete mutation; agenda cards render persisted events for the selected day.
 - Proportional day timeline with overlap-aware columns, 15-minute drag-to-move, horizontal cross-date shifting, draggable start/end resize grips, a seven-day week overview, and a 42-cell month grid with event indicators.
@@ -70,3 +70,11 @@ npx expo start
 ## Visual theme
 
 The calendar UI uses a midnight-navy and warm-amber palette inspired by the supplied references: deep navy backgrounds, layered blue-charcoal surfaces, subtle slate borders, warm gold highlights, soft off-white text, and muted slate secondary text. Event states use restrained amber/orange accents instead of the previous lime/lavender palette. This theme is applied consistently across the main calendar, day timeline, week/month overview, and event editor.
+
+
+### Visual and interaction polish
+
+- Applied a consistent depth system to event cards, week/month surfaces, task cards, editor fields, and primary actions, with restrained Android elevation and iOS shadow styling.
+- Strengthened visual hierarchy with heavier event titles, clearer section labels, amber-highlighted counts, and limited italic supporting copy.
+- Added pressed feedback and selected accessibility states to calendar mode/date controls, larger primary create-event affordance, and improved contrast for focus-shield and selected recurrence states.
+- Kept amber for primary actions/selection, coral for flexible-event emphasis, and green for the healthy offline/sync-ready indicator.
