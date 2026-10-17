@@ -2,6 +2,7 @@ import "react-native-gesture-handler";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Linking,
+  Platform,
   Pressable,
   ScrollView,
   StatusBar,
@@ -31,6 +32,7 @@ import { SharingCenter } from "./src/components/SharingCenter";
 import { NativeExperienceCenter } from "./src/components/NativeExperienceCenter";
 import { publishNativeWidgetSnapshot } from "./src/native/nativeExperience";
 import { reconcileNativeEventAlarms } from "./src/native/alarmReconciliation";
+import { isExactAlarmAllowed, isNativeBridgeAvailable } from "./src/native/nativeExperience";
 import { DataSafetyCenter } from "./src/components/DataSafetyCenter";
 import { AppErrorBoundary } from "./src/components/AppErrorBoundary";
 import { parseICSDateTime, type ParsedICSEvent } from "./src/temporal/ics";
@@ -157,14 +159,44 @@ function CalendarApp() {
   // Keep native OS alarms aligned with the active workspace. The native module
   // removes obsolete alarms after edits, moves, exclusions, completion and deletion.
   useEffect(() => {
+    if (!database) return;
     let active = true;
     const timer = setTimeout(() => {
-      void reconcileNativeEventAlarms(storedEntities).catch(error =>
-        console.warn("Native alarm reconciliation failed", error),
-      );
+      void (async () => {
+        let entitiesForReconciliation = storedEntities;
+        // On Android, exact AlarmManager delivery replaces the Expo reminder for
+        // the same event. Clear those Expo requests first to prevent duplicate alerts.
+        if (Platform.OS === "android" && isNativeBridgeAvailable() && await isExactAlarmAllowed()) {
+          const updates: TemporalEntity[] = [];
+          for (const entity of storedEntities) {
+            const meta = entity.metadata?.event;
+            if (entity.itemType !== "event" || entity.deletedAt !== null || entity.isCompleted ||
+                meta?.reminderMinutesBefore == null || !meta.notificationIds?.length) continue;
+            try {
+              await cancelNotificationIds(meta.notificationIds);
+              const updated: TemporalEntity = {
+                ...entity,
+                updatedAt: Date.now(),
+                syncVersion: entity.syncVersion + 1,
+                metadata: { ...entity.metadata, event: { ...meta, notificationIds: [] } },
+              };
+              await database.repository.upsert(updated, "native-reminder-handoff-" + entity.id + "-" + updated.syncVersion);
+              updates.push(updated);
+            } catch (error) {
+              console.warn("Unable to hand off event reminder to native AlarmManager", error);
+            }
+          }
+          if (active && updates.length) {
+            for (const entity of updates) useCalendarStore.getState().upsertEntity(entity, "native-reminder-handoff-" + entity.id + "-" + entity.syncVersion);
+            const changed = new Map(updates.map(entity => [entity.id, entity]));
+            entitiesForReconciliation = storedEntities.map(entity => changed.get(entity.id) ?? entity);
+          }
+        }
+        if (active) await reconcileNativeEventAlarms(entitiesForReconciliation);
+      })().catch(error => console.warn("Native alarm reconciliation failed", error));
     }, 350);
     return () => { active = false; clearTimeout(timer); };
-  }, [storedEntities]);
+  }, [storedEntities, database]);
 
   // Widgets and alarm notifications open the app through the drcalender:// scheme.
   // Resolve event IDs after hydration so cold-start links are not lost.
