@@ -22,7 +22,7 @@ export function NativeExperienceCenter({entities}:Props){
   };
   const schedule=async(event:TemporalEntity)=>{
     const id="native-event-manual-"+event.id;
-    setBusyId(id);setMessage("");
+    setBusyId("event-"+event.id);setMessage("");
     try{
       const lead=event.metadata?.event?.reminderMinutesBefore??0;
       const triggerAt=(event.scheduledAt??0)-lead*60_000;
