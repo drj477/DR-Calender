@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { activateLocalWorkspace, type LocalCalendarDatabase } from "../persistence/localDatabase";
 import { getValidSession, loadSession, loadSupabaseConfig, saveSupabaseConfig, signIn, signOut, signUp, type AuthSession, type SupabaseConfig } from "../sync/authService";
-import { createRemoteWorkspace, listRemoteWorkspaces, SupabaseSyncTransport, type RemoteWorkspace } from "../sync/supabaseTransport";
+import { addRemoteWorkspaceMember, createRemoteWorkspace, listRemoteWorkspaces, SupabaseSyncTransport, type RemoteWorkspace } from "../sync/supabaseTransport";
 import { SyncCoordinator } from "../sync/syncCoordinator";
 import { useCalendarStore } from "../store/calendarStore";
 
@@ -18,6 +18,8 @@ export function AccountCenter({ database, onSynced, onWorkspaceChanged }: Props)
   const [session, setSession] = useState<AuthSession | null>(null);
   const [workspaces, setWorkspaces] = useState<RemoteWorkspace[]>([]);
   const [workspaceName, setWorkspaceName] = useState("");
+  const [memberEmail, setMemberEmail] = useState("");
+  const [memberRole, setMemberRole] = useState<"editor" | "viewer">("editor");
   const [workspaceType, setWorkspaceType] = useState<"personal" | "family" | "team" | "project">("team");
   const [status, setStatus] = useState<SyncStatus>("idle");
   const [message, setMessage] = useState("");
@@ -107,13 +109,24 @@ export function AccountCenter({ database, onSynced, onWorkspaceChanged }: Props)
     } catch (error) { setMessage(error instanceof Error ? error.message : String(error)); }
     finally { setBusy(false); }
   };
+  const addMember = async () => {
+    if (!config || !database) return;
+    if (!memberEmail.trim()) { setMessage("Enter the email address of an existing account."); return; }
+    setBusy(true); setMessage("");
+    try {
+      await addRemoteWorkspaceMember(config, database.workspaceId, memberEmail, memberRole);
+      setMessage("Added " + memberEmail.trim() + " as " + memberRole + ". They can access this workspace after signing in.");
+      setMemberEmail("");
+    } catch (error) { setMessage(error instanceof Error ? error.message : String(error)); }
+    finally { setBusy(false); }
+  };
   const createWorkspace = async () => {
     if (!config || !session) return;
     if (!workspaceName.trim()) { setMessage("Enter a workspace name."); return; }
     setBusy(true); setMessage("");
     try {
       const workspace = await createRemoteWorkspace(config, workspaceName, workspaceType);
-      setWorkspaces(current => [...current, workspace]); setWorkspaceName(""); setMessage(`Workspace “${workspace.name}” created. To sync data into it, create/select a local workspace with the same ID in a future workspace-management step.`);
+      setWorkspaces(current => [...current, workspace]); setWorkspaceName(""); setMessage("Workspace “" + workspace.name + "” created. Use it in the workspace list to activate its local mirror, then sync.");
     } catch (error) { setMessage(error instanceof Error ? error.message : String(error)); }
     finally { setBusy(false); }
   };
@@ -135,6 +148,7 @@ export function AccountCenter({ database, onSynced, onWorkspaceChanged }: Props)
       <View style={s.card}><Text style={s.cardTitle}>Signed in</Text><Text style={s.email}>{session.user.email ?? session.user.id}</Text><Text style={s.muted}>Session tokens are stored using platform secure storage and refreshed when near expiry.</Text><View style={s.buttonRow}><Pressable onPress={() => { void runSync(); }} disabled={busy || !database} style={s.primaryButton}><Text style={s.primaryText}>Sync local workspace</Text></Pressable><Pressable onPress={() => { void logout(); }} style={s.secondaryButton}><Text style={s.secondaryText}>Sign out</Text></Pressable></View></View>
       <View style={s.card}><View style={s.cardHeader}><Text style={s.cardTitle}>Workspaces</Text><Text style={s.count}>{workspaces.length}</Text></View>{workspaces.map(workspace => <View key={workspace.id} style={s.workspaceRow}><View style={s.workspaceIcon}><Text style={s.workspaceGlyph}>{workspace.workspace_type === "personal" ? "◉" : workspace.workspace_type === "family" ? "⌂" : workspace.workspace_type === "project" ? "◇" : "◎"}</Text></View><View style={{ flex: 1, gap: 3 }}><Text style={s.workspaceName}>{workspace.name}</Text><Text style={s.muted}>{workspace.workspace_type} · {workspace.role} · {workspace.id === database?.workspaceId ? "Active on this device" : "Cloud workspace"}</Text></View><Pressable disabled={busy || workspace.id === database?.workspaceId} onPress={() => { void useWorkspace(workspace); }} style={[s.useButton,workspace.id === database?.workspaceId&&s.useButtonActive]}><Text style={[s.useText,workspace.id === database?.workspaceId&&s.useTextActive]}>{workspace.id === database?.workspaceId ? "Active" : "Use"}</Text></Pressable></View>)}{database && !workspaces.some(item => item.id === database.workspaceId) ? <Pressable disabled={busy} onPress={() => { void linkPersonal(); }} style={s.secondaryButton}><Text style={s.secondaryText}>Link this device’s Personal workspace</Text></Pressable> : null}
         <Text style={s.label}>CREATE WORKSPACE</Text><TextInput value={workspaceName} onChangeText={setWorkspaceName} placeholder="Workspace name" placeholderTextColor={C.muted} style={s.input}/><View style={s.typeRow}>{(["family","team","project"] as const).map(type => <Pressable key={type} onPress={() => setWorkspaceType(type)} style={[s.typePill,workspaceType===type&&s.typePillActive]}><Text style={[s.typeText,workspaceType===type&&s.typeTextActive]}>{type}</Text></Pressable>)}</View><Pressable disabled={busy} onPress={() => { void createWorkspace(); }} style={s.secondaryButton}><Text style={s.secondaryText}>Create workspace</Text></Pressable>
+        {workspaces.find(item => item.id === database?.workspaceId && (item.role === "owner" || item.role === "admin")) ? <><Text style={s.label}>ADD EXISTING MEMBER TO ACTIVE WORKSPACE</Text><Text style={s.muted}>The person must already have an account in this Supabase project.</Text><TextInput value={memberEmail} onChangeText={setMemberEmail} autoCapitalize="none" keyboardType="email-address" placeholder="member@example.com" placeholderTextColor={C.muted} style={s.input}/><View style={s.typeRow}>{(["editor","viewer"] as const).map(role => <Pressable key={role} onPress={() => setMemberRole(role)} style={[s.typePill,memberRole===role&&s.typePillActive]}><Text style={[s.typeText,memberRole===role&&s.typeTextActive]}>{role}</Text></Pressable>)}</View><Pressable disabled={busy} onPress={() => { void addMember(); }} style={s.secondaryButton}><Text style={s.secondaryText}>Add member</Text></Pressable></> : null}
       </View>
     </>}
     {message ? <View style={s.message}><Text style={s.messageText}>{message}</Text></View> : null}
