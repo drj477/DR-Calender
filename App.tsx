@@ -30,13 +30,14 @@ import { AccountCenter } from "./src/components/AccountCenter";
 import { SharingCenter } from "./src/components/SharingCenter";
 import { NativeExperienceCenter } from "./src/components/NativeExperienceCenter";
 import { publishNativeWidgetSnapshot } from "./src/native/nativeExperience";
+import { DataSafetyCenter } from "./src/components/DataSafetyCenter";
 import { parseICSDateTime, type ParsedICSEvent } from "./src/temporal/ics";
 import type { RSVPStatus } from "./src/temporal/types";
 import { cancelNotificationIds, requestNotificationPermission, scheduleEventNotifications, scheduleReminderNotification } from "./src/notifications/notificationService";
 import * as Notifications from "expo-notifications";
 
 type ScreenMode = "Day" | "Week" | "Month";
-type MainTab = "Calendar" | "Tasks" | "Reminders" | "Sharing" | "Native" | "Spaces";
+type MainTab = "Calendar" | "Tasks" | "Reminders" | "Sharing" | "Native" | "Data" | "Spaces";
 type Task = { id: string; title: string; due: string; assignee: string; completed: boolean; dueAt?: number | null; hasReminder?: boolean };
 
 
@@ -999,7 +1000,7 @@ function CalendarApp() {
           </View>
         </View>
         <View style={styles.syncNote}><View style={styles.syncDot} /><Text style={styles.syncText}>{pendingCount ? `${pendingCount} changes waiting to sync` : "Offline-first · Ready when you are"}</Text></View>
-      </ScrollView></> : activeTab === "Tasks" ? <TaskCenter tasks={taskEntities} onSave={draft => { void saveTask(draft).catch(error => console.warn("Unable to save task", error)); }} onToggle={task => { void toggleTaskEntity(task).catch(error => console.warn("Unable to update task", error)); }} onDelete={task => { void deleteTaskEntity(task).catch(error => console.warn("Unable to delete task", error)); }} onPlanDay={() => { void planMyDay().catch(error => console.warn("Unable to plan day", error)); }} onRollover={task => { void rolloverTask(task).catch(error => console.warn("Unable to roll task forward", error)); }} /> : activeTab === "Reminders" ? <ReminderCenter reminders={reminders} permissionGranted={permissionGranted} onRequestPermission={handleRequestNotifications} onCreate={createReminder} onSnooze={snoozeReminder} onComplete={completeReminder} onDelete={deleteReminder} /> : activeTab === "Sharing" ? <SharingCenter events={sharingEntities} onImport={importICSItems} onRSVP={updateEventRSVP} onAddAttendee={addEventAttendee} /> : activeTab === "Native" ? <NativeExperienceCenter entities={sharingEntities} /> : <AccountCenter database={database} onSynced={refreshAfterSync} onWorkspaceChanged={refreshWorkspaceData} />}
+      </ScrollView></> : activeTab === "Tasks" ? <TaskCenter tasks={taskEntities} onSave={draft => { void saveTask(draft).catch(error => console.warn("Unable to save task", error)); }} onToggle={task => { void toggleTaskEntity(task).catch(error => console.warn("Unable to update task", error)); }} onDelete={task => { void deleteTaskEntity(task).catch(error => console.warn("Unable to delete task", error)); }} onPlanDay={() => { void planMyDay().catch(error => console.warn("Unable to plan day", error)); }} onRollover={task => { void rolloverTask(task).catch(error => console.warn("Unable to roll task forward", error)); }} /> : activeTab === "Reminders" ? <ReminderCenter reminders={reminders} permissionGranted={permissionGranted} onRequestPermission={handleRequestNotifications} onCreate={createReminder} onSnooze={snoozeReminder} onComplete={completeReminder} onDelete={deleteReminder} /> : activeTab === "Sharing" ? <SharingCenter events={sharingEntities} onImport={importICSItems} onRSVP={updateEventRSVP} onAddAttendee={addEventAttendee} /> : activeTab === "Native" ? <NativeExperienceCenter entities={sharingEntities} /> : activeTab === "Data" ? <DataSafetyCenter database={database} /> : <AccountCenter database={database} onSynced={refreshAfterSync} onWorkspaceChanged={refreshWorkspaceData} />}
 
       <EventEditor
         visible={activeTab === "Calendar" && eventEditorVisible}
@@ -1018,6 +1019,7 @@ function CalendarApp() {
           { glyph: "◷", label: "Reminders", active: false },
           { glyph: "⇄", label: "Sharing", active: false },
           { glyph: "◫", label: "Native", active: false },
+          { glyph: "◇", label: "Data", active: false },
           { glyph: "◉", label: "Spaces", active: false },
         ].map(item => (
           <Pressable key={item.label} onPress={() => setActiveTab(item.label as MainTab)} accessibilityRole="button" accessibilityState={{ selected: activeTab === item.label }} style={styles.navItem}>
