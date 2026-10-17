@@ -349,19 +349,30 @@ export function parseICSCalendar(ics: string): ParsedICSEvent[] {
       if (current) throw new Error("Malformed ICS: nested VEVENT.");
       current = ["BEGIN:VEVENT"];
     } else if (line.toUpperCase() === "END:VEVENT") {
-      if (current) { current.push("END:VEVENT"); blocks.push(current); current = null; }
+      if (current) {
+        current.push("END:VEVENT");
+        blocks.push(current);
+        current = null;
+      }
     } else if (current) current.push(line);
   }
   if (current) throw new Error("Malformed ICS: unterminated VEVENT.");
   if (!blocks.length) throw new Error("No events were found in this calendar.");
   if (blocks.length > 1000) throw new Error("Calendar contains too many events (maximum 1000 per import).");
   const method = unfolded.map(splitProperty).find(property => property?.name === "METHOD")?.value;
-  const parsed = blocks.map(block => parseICS(["BEGIN:VCALENDAR", ...(method ? [`METHOD:${method}`] : []), ...block, "END:VEVENT", "END:VCALENDAR"].join("\r\n")));
+  const parsed = blocks.map(block => parseICS([
+    "BEGIN:VCALENDAR",
+    ...(method ? ["METHOD:" + method] : []),
+    ...block,
+    "END:VCALENDAR",
+  ].join("\r\n")));
   for (const event of parsed) {
-    if (!event.start) throw new Error(`Event "${event.summary}" is missing DTSTART.`);
-    const start = parseICSDateTime(event.start,event.timeZone);
-    if (event.end) { const end = parseICSDateTime(event.end,event.timeZone); if (end <= start) throw new Error(`Event "${event.summary}" has an invalid end date.`); }
+    if (!event.start) throw new Error('Event "' + event.summary + '" is missing DTSTART.');
+    const start = parseICSDateTime(event.start, event.timeZone);
+    if (event.end) {
+      const end = parseICSDateTime(event.end, event.timeZone);
+      if (end <= start) throw new Error('Event "' + event.summary + '" has an invalid end date.');
+    }
   }
   return parsed;
-")));
 }
