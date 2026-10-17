@@ -28,13 +28,15 @@ import { ReminderCenter } from "./src/components/ReminderCenter";
 import { TaskCenter, type TaskDraft } from "./src/components/TaskCenter";
 import { AccountCenter } from "./src/components/AccountCenter";
 import { SharingCenter } from "./src/components/SharingCenter";
+import { NativeExperienceCenter } from "./src/components/NativeExperienceCenter";
+import { publishNativeWidgetSnapshot } from "./src/native/nativeExperience";
 import { parseICSDateTime, type ParsedICSEvent } from "./src/temporal/ics";
 import type { RSVPStatus } from "./src/temporal/types";
 import { cancelNotificationIds, requestNotificationPermission, scheduleEventNotifications, scheduleReminderNotification } from "./src/notifications/notificationService";
 import * as Notifications from "expo-notifications";
 
 type ScreenMode = "Day" | "Week" | "Month";
-type MainTab = "Calendar" | "Tasks" | "Reminders" | "Sharing" | "Spaces";
+type MainTab = "Calendar" | "Tasks" | "Reminders" | "Sharing" | "Native" | "Spaces";
 type Task = { id: string; title: string; due: string; assignee: string; completed: boolean; dueAt?: number | null; hasReminder?: boolean };
 
 
@@ -128,6 +130,27 @@ function CalendarApp() {
   const [editingEvent, setEditingEvent] = useState<TemporalEntity | null>(null);
   const pendingCount = useCalendarStore(state => state.pendingMutations.length);
   const storedEntities = useCalendarStore(state => Object.values(state.entitiesById));
+
+  useEffect(() => {
+    const now = Date.now();
+    const live = storedEntities.filter(entity => entity.deletedAt === null && !entity.isCompleted);
+    const nextTask = live.filter(entity => entity.itemType === "task").sort((a,b) => {
+      const ad = a.metadata?.task?.dueAt ?? a.scheduledAt ?? Number.MAX_SAFE_INTEGER;
+      const bd = b.metadata?.task?.dueAt ?? b.scheduledAt ?? Number.MAX_SAFE_INTEGER;
+      return ad - bd;
+    })[0];
+    const nextEvent = live.filter(entity => entity.itemType === "event" && entity.scheduledAt !== null && entity.scheduledAt > now).sort((a,b) => (a.scheduledAt ?? 0) - (b.scheduledAt ?? 0))[0];
+    const primary = nextTask ?? nextEvent;
+    const dueAt = nextTask ? (nextTask.metadata?.task?.dueAt ?? nextTask.scheduledAt) : nextEvent?.scheduledAt ?? null;
+    void publishNativeWidgetSnapshot({
+      title: primary?.title ?? "Nothing urgent",
+      dueLabel: dueAt === null ? "You're all caught up" : new Date(dueAt).toLocaleString(undefined,{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}),
+      assignee: nextTask?.metadata?.task?.assignee?.name ?? "You",
+      deepLink: nextTask ? "drcalender://tasks" : nextEvent ? "drcalender://events/" + nextEvent.id : "drcalender://tasks",
+    }).catch(() => undefined);
+  }, [storedEntities]);
+
+
 
   const eventEditorDate = useMemo(
     () => editingOccurrenceStartAt !== null
@@ -976,7 +999,7 @@ function CalendarApp() {
           </View>
         </View>
         <View style={styles.syncNote}><View style={styles.syncDot} /><Text style={styles.syncText}>{pendingCount ? `${pendingCount} changes waiting to sync` : "Offline-first · Ready when you are"}</Text></View>
-      </ScrollView></> : activeTab === "Tasks" ? <TaskCenter tasks={taskEntities} onSave={draft => { void saveTask(draft).catch(error => console.warn("Unable to save task", error)); }} onToggle={task => { void toggleTaskEntity(task).catch(error => console.warn("Unable to update task", error)); }} onDelete={task => { void deleteTaskEntity(task).catch(error => console.warn("Unable to delete task", error)); }} onPlanDay={() => { void planMyDay().catch(error => console.warn("Unable to plan day", error)); }} onRollover={task => { void rolloverTask(task).catch(error => console.warn("Unable to roll task forward", error)); }} /> : activeTab === "Reminders" ? <ReminderCenter reminders={reminders} permissionGranted={permissionGranted} onRequestPermission={handleRequestNotifications} onCreate={createReminder} onSnooze={snoozeReminder} onComplete={completeReminder} onDelete={deleteReminder} /> : activeTab === "Sharing" ? <SharingCenter events={sharingEntities} onImport={importICSItems} onRSVP={updateEventRSVP} onAddAttendee={addEventAttendee} /> : <AccountCenter database={database} onSynced={refreshAfterSync} onWorkspaceChanged={refreshWorkspaceData} />}
+      </ScrollView></> : activeTab === "Tasks" ? <TaskCenter tasks={taskEntities} onSave={draft => { void saveTask(draft).catch(error => console.warn("Unable to save task", error)); }} onToggle={task => { void toggleTaskEntity(task).catch(error => console.warn("Unable to update task", error)); }} onDelete={task => { void deleteTaskEntity(task).catch(error => console.warn("Unable to delete task", error)); }} onPlanDay={() => { void planMyDay().catch(error => console.warn("Unable to plan day", error)); }} onRollover={task => { void rolloverTask(task).catch(error => console.warn("Unable to roll task forward", error)); }} /> : activeTab === "Reminders" ? <ReminderCenter reminders={reminders} permissionGranted={permissionGranted} onRequestPermission={handleRequestNotifications} onCreate={createReminder} onSnooze={snoozeReminder} onComplete={completeReminder} onDelete={deleteReminder} /> : activeTab === "Sharing" ? <SharingCenter events={sharingEntities} onImport={importICSItems} onRSVP={updateEventRSVP} onAddAttendee={addEventAttendee} /> : activeTab === "Native" ? <NativeExperienceCenter entities={sharingEntities} /> : <AccountCenter database={database} onSynced={refreshAfterSync} onWorkspaceChanged={refreshWorkspaceData} />}
 
       <EventEditor
         visible={activeTab === "Calendar" && eventEditorVisible}
@@ -994,6 +1017,7 @@ function CalendarApp() {
           { glyph: "✓", label: "Tasks", active: false },
           { glyph: "◷", label: "Reminders", active: false },
           { glyph: "⇄", label: "Sharing", active: false },
+          { glyph: "◫", label: "Native", active: false },
           { glyph: "◉", label: "Spaces", active: false },
         ].map(item => (
           <Pressable key={item.label} onPress={() => setActiveTab(item.label as MainTab)} accessibilityRole="button" accessibilityState={{ selected: activeTab === item.label }} style={styles.navItem}>
