@@ -63,12 +63,16 @@ The project will be built in substantial, user-facing phases. Implementation com
 - **Remaining:** Automatically reconcile native alarm IDs when events are edited/deleted, recurring-event native alarm expansion, Android boot/time-change rescheduling, native alarm receiver integration with app deep-link routing, and automatic iOS WidgetKit extension target generation. No tests/build/type checks have been run by request.
 
 ## Phase 7 — Hardening and release readiness
-**Goal:** Validate the integrated product after feature implementation is complete.
+**Goal:** Add safer recovery paths, data portability, and operational visibility before the dedicated validation pass.
 
-- Run type checks, automated tests, builds, and device-specific checks only when requested.
-- Address accessibility, performance, migration safety, and failure recovery.
-- Add backup/export safeguards, diagnostics, and release documentation.
-- Audit permissions, authentication, local data handling, and sync authorization before release.
+- **Implemented in source:** New Data Safety screen with read-only SQLite diagnostics for workspaces, entity records, pending/failed sync mutations, checklist rows, invalid time ranges, orphan checklist rows, and foreign-key violations.
+- **Implemented in source:** JSON local backup export for workspaces, memberships, temporal entities including tombstones, checklist items, ghost clusters, sync outbox, cursors, HLC clocks, and non-secret app settings.
+- **Implemented safeguards:** Backup excludes SecureStore authentication sessions and has a 2 MB in-app export guard; the UI warns that event/task content and pending sync payloads are sensitive and that export is not a restore operation.
+- **Implemented in source:** Root React error boundary with a local recovery screen and user-visible error detail. Error details are logged locally through the existing console path; no remote telemetry service was added.
+- **Implemented in source:** Workspace-scoped outbox batching in the sync coordinator so another workspace's queued mutations do not consume the active workspace batch.
+- **Implemented documentation:** Backup/privacy boundaries, diagnostics meaning, and release checks are documented.
+- **Remaining:** Validated transactional backup restore, file-based large exports, automated error reporting/diagnostics, schema migration versioning and rollback policy, full accessibility/performance audit, and server-policy review.
+- **Validation deferred:** No type checks, tests, builds, native compilation, or device validation have been run by request. Phase 7 source work is implemented, but release readiness is not certified until the dedicated validation pass and Supabase/native setup are completed.
 
 ## Delivery rule
 
