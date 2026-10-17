@@ -281,6 +281,7 @@ function CalendarApp() {
       syncVersion: event.syncVersion + 1,
     };
     const mutationId = `event-move-${event.id}-${updated.syncVersion}`;
+    setSelectedDate(new Date(nextStartAt));
     useCalendarStore.getState().upsertEntity(updated, mutationId);
     if (database) {
       database.repository.upsert(updated, mutationId).catch(error => console.warn("Unable to persist moved event", error));
