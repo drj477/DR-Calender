@@ -245,6 +245,10 @@ function partsInZone(timestamp: number, timeZone: string): Record<string, string
   const parts = new Intl.DateTimeFormat("en-GB", { timeZone, year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", second:"2-digit", hourCycle:"h23" }).formatToParts(new Date(timestamp));
   return Object.fromEntries(parts.filter(part => part.type !== "literal").map(part => [part.type, part.value]));
 }
+export function isSupportedTimeZone(timeZone:string|null|undefined):boolean {
+  if(!timeZone)return false;
+  try { new Intl.DateTimeFormat("en-US",{timeZone}).format(0); return true; } catch { return false; }
+}
 function safeTimeZone(timeZone: string | null | undefined): string {
   if (!timeZone) return "UTC";
   try { new Intl.DateTimeFormat("en-US", { timeZone }).format(0); return timeZone; } catch { return "UTC"; }
