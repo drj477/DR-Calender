@@ -117,8 +117,11 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
       return;
     }
 
+    const dateForSave = scope === "series" && occurrenceStartAt !== null && event?.scheduledAt !== null && event?.scheduledAt !== undefined
+      ? new Date(event.scheduledAt)
+      : selectedDate;
     const startAt = new Date(
-      selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(),
+      dateForSave.getFullYear(), dateForSave.getMonth(), dateForSave.getDate(),
       Number(timeMatch[1]), Number(timeMatch[2]), 0, 0,
     ).getTime();
     onSave({
@@ -153,7 +156,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
                   </Pressable>
                 ))}
               </View>
-              <Text style={styles.optionHint}>{scope === "occurrence" ? "Only this date is changed. The recurring schedule stays intact." : "Changes apply to every occurrence in this series."}</Text>
+              <Text style={styles.optionHint}>{scope === "occurrence" ? "Only this date is changed. The recurring schedule stays intact." : "Changes apply to every occurrence. The series keeps its original start date."}</Text>
             </View>
           ) : event?.rrule ? (
             <View style={styles.seriesNotice} accessibilityRole="summary">
