@@ -34,11 +34,12 @@ The project will be built in substantial, user-facing phases. Implementation com
 ## Phase 4 — Offline-first sync, accounts, and workspaces
 **Goal:** Safely synchronize data across devices and collaborators.
 
-- Choose and wire the production sync transport and persistence adapter.
-- Implement authentication/session lifecycle and workspace membership.
-- Add server-side authorization, conflict resolution, cursor recovery, retries, and idempotent mutation delivery.
-- Surface offline, pending, synced, and error states clearly.
-- Support workspace-scoped calendar data without leaking data across accounts.
+- **Implemented:** Supabase Auth email sign-up/sign-in, SecureStore-backed session persistence, refresh-token lifecycle, and sign-out.
+- **Implemented:** Supabase RPC sync transport, SQLite sync cursor/clock persistence, workspace-filtered outbox batches, idempotent mutation acknowledgements, retries/error recording, and HLC/LWW merge orchestration.
+- **Implemented:** SQL migration for workspace membership, server-side authorization checks, workspace listing/creation, revision-cursor pull, and mutation push.
+- **Implemented:** Account & sync UI, project configuration, manual sync, offline/error/success feedback, cloud workspace creation, local workspace activation, and workspace-scoped hydration.
+- **Deployment required:** Apply `supabase/migrations/202610180001_phase4_sync_workspaces.sql` to a Supabase project and configure its URL/public key in the app. See `SUPABASE_SETUP.md`.
+- **Remaining:** Invite/manage workspace members, field-level conflict resolution, background sync, and push-based invalidation. The phase has not been tested or built yet by request.
 
 ## Phase 5 — Sharing and interoperability
 **Goal:** Make calendars portable and collaborative.
