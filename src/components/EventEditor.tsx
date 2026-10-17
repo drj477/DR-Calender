@@ -79,6 +79,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
   const [shielded, setShielded] = useState(false);
   const [elastic, setElastic] = useState(false);
   const [allDay, setAllDay] = useState(false);
+  const [allDayDays, setAllDayDays] = useState("1");
   const [recurrence, setRecurrence] = useState("none");
   const [scope, setScope] = useState<"occurrence" | "series">("series");
   const [error, setError] = useState("");
@@ -98,6 +99,8 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
     setShielded(override?.isShielded ?? event?.isShielded ?? false);
     setElastic(override?.isElastic ?? event?.isElastic ?? false);
     setAllDay(override?.isAllDay ?? event?.metadata?.event?.kind === "all-day");
+    const existingEnd = override?.endAt ?? event?.endAt;
+    setAllDayDays(String(Math.max(1, Math.round(((existingEnd ?? start + 86400000) - new Date(new Date(start).getFullYear(), new Date(start).getMonth(), new Date(start).getDate()).getTime()) / 86400000))));
     if (override?.title) setTitle(override.title);
     setRecurrence(event?.rrule ? recurrenceFromRule(event.rrule) : "none");
     setError("");
@@ -124,6 +127,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
     setShielded(nextScope === "series" ? event.isShielded : override?.isShielded ?? event.isShielded);
     setElastic(nextScope === "series" ? event.isElastic : override?.isElastic ?? event.isElastic);
     setAllDay(override?.isAllDay ?? event.metadata?.event?.kind === "all-day");
+    setAllDayDays("1");
     setRecurrence(event.rrule ? recurrenceFromRule(event.rrule) : "none");
     setError("");
   };
@@ -140,6 +144,11 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
       setError("Enter a valid 24-hour time, such as 09:30.");
       return;
     }
+    const days = Number(allDayDays);
+    if (allDay && (!Number.isInteger(days) || days < 1 || days > 365)) {
+      setError("All-day events must last between 1 and 365 calendar days.");
+      return;
+    }
     if (!allDay && (!Number.isInteger(minutes) || minutes < 5 || minutes > 1440)) {
       setError("Duration must be between 5 and 1440 minutes.");
       return;
@@ -151,7 +160,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
     const startAt = allDay
       ? new Date(dateForSave.getFullYear(), dateForSave.getMonth(), dateForSave.getDate()).getTime()
       : new Date(dateForSave.getFullYear(), dateForSave.getMonth(), dateForSave.getDate(), Number(timeMatch![1]), Number(timeMatch![2]), 0, 0).getTime();
-    const allDayEnd = new Date(dateForSave.getFullYear(), dateForSave.getMonth(), dateForSave.getDate() + 1).getTime();
+    const allDayEnd = new Date(dateForSave.getFullYear(), dateForSave.getMonth(), dateForSave.getDate() + (allDay ? days : 1)).getTime();
     onSave({
       title: cleanTitle,
       startAt,
@@ -227,7 +236,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
               <Text style={styles.label}>DURATION (MIN)</Text>
               <TextInput value={duration} onChangeText={setDuration} placeholder="60" placeholderTextColor={palette.muted} keyboardType="number-pad" maxLength={4} style={styles.input} />
             </View>
-          </View> : <View style={styles.seriesNotice}><Text style={styles.optionHint}>This event runs from local midnight to the next local midnight.</Text></View>}
+          </View> : <View style={styles.column}><Text style={styles.label}>CALENDAR DAYS</Text><TextInput value={allDayDays} onChangeText={setAllDayDays} placeholder="1" placeholderTextColor={palette.muted} keyboardType="number-pad" maxLength={3} style={styles.input} /><Text style={styles.optionHint}>Ends at local midnight after the final day. Use 2 or more for multi-day events.</Text></View>}
 
           <Text style={styles.label}>LOCATION (OPTIONAL)</Text>
           <TextInput value={location} onChangeText={setLocation} placeholder="Add a room or address" placeholderTextColor={palette.muted} style={styles.input} />
