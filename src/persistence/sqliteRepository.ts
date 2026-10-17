@@ -1,4 +1,4 @@
-import type { SyncMutation, TemporalEntity } from "../temporal/types";
+import type { SyncMutation, TemporalEntity } from "../temporal/types";\nimport type { HybridLogicalClock } from "../sync/hlc";\nimport type { RemoteTemporalRecord, SyncLocalStore } from "../sync/syncCoordinator";
 
 export interface SQLiteRunResult {
   changes: number;
@@ -182,6 +182,48 @@ export class SQLiteTemporalRepository {
       workspaceId, rangeEnd, rangeStart,
     );
     return rows.map(toEntity);
+  }
+
+  async getCursor(workspaceId: string): Promise<string | null> {
+    const row = await this.db.getFirstAsync<{ cursor: string | null }>("SELECT cursor FROM sync_cursors WHERE workspace_id = ? LIMIT 1", workspaceId);
+    return row?.cursor ?? null;
+  }
+
+  async saveCursor(workspaceId: string, cursor: string | null): Promise<void> {
+    const now = Date.now();
+    await this.db.runAsync(`INSERT INTO sync_cursors(workspace_id,cursor,last_synced_at,updated_at) VALUES(?,?,?,?)
+      ON CONFLICT(workspace_id) DO UPDATE SET cursor=excluded.cursor,last_synced_at=excluded.last_synced_at,updated_at=excluded.updated_at`, workspaceId, cursor, now, now);
+  }
+
+  async getVersionedEntity(id: string): Promise<RemoteTemporalRecord | null> {
+    const entity = await this.getById(id);
+    if (!entity) return null;
+    const row = await this.db.getFirstAsync<{ clock_json: string }>("SELECT clock_json FROM sync_entity_clocks WHERE entity_id = ? LIMIT 1", id);
+    let clock: HybridLogicalClock;
+    try { clock = row ? JSON.parse(row.clock_json) as HybridLogicalClock : { wallTime: entity.updatedAt, logical: entity.syncVersion, nodeId: "local" }; }
+    catch { clock = { wallTime: entity.updatedAt, logical: entity.syncVersion, nodeId: "local" }; }
+    return { entity, clock };
+  }
+
+  async applyRemoteEntity(record: RemoteTemporalRecord): Promise<void> {
+    const entity = record.entity;
+    validateEntity(entity);
+    await this.db.withTransactionAsync(async () => {
+      await this.db.runAsync(`INSERT INTO temporal_entities (
+        id,workspace_id,item_type,title,scheduled_at,end_at,is_completed,priority,is_shielded,is_elastic,is_ghost,ghost_cluster_id,
+        assigned_user_ids_json,rrule,sync_version,metadata_json,time_zone,created_at,updated_at,deleted_at
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      ON CONFLICT(id) DO UPDATE SET workspace_id=excluded.workspace_id,item_type=excluded.item_type,title=excluded.title,
+        scheduled_at=excluded.scheduled_at,end_at=excluded.end_at,is_completed=excluded.is_completed,priority=excluded.priority,
+        is_shielded=excluded.is_shielded,is_elastic=excluded.is_elastic,is_ghost=excluded.is_ghost,ghost_cluster_id=excluded.ghost_cluster_id,
+        assigned_user_ids_json=excluded.assigned_user_ids_json,rrule=excluded.rrule,sync_version=excluded.sync_version,
+        metadata_json=excluded.metadata_json,time_zone=excluded.time_zone,updated_at=excluded.updated_at,deleted_at=excluded.deleted_at`,
+        entity.id,entity.workspaceId,entity.itemType,entity.title,entity.scheduledAt,entity.endAt,entity.isCompleted?1:0,entity.priority,
+        entity.isShielded?1:0,entity.isElastic?1:0,entity.isGhost?1:0,entity.ghostClusterId,JSON.stringify(entity.assignedUserIds),
+        entity.rrule,entity.syncVersion,JSON.stringify(entity.metadata??{}),entity.timeZone,entity.createdAt,entity.updatedAt,entity.deletedAt);
+      await this.db.runAsync(`INSERT INTO sync_entity_clocks(entity_id,clock_json,updated_at) VALUES(?,?,?)
+        ON CONFLICT(entity_id) DO UPDATE SET clock_json=excluded.clock_json,updated_at=excluded.updated_at`, entity.id, JSON.stringify(record.clock), Date.now());
+    });
   }
 
   async listPendingMutations(limit = 100): Promise<SyncMutation[]> {
