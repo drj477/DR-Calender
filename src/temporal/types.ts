@@ -147,6 +147,8 @@ export interface TemporalMetadata {
   invite?: InviteMetadata;
   task?: {
     dueAt: number | null;
+    /** Planned work duration used by daily scheduling, in minutes. */
+    durationMinutes?: number;
     assignee: AssigneeDTO;
     reminderMinutesBefore?: number | null;
     notificationId?: string | null;
