@@ -134,6 +134,13 @@ export function EventEditor({ visible, selectedDate, event, onClose, onSave, onD
           <Pressable onPress={save} accessibilityRole="button" hitSlop={8}><Text style={styles.save}>Save</Text></Pressable>
         </View>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.body}>
+          {event?.rrule ? (
+            <View style={styles.seriesNotice} accessibilityRole="summary">
+              <Text style={styles.seriesNoticeTitle}>Recurring series</Text>
+              <Text style={styles.optionHint}>Changes here apply to the entire series. Editing or deleting only one occurrence is not available yet.</Text>
+            </View>
+          ) : null}
+
           <Text style={styles.label}>EVENT TITLE</Text>
           <TextInput
             value={title}
@@ -199,7 +206,7 @@ export function EventEditor({ visible, selectedDate, event, onClose, onSave, onD
           {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
           {event && onDelete ? (
             <Pressable style={styles.deleteButton} onPress={() => onDelete(event)}>
-              <Text style={styles.deleteText}>Delete event</Text>
+              <Text style={styles.deleteText}>{event.rrule ? "Delete entire series" : "Delete event"}</Text>
             </Pressable>
           ) : null}
         </ScrollView>
@@ -236,6 +243,8 @@ const styles = StyleSheet.create({
   toggleThumb: { width: 17, height: 17, borderRadius: 9, backgroundColor: palette.muted },
   toggleThumbOn: { alignSelf: "flex-end", backgroundColor: palette.background },
   error: { color: palette.danger, fontSize: 12, marginTop: 8 },
+  seriesNotice: { padding: 13, gap: 5, backgroundColor: palette.accentWash, borderWidth: 1, borderColor: palette.accent, borderRadius: 13 },
+  seriesNoticeTitle: { color: palette.accent, fontSize: 12, fontWeight: "800" },
   deleteButton: { marginTop: 25, padding: 15, alignItems: "center", backgroundColor: palette.dangerWash, borderWidth: 1, borderColor: "#5A332A", borderRadius: 14 },
   deleteText: { color: palette.danger, fontSize: 13, fontWeight: "700" },
 });
