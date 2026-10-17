@@ -1,6 +1,7 @@
 import type { SyncMutation, TemporalEntity } from "../temporal/types";
 import type { HybridLogicalClock } from "./hlc";
 import { mergeVersionedEntity } from "./merge";
+import { acquireSyncLease } from "../persistence/recoveryGate";
 
 export interface RemoteTemporalRecord {
   entity: TemporalEntity;
@@ -51,6 +52,8 @@ export class SyncCoordinator {
 
   async syncWorkspace(workspaceId: string): Promise<SyncRunResult> {
     if (!workspaceId.trim()) throw new Error("workspaceId is required");
+    const releaseSync = acquireSyncLease();
+    try {
     const pending = await this.local.listPendingMutations(this.batchSize, workspaceId);
     let pushed = 0;
 
@@ -99,5 +102,8 @@ export class SyncCoordinator {
       conflicts,
       cursor: remote.cursor,
     };
+    } finally {
+      releaseSync();
+    }
   }
 }
