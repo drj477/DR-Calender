@@ -441,10 +441,11 @@ function CalendarApp() {
       const allDay = item.isAllDay;
       const endAt = item.end ? parseICSDateTime(item.end,item.timeZone) : startAt + (allDay ? 86_400_000 : 3_600_000);
       if (!Number.isFinite(endAt) || endAt <= startAt) continue;
-      const existing = current.find(entity => entity.itemType === "event" && entity.metadata?.invite?.icsUid === item.uid);
+      const deterministicId = "ics-" + item.uid.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 100);
+      const existing = current.find(entity => entity.itemType === "event" && entity.metadata?.invite?.icsUid === item.uid) ?? await database.repository.getByIdIncludingDeleted(deterministicId);
       if (existing && strategy === "skip") continue;
       const now = Date.now();
-      const id = existing?.id ?? "ics-" + item.uid.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 100);
+      const id = existing?.id ?? deterministicId;
       const attendeeList = item.attendees;
       const matchingExceptions = exceptions.filter(exception => exception.uid === item.uid);
       const overrides: Record<string, { startAt:number; endAt:number; title:string; location:string|null; isShielded:boolean; isElastic:boolean; isAllDay?:boolean }> = {};
