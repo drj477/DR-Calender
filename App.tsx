@@ -25,6 +25,7 @@ import { CalendarOverview } from "./src/components/CalendarOverview";
 import type { TemporalEntity } from "./src/temporal/types";
 import { expandRecurrence } from "./src/temporal/recurrence";
 import { ReminderCenter } from "./src/components/ReminderCenter";
+import { TaskCenter, type TaskDraft } from "./src/components/TaskCenter";
 import { cancelNotificationIds, requestNotificationPermission, scheduleEventNotifications, scheduleReminderNotification } from "./src/notifications/notificationService";
 import * as Notifications from "expo-notifications";
 
@@ -134,6 +135,7 @@ function CalendarApp() {
   const dayStart = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()).getTime();
   const dayEnd = dayStart + 24 * 60 * 60_000;
   const reminders = storedEntities.filter(entity => entity.itemType === "reminder" && entity.deletedAt === null);
+  const taskEntities = storedEntities.filter(entity => entity.itemType === "task" && entity.deletedAt === null);
   const eventSeries = storedEntities.filter(
     entity => entity.itemType === "event" && entity.deletedAt === null && entity.scheduledAt !== null,
   );
@@ -390,6 +392,120 @@ function CalendarApp() {
         useCalendarStore.getState().upsertEntity(entity, mutationId);
       }).catch(error => console.warn("Unable to persist new task", error));
     }
+  };
+
+  const saveTask = async (draft: TaskDraft) => {
+    if (!database) return;
+    const existing = draft.id ? await database.repository.getById(draft.id) : null;
+    const now = Date.now();
+    const id = existing?.id ?? "task-" + now + "-" + Math.random().toString(36).slice(2, 7);
+    const oldTaskMeta = existing?.metadata?.task;
+    if (oldTaskMeta?.notificationId) await cancelNotificationIds([oldTaskMeta.notificationId]);
+    const entity: TemporalEntity = {
+      id, workspaceId: database.workspaceId, itemType: "task", title: draft.title,
+      scheduledAt: draft.dueAt, endAt: existing?.endAt ?? null, isCompleted: existing?.isCompleted ?? false,
+      priority: draft.priority, isShielded: false, isElastic: false, isGhost: false, ghostClusterId: null,
+      assignedUserIds: existing?.assignedUserIds ?? ["local-user"], rrule: null,
+      syncVersion: (existing?.syncVersion ?? 0) + 1, createdAt: existing?.createdAt ?? now, updatedAt: now,
+      deletedAt: null, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+      metadata: { ...existing?.metadata, task: {
+        dueAt: draft.dueAt,
+        assignee: oldTaskMeta?.assignee ?? { id: "local-user", name: "You", avatarUrl: null },
+        checklist: draft.checklist,
+        reminderMinutesBefore: oldTaskMeta?.reminderMinutesBefore ?? null,
+        notificationId: null,
+      } },
+    };
+    const mutationId = "task-save-" + id + "-" + entity.syncVersion;
+    await database.repository.upsert(entity, mutationId);
+    useCalendarStore.getState().upsertEntity(entity, mutationId);
+    if (!entity.isCompleted && entity.metadata?.task?.reminderMinutesBefore != null && draft.dueAt != null) {
+      const granted = permissionGranted === true;
+      const notifyAt = draft.dueAt - entity.metadata.task.reminderMinutesBefore * 60_000 > now
+        ? draft.dueAt - entity.metadata.task.reminderMinutesBefore * 60_000 : draft.dueAt;
+      const notificationId = granted && notifyAt > now ? await scheduleReminderNotification(entity, notifyAt) : null;
+      if (notificationId) {
+        const scheduled = { ...entity, syncVersion: entity.syncVersion + 1, updatedAt: Date.now(), metadata: { ...entity.metadata, task: { ...entity.metadata.task!, notificationId } } };
+        await persistReminderUpdate(scheduled, "task-save-notification-" + id + "-" + scheduled.syncVersion);
+      }
+    }
+    setTasks(current => {
+      const next = { id, title: entity.title, due: draft.dueAt === null ? "No due date" : new Date(draft.dueAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }), assignee: "You", completed: entity.isCompleted, dueAt: draft.dueAt, hasReminder: entity.metadata?.task?.reminderMinutesBefore != null };
+      return existing ? current.map(task => task.id === id ? next : task) : [next, ...current];
+    });
+  };
+
+  const toggleTaskEntity = async (task: TemporalEntity) => {
+    if (!database) return;
+    const existing = await database.repository.getById(task.id);
+    if (!existing || existing.itemType !== "task") return;
+    const completed = !existing.isCompleted;
+    const taskMeta = existing.metadata?.task;
+    if (completed) await cancelNotificationIds(taskMeta?.notificationId ? [taskMeta.notificationId] : []);
+    const updated: TemporalEntity = { ...existing, isCompleted: completed, updatedAt: Date.now(), syncVersion: existing.syncVersion + 1, metadata: { ...existing.metadata, task: taskMeta ? { ...taskMeta, notificationId: completed ? null : taskMeta.notificationId } : undefined } };
+    await database.repository.upsert(updated, "task-complete-" + updated.id + "-" + updated.syncVersion);
+    useCalendarStore.getState().upsertEntity(updated, "task-complete-" + updated.id + "-" + updated.syncVersion);
+    setTasks(current => current.map(item => item.id === updated.id ? { ...item, completed, hasReminder: taskMeta?.reminderMinutesBefore != null } : item));
+    if (!completed && taskMeta?.reminderMinutesBefore != null && (taskMeta.dueAt ?? updated.scheduledAt) != null && permissionGranted) {
+      const dueAt = taskMeta.dueAt ?? updated.scheduledAt!;
+      const notifyAt = dueAt - taskMeta.reminderMinutesBefore * 60_000 > Date.now() ? dueAt - taskMeta.reminderMinutesBefore * 60_000 : dueAt;
+      const notificationId = await scheduleReminderNotification(updated, notifyAt);
+      const rescheduled = { ...updated, syncVersion: updated.syncVersion + 1, updatedAt: Date.now(), metadata: { ...updated.metadata, task: { ...taskMeta, notificationId } } };
+      await persistReminderUpdate(rescheduled, "task-reopen-notification-" + rescheduled.id + "-" + rescheduled.syncVersion);
+    }
+  };
+
+  const deleteTaskEntity = async (task: TemporalEntity) => {
+    if (!database) return;
+    await cancelNotificationIds(task.metadata?.task?.notificationId ? [task.metadata.task.notificationId] : []);
+    const mutationId = "task-delete-" + task.id + "-" + (task.syncVersion + 1);
+    const tombstone = await database.repository.softDelete(task.id, mutationId);
+    if (tombstone) {
+      useCalendarStore.getState().deleteEntity(task.id, mutationId, task.workspaceId, "task");
+      setTasks(current => current.filter(item => item.id !== task.id));
+    }
+  };
+
+  const rolloverTask = async (task: TemporalEntity) => {
+    const today = new Date();
+    const dueAt = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 17, 0).getTime();
+    await saveTask({ id: task.id, title: task.title, dueAt, priority: task.priority, checklist: task.metadata?.task?.checklist ?? [] });
+  };
+
+  const planMyDay = async () => {
+    if (!database) return;
+    const now = Date.now();
+    const day = new Date();
+    const startOfDay = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime();
+    const endOfDay = startOfDay + 86400000;
+    const busy = storedEntities
+      .filter(entity => entity.deletedAt === null && !entity.isCompleted && entity.id !== "" && (entity.itemType === "event" || entity.itemType === "task") && entity.scheduledAt !== null && entity.scheduledAt < endOfDay && (entity.endAt ?? entity.scheduledAt + 30 * 60_000) > startOfDay)
+      .map(entity => ({ start: Math.max(startOfDay, entity.scheduledAt!), end: Math.min(endOfDay, entity.endAt ?? entity.scheduledAt! + 30 * 60_000) }));
+    const pending = taskEntities.filter(task => !task.isCompleted && (task.metadata?.task?.dueAt ?? task.scheduledAt) === null || (!task.isCompleted && (task.metadata?.task?.dueAt ?? task.scheduledAt) !== null && (task.metadata?.task?.dueAt ?? task.scheduledAt)! < startOfDay))
+      .sort((a, b) => ({ critical: 0, high: 1, normal: 2, low: 3 }[a.priority] - { critical: 0, high: 1, normal: 2, low: 3 }[b.priority] || a.createdAt - b.createdAt);
+    let cursor = Math.max(now, new Date(day.getFullYear(), day.getMonth(), day.getDate(), 9, 0).getTime());
+    const workdayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 18, 0).getTime();
+    let planned = 0;
+    for (const task of pending) {
+      let slot = cursor;
+      while (slot + 30 * 60_000 <= workdayEnd && busy.some(block => slot < block.end && block.start < slot + 30 * 60_000)) {
+        const blockerEnd = Math.max(...busy.filter(block => slot < block.end && block.start < slot + 30 * 60_000).map(block => block.end));
+        slot = Math.ceil(blockerEnd / (15 * 60_000)) * 15 * 60_000;
+      }
+      if (slot + 30 * 60_000 > workdayEnd) break;
+      const updated: TemporalEntity = {
+        ...task, scheduledAt: slot, endAt: slot + 30 * 60_000, updatedAt: Date.now(), syncVersion: task.syncVersion + 1,
+        metadata: { ...task.metadata, task: { ...task.metadata?.task!, dueAt: slot, assignee: task.metadata?.task?.assignee ?? { id: "local-user", name: "You", avatarUrl: null } } },
+      };
+      const mutationId = "task-plan-day-" + task.id + "-" + updated.syncVersion;
+      await database.repository.upsert(updated, mutationId);
+      useCalendarStore.getState().upsertEntity(updated, mutationId);
+      busy.push({ start: slot, end: slot + 30 * 60_000 });
+      cursor = slot + 30 * 60_000;
+      planned += 1;
+    }
+    if (planned > 0) setActiveTab("Calendar");
+    else setActiveTab("Tasks");
   };
 
   const openNewEvent = () => {
@@ -736,7 +852,7 @@ function CalendarApp() {
           </View>
         </View>
         <View style={styles.syncNote}><View style={styles.syncDot} /><Text style={styles.syncText}>{pendingCount ? `${pendingCount} changes waiting to sync` : "Offline-first · Ready when you are"}</Text></View>
-      </ScrollView></> : activeTab === "Reminders" ? <ReminderCenter reminders={reminders} permissionGranted={permissionGranted} onRequestPermission={handleRequestNotifications} onCreate={createReminder} onSnooze={snoozeReminder} onComplete={completeReminder} onDelete={deleteReminder} /> : <View style={styles.placeholderScreen}><Text style={styles.placeholderTitle}>{activeTab}</Text><Text style={styles.placeholderText}>{activeTab === "Tasks" ? "Task workspace is queued for the next phase." : "Shared spaces will be available in a later phase."}</Text></View>}
+      </ScrollView></> : activeTab === "Tasks" ? <TaskCenter tasks={taskEntities} onSave={draft => { void saveTask(draft).catch(error => console.warn("Unable to save task", error)); }} onToggle={task => { void toggleTaskEntity(task).catch(error => console.warn("Unable to update task", error)); }} onDelete={task => { void deleteTaskEntity(task).catch(error => console.warn("Unable to delete task", error)); }} onPlanDay={() => { void planMyDay().catch(error => console.warn("Unable to plan day", error)); }} onRollover={task => { void rolloverTask(task).catch(error => console.warn("Unable to roll task forward", error)); }} /> : activeTab === "Reminders" ? <ReminderCenter reminders={reminders} permissionGranted={permissionGranted} onRequestPermission={handleRequestNotifications} onCreate={createReminder} onSnooze={snoozeReminder} onComplete={completeReminder} onDelete={deleteReminder} /> : <View style={styles.placeholderScreen}><Text style={styles.placeholderTitle}>Spaces</Text><Text style={styles.placeholderText}>Shared spaces will be available in a later phase.</Text></View>}
 
       <EventEditor
         visible={activeTab === "Calendar" && eventEditorVisible}
