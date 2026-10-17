@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { activateLocalWorkspace, type LocalCalendarDatabase } from "../persistence/localDatabase";
+import { acquireSyncLease } from "../persistence/recoveryGate";
 import { getValidSession, loadSession, loadSupabaseConfig, saveSupabaseConfig, signIn, signOut, signUp, type AuthSession, type SupabaseConfig } from "../sync/authService";
 import { addRemoteWorkspaceMember, createRemoteWorkspace, listRemoteWorkspaces, SupabaseSyncTransport, type RemoteWorkspace } from "../sync/supabaseTransport";
 import { SyncCoordinator } from "../sync/syncCoordinator";
@@ -72,7 +73,10 @@ export function AccountCenter({ database, onSynced, onWorkspaceChanged }: Props)
   const runSync = async () => {
     if (!database || !config || !session) { setMessage("Initialize local storage and sign in before syncing."); return; }
     setBusy(true); setStatus("syncing"); setMessage("");
+    let releaseSync: (() => void) | null = null;
     try {
+      // Keep the recovery gate held through the UI/store refresh after sync completes.
+      releaseSync = acquireSyncLease();
       const validSession = await getValidSession(config);
       if (!validSession) throw new Error("Your session expired. Sign in again.");
       const transport = new SupabaseSyncTransport(config, validSession);
@@ -85,7 +89,7 @@ export function AccountCenter({ database, onSynced, onWorkspaceChanged }: Props)
       const text = error instanceof Error ? error.message : String(error);
       setStatus(/network|fetch|offline|timeout/i.test(text) ? "offline" : "error");
       setMessage(text);
-    } finally { setBusy(false); }
+    } finally { releaseSync?.(); setBusy(false); }
   };
   const linkPersonal = async () => {
     if (!config || !session || !database) return;
