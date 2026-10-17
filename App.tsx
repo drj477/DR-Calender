@@ -208,6 +208,59 @@ function CalendarApp() {
     return () => { active = false; clearTimeout(timer); };
   }, [storedEntities, database, calendarHydrated, appForegroundRevision]);
 
+  // Refill missing Expo notification schedules after returning from Settings or
+  // after an OS permission change. Android exact alarms are handled by the native
+  // reconciler above, so they do not also receive Expo event notifications.
+  useEffect(() => {
+    if (!database || !calendarHydrated || appForegroundRevision === 0) return;
+    let active = true;
+    void (async () => {
+      const permission = await Notifications.getPermissionsAsync();
+      setPermissionGranted(permission.granted);
+      if (!permission.granted) return;
+      for (const entity of storedEntities) {
+        if (!active || entity.deletedAt !== null || entity.isCompleted) continue;
+        let updated: TemporalEntity | null = null;
+        if (entity.itemType === "reminder" && entity.metadata?.reminder && !entity.metadata.reminder.notificationId) {
+          const meta = entity.metadata.reminder;
+          const at = meta.snoozeUntil ?? (meta.trigger.kind === "time" ? meta.trigger.at : null);
+          if (at !== null && at > Date.now()) {
+            const notificationId = await scheduleReminderNotification(entity, at);
+            if (notificationId) updated = { ...entity, updatedAt: Date.now(), syncVersion: entity.syncVersion + 1,
+              metadata: { ...entity.metadata, reminder: { ...meta, notificationId } } };
+          }
+        } else if (entity.itemType === "task" && entity.metadata?.task &&
+          entity.metadata.task.reminderMinutesBefore != null && !entity.metadata.task.notificationId) {
+          const meta = entity.metadata.task;
+          const dueAt = meta.dueAt ?? entity.scheduledAt;
+          if (dueAt !== null) {
+            const at = dueAt - meta.reminderMinutesBefore * 60_000 > Date.now()
+              ? dueAt - meta.reminderMinutesBefore * 60_000 : dueAt;
+            if (at > Date.now()) {
+              const notificationId = await scheduleReminderNotification(entity, at);
+              if (notificationId) updated = { ...entity, updatedAt: Date.now(), syncVersion: entity.syncVersion + 1,
+                metadata: { ...entity.metadata, task: { ...meta, notificationId } } };
+            }
+          }
+        } else if (entity.itemType === "event" && entity.metadata?.event?.reminderMinutesBefore != null &&
+          !entity.metadata.event.notificationIds?.length) {
+          const useNativeAndroidAlarm = Platform.OS === "android" && isNativeBridgeAvailable() && await isExactAlarmAllowed();
+          if (!useNativeAndroidAlarm) {
+            const notificationIds = await scheduleEventNotifications(entity);
+            if (notificationIds.length) updated = { ...entity, updatedAt: Date.now(), syncVersion: entity.syncVersion + 1,
+              metadata: { ...entity.metadata, event: { ...entity.metadata.event, notificationIds } } };
+          }
+        }
+        if (updated && active) {
+          const mutationId = "foreground-notification-reconcile-" + updated.id + "-" + updated.syncVersion;
+          await database.repository.upsert(updated, mutationId);
+          useCalendarStore.getState().upsertEntity(updated, mutationId);
+        }
+      }
+    })().catch(error => console.warn("Unable to restore notification schedules on foreground", error));
+    return () => { active = false; };
+  }, [appForegroundRevision, database, calendarHydrated, storedEntities]);
+
   // Widgets and alarm notifications open the app through the drcalender:// scheme.
   // Resolve event IDs after hydration so cold-start links are not lost.
   const [pendingDeepLink, setPendingDeepLink] = useState<string | null>(null);
