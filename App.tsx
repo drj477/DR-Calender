@@ -431,9 +431,23 @@ function CalendarApp() {
   const importICSItems = async (items: ParsedICSEvent[], strategy: "skip" | "update") => {
     if (!database) throw new Error("Local calendar storage is not ready.");
     const current = await database.repository.queryRange(database.workspaceId, 0, 4102444800000);
-    const masters = items.filter(item => item.recurrenceId === null);
-    const exceptions = items.filter(item => item.recurrenceId !== null);
+    const replies = items.filter(item => item.method === "REPLY");
     let imported = 0;
+    for (const reply of replies) {
+      const event = current.find(entity => entity.itemType === "event" && entity.metadata?.invite?.icsUid === reply.uid);
+      if (!event || !event.metadata?.invite) continue;
+      const attendeeReply = reply.attendees[0];
+      if (!attendeeReply || attendeeReply.rsvpStatus === "needs-action") continue;
+      const attendeeExists = event.metadata.invite.attendeeList.some(attendee => attendee.email.toLowerCase() === attendeeReply.email.toLowerCase());
+      if (!attendeeExists) continue;
+      const updated: TemporalEntity = { ...event, updatedAt:Date.now(), syncVersion:event.syncVersion+1, metadata:{ ...event.metadata, invite:{ ...event.metadata.invite, attendeeList:event.metadata.invite.attendeeList.map(attendee => attendee.email.toLowerCase() === attendeeReply.email.toLowerCase() ? { ...attendee, rsvpStatus:attendeeReply.rsvpStatus } : attendee), sequence:event.metadata.invite.sequence+1 } } };
+      const mutationId = "ics-rsvp-" + event.id + "-" + updated.syncVersion;
+      await database.repository.upsert(updated,mutationId);
+      useCalendarStore.getState().upsertEntity(updated,mutationId);
+      imported++;
+    }
+    const masters = items.filter(item => item.method !== "REPLY" && item.recurrenceId === null);
+    const exceptions = items.filter(item => item.method !== "REPLY" && item.recurrenceId !== null);
     for (const item of masters) {
       if (!item.start) continue;
       const startAt = parseICSDateTime(item.start,item.timeZone);
