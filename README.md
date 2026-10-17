@@ -46,7 +46,9 @@ A premium, offline-first calendar and scheduling application for iOS and Android
 - `src/temporal/` — temporal models, scheduling, recurrence, ICS, drag helpers, and SQLite DDL.
 - `src/store/` — Zustand calendar state.
 - `src/persistence/` — SQLite repository abstraction.
-- `src/sync/` — HLC, deterministic merge, sync orchestration, Supabase Auth/session handling, and authenticated sync transport.\n- `supabase/migrations/` — server-side workspace membership, authorization, and sync RPC schema.\n- `SUPABASE_SETUP.md` — deployment and account setup instructions.
+- `src/sync/` — HLC, deterministic merge, sync orchestration, Supabase Auth/session handling, and authenticated sync transport.
+- `supabase/migrations/` — server-side workspace membership, authorization, and sync RPC schema.
+- `SUPABASE_SETUP.md` — deployment and account setup instructions.
 - `native/ios/` and `native/android/` — native widget/alarm source templates.
 
 ## Run locally
