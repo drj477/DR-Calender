@@ -1,4 +1,5 @@
 import * as Notifications from "expo-notifications";
+import { Platform } from "react-native";
 import type { TemporalEntity } from "../temporal/types";
 import { expandRecurrence } from "../temporal/recurrence";
 
@@ -14,6 +15,9 @@ Notifications.setNotificationHandler({
 });
 
 export async function requestNotificationPermission(): Promise<boolean> {
+  if (Platform.OS === "android") {
+    await Notifications.setNotificationChannelAsync("reminders", { name: "Reminders", importance: Notifications.AndroidImportance.HIGH, vibrationPattern: [0, 250, 250, 250], lightColor: "#FFC247", sound: "default" });
+  }
   const current = await Notifications.getPermissionsAsync();
   if (current.granted) return true;
   const requested = await Notifications.requestPermissionsAsync();
@@ -37,6 +41,7 @@ export async function scheduleReminderNotification(
       title: entity.title,
       body: "Your DR Calender reminder is due.",
       sound: "default",
+      ...(Platform.OS === "android" ? { channelId: "reminders" } : {}),
       data: { entityId: entity.id, itemType: entity.itemType, deepLink: `drcalender://reminders/${entity.id}` },
     },
     trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(at) },
@@ -66,6 +71,7 @@ export async function scheduleEventNotifications(entity: TemporalEntity): Promis
         title: entity.title,
         body: minutesBefore === 0 ? "Your event starts now." : `Your event starts in ${minutesBefore >= 1440 ? `${minutesBefore / 1440} day(s)` : minutesBefore >= 60 ? `${minutesBefore / 60} hour(s)` : `${minutesBefore} minutes`}.`,
         sound: "default",
+        ...(Platform.OS === "android" ? { channelId: "reminders" } : {}),
         data: { entityId: entity.id, itemType: "event", occurrenceStartAt: occurrence.startAt, deepLink: `drcalender://events/${entity.id}` },
       },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(triggerAt) },
