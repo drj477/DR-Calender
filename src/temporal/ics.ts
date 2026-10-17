@@ -1,4 +1,4 @@
-import type { InviteAttendee, RSVPStatus } from "./types";
+import type { InviteAttendee, RSVPStatus, TemporalEntity, RecurrenceOverride } from "./types";
 
 export interface ParsedICSEvent {
   uid: string;
