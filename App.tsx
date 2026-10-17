@@ -566,6 +566,7 @@ function CalendarApp() {
         </View>
       </View>
 
+      {activeTab === "Calendar" ? <>
       <View style={styles.modeBar}>
         <View style={styles.dateHeading}>
           <View>
@@ -674,10 +675,10 @@ function CalendarApp() {
           </View>
         </View>
         <View style={styles.syncNote}><View style={styles.syncDot} /><Text style={styles.syncText}>{pendingCount ? `${pendingCount} changes waiting to sync` : "Offline-first · Ready when you are"}</Text></View>
-      </ScrollView>
+      </ScrollView> : activeTab === "Reminders" ? <ReminderCenter reminders={reminders} permissionGranted={permissionGranted} onRequestPermission={handleRequestNotifications} onCreate={createReminder} onSnooze={snoozeReminder} onComplete={completeReminder} onDelete={deleteReminder} /> : <View style={styles.placeholderScreen}><Text style={styles.placeholderTitle}>{activeTab}</Text><Text style={styles.placeholderText}>{activeTab === "Tasks" ? "Task workspace is queued for the next phase." : "Shared spaces will be available in a later phase."}</Text></View>}
 
       <EventEditor
-        visible={eventEditorVisible}
+        visible={activeTab === "Calendar" && eventEditorVisible}
         selectedDate={eventEditorDate}
         event={editingEvent}
         occurrenceStartAt={editingOccurrenceStartAt}
@@ -693,9 +694,9 @@ function CalendarApp() {
           { glyph: "◷", label: "Reminders", active: false },
           { glyph: "◉", label: "Spaces", active: false },
         ].map(item => (
-          <Pressable key={item.label} style={styles.navItem}>
-            <Text style={[styles.navGlyph, item.active && styles.navGlyphActive]}>{item.glyph}</Text>
-            <Text style={[styles.navLabel, item.active && styles.navLabelActive]}>{item.label}</Text>
+          <Pressable key={item.label} onPress={() => setActiveTab(item.label as MainTab)} accessibilityRole="button" accessibilityState={{ selected: activeTab === item.label }} style={styles.navItem}>
+            <Text style={[styles.navGlyph, activeTab === item.label && styles.navGlyphActive]}>{item.glyph}</Text>
+            <Text style={[styles.navLabel, activeTab === item.label && styles.navLabelActive]}>{item.label}</Text>
           </Pressable>
         ))}
       </View>
@@ -796,6 +797,9 @@ const styles = StyleSheet.create({
   navGlyphActive: { color: COLORS.accent },
   navLabel: { color: COLORS.muted, fontSize: 9, fontWeight: "600" },
   navLabelActive: { color: COLORS.accent },
+  placeholderScreen: { flex: 1, padding: 24, justifyContent: "center", gap: 10 },
+  placeholderTitle: { color: COLORS.text, fontSize: 24, fontWeight: "800" },
+  placeholderText: { color: COLORS.muted, fontSize: 12, lineHeight: 18 },
   monthPlaceholder: { padding: 24, borderRadius: 16, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border },
   monthPlaceholderTitle: { color: COLORS.text, fontSize: 15, fontWeight: "700", marginBottom: 8 },
 });
