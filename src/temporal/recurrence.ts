@@ -93,10 +93,16 @@ export function expandRecurrence(
   let generated = 0;
   let iterations = 0;
   const maxIterations = Math.max(maxOccurrences * 400, 10000);
-  // Include local dates just before the range because an event may overlap its start.
+  // Include local dates before the range so long events that overlap rangeStart
+  // are retained. For unbounded rules, jump directly to this local-date window;
+  // COUNT rules must scan from DTSTART to preserve their ordinal occurrence count.
   const rangeWall = getWallClockParts(options.rangeStart, timeZone);
   const rangeDate = Date.UTC(rangeWall.year, rangeWall.month - 1, rangeWall.day);
-  const scanFromDate = rangeDate - (duration ?? 0) - 2 * DAY_MS;
+  const overlapDays = Math.ceil((duration ?? 0) / DAY_MS) + 2;
+  const scanFromDate = rangeDate - overlapDays * DAY_MS;
+  if (count === Infinity && scanFromDate > cursor.getTime()) {
+    cursor.setTime(scanFromDate);
+  }
   const stopWall = getWallClockParts(options.rangeEnd, timeZone);
   const stopDate = Date.UTC(stopWall.year, stopWall.month - 1, stopWall.day) + DAY_MS;
 
@@ -135,10 +141,6 @@ export function expandRecurrence(
       }
     }
 
-    // If we are past the requested range and the DTSTART is ancient, avoid scanning
-    // unnecessary dates while preserving COUNT semantics by calculating generated count
-    // only for the supported unfiltered daily/weekly/monthly rules below.
-    if (cursor.getTime() >= scanFromDate && cursor.getTime() >= stopDate) break;
     cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
 
