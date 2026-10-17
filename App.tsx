@@ -464,14 +464,14 @@ function CalendarApp() {
       const matchingExceptions = exceptions.filter(exception => exception.uid === item.uid);
       const overrides: Record<string, { startAt:number; endAt:number; title:string; location:string|null; isShielded:boolean; isElastic:boolean; isAllDay?:boolean }> = {};
       for (const exception of matchingExceptions) {
-        if (!exception.recurrenceId || !exception.start) continue;
+        if (exception.status === "CANCELLED" || !exception.recurrenceId || !exception.start) continue;
         const originalAt = parseICSDateTime(exception.recurrenceId,exception.timeZone ?? item.timeZone);
         const movedAt = parseICSDateTime(exception.start,exception.timeZone ?? item.timeZone);
         if (!Number.isFinite(originalAt) || !Number.isFinite(movedAt)) continue;
         const exceptionEnd = exception.end ? parseICSDateTime(exception.end,exception.timeZone ?? item.timeZone) : movedAt + (allDay ? 86_400_000 : 3_600_000);
         overrides[String(originalAt)] = { startAt:movedAt, endAt:exceptionEnd, title:exception.summary || item.summary, location:exception.location ?? item.location, isShielded:false, isElastic:false, isAllDay:exception.isAllDay };
       }
-      const excludedStartsAt = item.excludedDates.map(value => parseICSDateTime(value,item.timeZone)).filter(Number.isFinite);
+      const excludedStartsAt = [...item.excludedDates.map(value => parseICSDateTime(value,item.timeZone)), ...matchingExceptions.filter(exception => exception.status === "CANCELLED" && exception.recurrenceId).map(exception => parseICSDateTime(exception.recurrenceId!,exception.timeZone ?? item.timeZone))].filter(Number.isFinite);
       const entity: TemporalEntity = {
         id, workspaceId:database.workspaceId, itemType:"event", title:item.summary || "(Untitled event)",
         scheduledAt:startAt, endAt, isCompleted:false, priority:existing?.priority??"normal",
