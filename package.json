@@ -13,6 +13,7 @@
   "dependencies": {
     "expo": "~53.0.0",
     "expo-sqlite": "~15.2.14",
+    "expo-notifications": "~0.31.4",
     "expo-status-bar": "~2.2.3",
     "react": "19.0.0",
     "react-native": "0.79.5",
