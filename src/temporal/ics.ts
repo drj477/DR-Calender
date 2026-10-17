@@ -304,9 +304,65 @@ function buildEntityLines(entity: TemporalEntity, uid: string, sequence: number,
   if (entity.rrule && recurrenceId === undefined) lines.push("RRULE:" + entity.rrule.replace(/^RRULE:/i,""));
   return lines.concat(["END:VEVENT"]);
 }
+function zoneOffsetMinutes(timestamp:number,timeZone:string):number {
+  const p=partsInZone(timestamp,timeZone);
+  return Math.round((Date.UTC(Number(p.year),Number(p.month)-1,Number(p.day),Number(p.hour),Number(p.minute),Number(p.second))-timestamp)/60_000);
+}
+function offsetToken(minutes:number):string {
+  const sign=minutes<0?"-":"+";
+  const absolute=Math.abs(minutes);
+  return sign+String(Math.floor(absolute/60)).padStart(2,"0")+String(absolute%60).padStart(2,"0");
+}
+function zoneName(timestamp:number,timeZone:string):string {
+  const part=new Intl.DateTimeFormat("en-US",{timeZone,timeZoneName:"short"}).formatToParts(new Date(timestamp)).find(p=>p.type==="timeZoneName")?.value;
+  return (part||timeZone).replace(/[^A-Za-z0-9+_-]/g,"")||timeZone.replace(/[^A-Za-z0-9+_-]/g,"");
+}
+function timezoneTransitions(timeZone:string,firstYear:number,lastYear:number):string[] {
+  const lines=["BEGIN:VTIMEZONE","TZID:"+timeZone,"X-LIC-LOCATION:"+timeZone];
+  let found=false;
+  for(let year=firstYear;year<=lastYear;year++){
+    let previous=Date.UTC(year,0,1);
+    let previousOffset=zoneOffsetMinutes(previous,timeZone);
+    for(let sample=previous+7*86400_000;sample<=Date.UTC(year+1,0,1);sample+=7*86400_000){
+      const current=Math.min(sample,Date.UTC(year+1,0,1));
+      const currentOffset=zoneOffsetMinutes(current,timeZone);
+      if(currentOffset!==previousOffset){
+        let low=previous,high=current;
+        while(high-low>60_000){
+          const middle=Math.floor((low+high)/120_000)*60_000;
+          if(zoneOffsetMinutes(middle,timeZone)===previousOffset)low=middle;else high=middle;
+        }
+        const transition=Math.ceil(high/60_000)*60_000;
+        const toOffset=zoneOffsetMinutes(transition,timeZone);
+        if(toOffset!==previousOffset){
+          found=true;
+          const localBefore=transition+previousOffset*60_000;
+          const local=new Date(localBefore);
+          const stamp=String(local.getUTCFullYear()).padStart(4,"0")+String(local.getUTCMonth()+1).padStart(2,"0")+String(local.getUTCDate()).padStart(2,"0")+"T"+String(local.getUTCHours()).padStart(2,"0")+String(local.getUTCMinutes()).padStart(2,"0")+"00";
+          const kind=toOffset>previousOffset?"DAYLIGHT":"STANDARD";
+          lines.push("BEGIN:"+kind,"DTSTART:"+stamp,"TZOFFSETFROM:"+offsetToken(previousOffset),"TZOFFSETTO:"+offsetToken(toOffset),"TZNAME:"+zoneName(transition,timeZone),"END:"+kind);
+        }
+      }
+      previous=current;previousOffset=currentOffset;
+      if(current===Date.UTC(year+1,0,1))break;
+    }
+  }
+  if(!found){
+    const offset=zoneOffsetMinutes(Date.UTC(firstYear,0,1),timeZone);
+    lines.push("BEGIN:STANDARD","DTSTART:19700101T000000","TZOFFSETFROM:"+offsetToken(offset),"TZOFFSETTO:"+offsetToken(offset),"TZNAME:"+zoneName(Date.UTC(firstYear,0,1),timeZone),"END:STANDARD");
+  }
+  lines.push("END:VTIMEZONE");
+  return lines;
+}
 /** Export events, recurrence exclusions, moved occurrences, attendees and time zones. */
 export function buildICSCalendar(entities: TemporalEntity[], calendarName = "DR-Calender"): string {
   const lines = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//DR-Calender//Temporal Engine//EN","CALSCALE:GREGORIAN","X-WR-CALNAME:" + escapeICSText(calendarName)];
+  const exportable = entities.filter(entity => entity.itemType === "event" && entity.deletedAt === null && entity.scheduledAt !== null && entity.endAt !== null);
+  const zones = [...new Set(exportable.map(entity => safeTimeZone(entity.timeZone)))];
+  const years = exportable.flatMap(entity => [new Date(entity.scheduledAt!).getUTCFullYear(),new Date(entity.endAt!).getUTCFullYear()]);
+  const firstYear = Math.max(1970,Math.min(...(years.length?years:[new Date().getUTCFullYear()]))-1);
+  const lastYear = Math.min(2100,Math.max(...(years.length?years:[new Date().getUTCFullYear()]))+1);
+  for (const zone of zones) lines.push(...timezoneTransitions(zone,firstYear,lastYear));
   for (const entity of entities) {
     if (entity.itemType !== "event" || entity.deletedAt !== null || entity.scheduledAt === null || entity.endAt === null) continue;
     const uid = entity.metadata?.invite?.icsUid ?? entity.id + "@dr-calender.local";
