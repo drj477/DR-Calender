@@ -69,12 +69,12 @@ export async function listRemoteWorkspaces(config: SupabaseConfig): Promise<Remo
   if (!response.ok) throw new Error(data.message ?? `Could not load workspaces (${response.status}).`);
   return data as RemoteWorkspace[];
 }
-export async function createRemoteWorkspace(config: SupabaseConfig, name: string, type: "personal" | "family" | "team" | "project"): Promise<RemoteWorkspace> {
+export async function createRemoteWorkspace(config: SupabaseConfig, name: string, type: "personal" | "family" | "team" | "project", workspaceId?: string): Promise<RemoteWorkspace> {
   const session = await getValidSession(config);
   if (!session) throw new Error("Sign in to create a workspace.");
   const response = await fetch(`${config.url.replace(/\/+$/, "")}/rest/v1/rpc/dr_create_workspace`, {
     method: "POST", headers: { "Content-Type": "application/json", apikey: config.anonKey, Authorization: `Bearer ${session.accessToken}` },
-    body: JSON.stringify({ p_name: name.trim(), p_workspace_type: type }),
+    body: JSON.stringify({ p_name: name.trim(), p_workspace_type: type, p_workspace_id: workspaceId ?? null }),
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.message ?? `Could not create workspace (${response.status}).`);
