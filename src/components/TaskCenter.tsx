@@ -94,7 +94,7 @@ export function TaskCenter({ tasks, onSave, onToggle, onDelete, onPlanDay, onRol
   return <View style={s.root}>
     <View style={s.hero}>
       <View style={{ flex: 1, gap: 5 }}><Text style={s.kicker}>MAKE ROOM FOR WHAT MATTERS</Text><Text style={s.heading}>Tasks</Text><Text style={s.subtitle}>{liveTasks.filter(t => !t.isCompleted).length} open · {counts.Overdue} overdue</Text></View>
-      <Pressable onPress={onPlanDay} style={s.planButton} accessibilityRole="button"><Text style={s.planText}>✦ Plan my day</Text></Pressable>
+      <Pressable onPress={() => { setFilter("Today"); onPlanDay(); }} style={s.planButton} accessibilityRole="button"><Text style={s.planText}>✦ Plan my day</Text></Pressable>
     </View>
     <View style={s.actions}><Pressable onPress={() => openEditor()} style={s.addButton} accessibilityRole="button"><Text style={s.addText}>＋ New task</Text></Pressable><Text style={s.helper}>Tasks save locally and enter the sync outbox.</Text></View>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filters}>
