@@ -9,8 +9,9 @@ The native module exposes:
 - `isExactAlarmAllowed()`
 - `requestExactAlarmPermission()`
 - `scheduleExactAlarm(id, title, body, triggerAtMillis)`
-- `cancelExactAlarm(id)`
-- `cancelExactAlarmsExcept(keepIds)` for removing stale app-managed event alarms during reconciliation
+- `isExactAlarmScheduled(id)` and `cancelExactAlarm(id)` for persisted manual-alarm status and cancellation
+- `cancelExactAlarmsExcept(keepIds)` for removing stale automatic event alarms during reconciliation
+- `cancelAllManualAlarms()` for clearing user-managed alarms after restore
 - `publishWidgetSnapshot(title, dueLabel, assignee, deepLink)`
 
 After adding/changing native module code or configuration, regenerate/rebuild the native app. Expo Go does not contain this project-specific module.
