@@ -110,7 +110,7 @@ export interface RemoteWorkspaceInvite {
 async function workspaceRpc<T>(config: SupabaseConfig, name: string, body: Record<string, unknown>): Promise<T> {
   const session = await getValidSession(config);
   if (!session) throw new Error("Sign in to manage workspace access.");
-  const response = await fetch(`${config.url.replace(/\\/+$/, "")}/rest/v1/rpc/${name}`, {
+  const response = await fetch(`${config.url.replace(/\/+$/, "")}/rest/v1/rpc/${name}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", apikey: config.anonKey, Authorization: `Bearer ${session.accessToken}` },
     body: JSON.stringify(body),
