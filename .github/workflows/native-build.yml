@@ -1,0 +1,55 @@
+name: Native integration build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-native:
+    name: Android native compile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Generate Android native project
+        run: npx expo prebuild --platform android --clean
+      - name: Compile debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+  ios-native:
+    name: iOS app and WidgetKit compile
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install CocoaPods version required by Apple Targets
+        run: sudo gem install cocoapods -v 1.16.2
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Generate app and WidgetKit targets
+        run: npx expo prebuild --platform ios --clean
+      - name: Compile iOS Simulator targets without signing
+        shell: bash
+        run: |
+          WORKSPACE=$(find ios -maxdepth 1 -name '*.xcworkspace' -print -quit)
+          if [ -z "$WORKSPACE" ]; then
+            echo "Expo prebuild did not generate an Xcode workspace."
+            exit 1
+          fi
+          xcodebuild -workspace "$WORKSPACE" -scheme DRCalender -sdk iphonesimulator \
+            -configuration Debug -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build
