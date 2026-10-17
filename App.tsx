@@ -354,6 +354,12 @@ function CalendarApp() {
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
       metadata: {
         ...existing?.metadata,
+        // Occurrence exception keys are anchored to generated start timestamps.
+        // If the series schedule changes, discard exceptions tied to the old schedule.
+        ...((existing && (
+          existing.rrule !== draft.rrule ||
+          existing.scheduledAt !== draft.startAt
+        )) ? { recurrence: undefined } : {}),
         event: {
           kind: existing?.metadata?.event?.kind ?? "standard",
           commitment: draft.isElastic ? "elastic" : "hard",
