@@ -223,6 +223,91 @@ export function buildICS(input: BuildICSInviteInput): string {
   return lines.map(foldLine).join("\r\n") + "\r\n";
 }
 
+function partsInZone(timestamp: number, timeZone: string): Record<string, string> {
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone, year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", second:"2-digit", hourCycle:"h23" }).formatToParts(new Date(timestamp));
+  return Object.fromEntries(parts.filter(part => part.type !== "literal").map(part => [part.type, part.value]));
+}
+function formatICSDate(timestamp: number, timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"): string {
+  const p = partsInZone(timestamp, timeZone);
+  return p.year + p.month + p.day;
+}
+function formatICSLocal(timestamp: number, timeZone: string): string {
+  const p = partsInZone(timestamp, timeZone);
+  return p.year + p.month + p.day + "T" + p.hour + p.minute + p.second;
+}
+/** Convert a floating ICS local date-time into epoch milliseconds in its TZID. */
+export function parseICSDateTime(value: string, timeZone: string | null = null): number {
+  if (/Z$|[+-]\d{2}:?\d{2}$/.test(value)) {
+    const absolute = new Date(value).getTime();
+    if (!Number.isFinite(absolute)) throw new Error("Invalid ICS date-time: " + value);
+    return absolute;
+  }
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/.exec(value);
+  if (!match) throw new Error("Unsupported ICS date-time: " + value);
+  const [,y,mo,d,h,mi,se] = match;
+  const target = Date.UTC(Number(y),Number(mo)-1,Number(d),Number(h),Number(mi),Number(se));
+  if (!timeZone) return new Date(Number(y),Number(mo)-1,Number(d),Number(h),Number(mi),Number(se)).getTime();
+  let guess = target;
+  for (let i=0;i<4;i++) {
+    const p = partsInZone(guess,timeZone);
+    const represented = Date.UTC(Number(p.year),Number(p.month)-1,Number(p.day),Number(p.hour),Number(p.minute),Number(p.second));
+    const delta = target-represented;
+    guess += delta;
+    if (delta===0) break;
+  }
+  return guess;
+}
+function buildEntityLines(entity: TemporalEntity, uid: string, sequence: number, override?: RecurrenceOverride, recurrenceId?: number): string[] {
+  const start = override?.startAt ?? entity.scheduledAt;
+  const end = override?.endAt ?? entity.endAt;
+  if (start === null || end === null || end <= start) return [];
+  const allDay = override?.isAllDay ?? entity.metadata?.event?.kind === "all-day";
+  const timeZone = entity.timeZone || "UTC";
+  const title = override?.title ?? entity.title;
+  const location = override?.location ?? entity.metadata?.event?.location;
+  const lines = ["BEGIN:VEVENT", "UID:" + escapeICSText(uid), "SEQUENCE:" + Math.max(0,sequence), "DTSTAMP:" + formatICSUTC(Date.now())];
+  if (recurrenceId !== undefined) lines.push(allDay ? "RECURRENCE-ID;VALUE=DATE:" + formatICSDate(recurrenceId,timeZone) : "RECURRENCE-ID;TZID=" + timeZone + ":" + formatICSLocal(recurrenceId,timeZone));
+  if (allDay) {
+    lines.push("DTSTART;VALUE=DATE:" + formatICSDate(start,timeZone), "DTEND;VALUE=DATE:" + formatICSDate(end,timeZone));
+  } else {
+    lines.push("DTSTART;TZID=" + timeZone + ":" + formatICSLocal(start,timeZone), "DTEND;TZID=" + timeZone + ":" + formatICSLocal(end,timeZone));
+  }
+  lines.push("SUMMARY:" + escapeICSText(title));
+  if (location) lines.push("LOCATION:" + escapeICSText(location));
+  if (recurrenceId === undefined && entity.metadata?.invite?.organizerEmail) lines.push("ORGANIZER:mailto:" + entity.metadata.invite.organizerEmail.trim());
+  if (recurrenceId === undefined) for (const attendee of entity.metadata?.invite?.attendeeList ?? []) {
+    const partstat = attendee.rsvpStatus === "accepted" ? "ACCEPTED" : attendee.rsvpStatus === "declined" ? "DECLINED" : attendee.rsvpStatus === "tentative" ? "TENTATIVE" : "NEEDS-ACTION";
+    const cn = attendee.displayName ? ";CN=\"" + attendee.displayName.replace(/["\\]/g,"") + "\"" : "";
+    lines.push("ATTENDEE;RSVP=TRUE;PARTSTAT=" + partstat + cn + ":mailto:" + attendee.email.trim());
+  }
+  if (entity.rrule && recurrenceId === undefined) lines.push("RRULE:" + entity.rrule.replace(/^RRULE:/i,""));
+  return lines.concat(["END:VEVENT"]);
+}
+/** Export events, recurrence exclusions, moved occurrences, attendees and time zones. */
+export function buildICSCalendar(entities: TemporalEntity[], calendarName = "DR-Calender"): string {
+  const lines = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//DR-Calender//Temporal Engine//EN","CALSCALE:GREGORIAN","X-WR-CALNAME:" + escapeICSText(calendarName)];
+  for (const entity of entities) {
+    if (entity.itemType !== "event" || entity.deletedAt !== null || entity.scheduledAt === null || entity.endAt === null) continue;
+    const uid = entity.metadata?.invite?.icsUid ?? entity.id + "@dr-calender.local";
+    const sequence = entity.metadata?.invite?.sequence ?? entity.syncVersion;
+    const eventLines = buildEntityLines(entity,uid,sequence);
+    if (!eventLines.length) continue;
+    const exceptions = entity.metadata?.recurrence;
+    const allDay = entity.metadata?.event?.kind === "all-day";
+    if (exceptions?.excludedStartsAt.length) {
+      const dates = exceptions.excludedStartsAt.map(at => allDay ? formatICSDate(at,entity.timeZone) : formatICSLocal(at,entity.timeZone));
+      const prefix = allDay ? "EXDATE;VALUE=DATE:" : "EXDATE;TZID=" + entity.timeZone + ":";
+      eventLines.splice(eventLines.length-1,0,prefix+dates.join(","));
+    }
+    lines.push(...eventLines);
+    for (const [key,override] of Object.entries(exceptions?.overrides ?? {})) {
+      lines.push(...buildEntityLines(entity,uid,sequence,override,Number(key)));
+    }
+  }
+  lines.push("END:VCALENDAR");
+  return lines.map(foldLine).join("\r\n") + "\r\n";
+}
+
 /** Parses every VEVENT in a VCALENDAR instead of silently importing only the first. */
 export function parseICSCalendar(ics: string): ParsedICSEvent[] {
   if (ics.length > 2_000_000) throw new Error("Calendar file is too large (maximum 2 MB).");
