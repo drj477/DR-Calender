@@ -1,6 +1,7 @@
 import "react-native-gesture-handler";
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  AppState,
   Linking,
   Platform,
   Pressable,
@@ -196,11 +197,18 @@ function CalendarApp() {
       })().catch(error => console.warn("Native alarm reconciliation failed", error));
     }, 350);
     return () => { active = false; clearTimeout(timer); };
-  }, [storedEntities, database]);
+  }, [storedEntities, database, appForegroundRevision]);
 
   // Widgets and alarm notifications open the app through the drcalender:// scheme.
   // Resolve event IDs after hydration so cold-start links are not lost.
   const [pendingDeepLink, setPendingDeepLink] = useState<string | null>(null);
+  const [appForegroundRevision, setAppForegroundRevision] = useState(0);
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", state => {
+      if (state === "active") setAppForegroundRevision(value => value + 1);
+    });
+    return () => subscription.remove();
+  }, []);
   useEffect(() => {
     const openNotificationRoute = (response: Notifications.NotificationResponse | null) => {
       const value = response?.notification.request.content.data?.deepLink;
