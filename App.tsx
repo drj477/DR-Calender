@@ -38,6 +38,13 @@ const COLORS = {
   lavender: "#F4C45E",
   blue: "#E7B95A",
   coral: "#FF9A63",
+  success: "#72D6A1",
+  accentWash: "#322817",
+};
+
+const SHADOWS = {
+  card: { shadowColor: "#000000", shadowOffset: { width: 0, height: 7 }, shadowOpacity: 0.24, shadowRadius: 14, elevation: 5 },
+  floating: { shadowColor: "#FFC247", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 10, elevation: 4 },
 };
 
 const INITIAL_TASKS: Task[] = [
@@ -306,7 +313,7 @@ function CalendarApp() {
       <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
       <View style={styles.header}>
         <View>
-          <Text style={styles.eyebrow}>YOUR SPACE</Text>
+          <Text style={styles.eyebrow}>YOUR SPACE  ·  PLAN WITH INTENTION</Text>
           <Text style={styles.brand}>Calender<Text style={styles.brandDot}>.</Text></Text>
         </View>
         <View style={styles.headerActions}>
@@ -350,7 +357,7 @@ function CalendarApp() {
         </View>
         <View style={styles.modeSwitch}>
           {(["Day", "Week", "Month"] as ScreenMode[]).map(item => (
-            <Pressable key={item} onPress={() => setMode(item)} style={[styles.modeOption, mode === item && styles.modeOptionActive]}>
+            <Pressable key={item} accessibilityRole="button" accessibilityState={{ selected: mode === item }} onPress={() => setMode(item)} style={({ pressed }) => [styles.modeOption, mode === item && styles.modeOptionActive, pressed && styles.pressedControl]}>
               <Text style={[styles.modeText, mode === item && styles.modeTextActive]}>{item}</Text>
             </Pressable>
           ))}
@@ -360,7 +367,7 @@ function CalendarApp() {
       <View style={styles.weekStrip}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.daysContent}>
           {days.map(({ day, weekday }) => (
-            <Pressable key={day} onPress={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), day))} style={[styles.dayItem, selectedDay === day && styles.dayItemActive]}>
+            <Pressable key={day} accessibilityRole="button" accessibilityState={{ selected: selectedDay === day }} onPress={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), day))} style={({ pressed }) => [styles.dayItem, selectedDay === day && styles.dayItemActive, pressed && styles.pressedControl]}>
               <Text style={[styles.dayWeekday, selectedDay === day && styles.dayWeekdayActive]}>{weekday}</Text>
               <Text style={[styles.dayNumber, selectedDay === day && styles.dayNumberActive]}>{day}</Text>
               {[5, 9, 14, 18, 23, 27].includes(day) ? <View style={[styles.dayDot, selectedDay === day && styles.dayDotActive]} /> : <View style={styles.dayDotPlaceholder} />}
@@ -371,8 +378,8 @@ function CalendarApp() {
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.sectionHeading}>
-          <View><Text style={styles.sectionTitle}>{mode === "Day" ? "Today’s agenda" : `${mode} overview`}</Text><Text style={styles.sectionCaption}>A little structure, a lot more space.</Text></View>
-          <Pressable onPress={openNewEvent} style={styles.addButton} accessibilityRole="button" accessibilityLabel="Create event"><Text style={styles.addGlyph}>＋</Text></Pressable>
+          <View><Text style={styles.sectionTitle}>{mode === "Day" ? "Today’s agenda" : `${mode} overview`}</Text><Text style={styles.sectionCaption}><Text style={styles.captionItalic}>A little structure,</Text> a lot more space.</Text></View>
+          <Pressable onPress={openNewEvent} style={({ pressed }) => [styles.addButton, SHADOWS.floating, pressed && styles.pressedControl]} accessibilityRole="button" accessibilityLabel="Create event"><Text style={styles.addGlyph}>＋</Text></Pressable>
         </View>
 
         {mode === "Day" ? (
@@ -407,10 +414,10 @@ function CalendarApp() {
 
         <View style={styles.tasksSection}>
           <View style={styles.sectionHeading}>
-            <View><Text style={styles.sectionTitle}>In the loop</Text><Text style={styles.sectionCaption}>{tasks.filter(task => !task.completed).length} tasks need your attention</Text></View>
+            <View><Text style={styles.sectionTitle}>In the loop</Text><Text style={styles.sectionCaption}><Text style={styles.attentionCount}>{tasks.filter(task => !task.completed).length}</Text> tasks need your attention</Text></View>
             <Pressable onPress={addQuickTask}><Text style={styles.seeAll}>＋ Add</Text></Pressable>
           </View>
-          <View style={styles.tasksCard}>
+          <View style={[styles.tasksCard, SHADOWS.card]}>
             {tasks.map(task => <TaskRow key={task.id} task={task} onToggle={() => toggleTask(task.id)} />)}
           </View>
         </View>
@@ -459,9 +466,9 @@ const styles = StyleSheet.create({
   brand: { color: COLORS.text, fontSize: 29, fontWeight: "800", letterSpacing: -1.2 },
   brandDot: { color: COLORS.accent },
   headerActions: { flexDirection: "row", alignItems: "center", gap: 10 },
-  iconButton: { width: 42, height: 42, borderRadius: 15, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, alignItems: "center", justifyContent: "center" },
+  iconButton: { width: 42, height: 42, borderRadius: 15, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, alignItems: "center", justifyContent: "center", ...SHADOWS.card },
   iconGlyph: { color: COLORS.text, fontSize: 28, lineHeight: 30 },
-  profileButton: { width: 42, height: 42, borderRadius: 15, backgroundColor: COLORS.accent, alignItems: "center", justifyContent: "center" },
+  profileButton: { width: 42, height: 42, borderRadius: 15, backgroundColor: COLORS.accent, alignItems: "center", justifyContent: "center", ...SHADOWS.floating },
   profileText: { color: COLORS.background, fontSize: 12, fontWeight: "900" },
   modeBar: { paddingHorizontal: 24, flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 18, gap: 10 },
   dateHeading: { flex: 1, gap: 9 },
@@ -474,13 +481,14 @@ const styles = StyleSheet.create({
   subLabel: { color: COLORS.muted, fontSize: 12, marginTop: 3 },
   modeSwitch: { flexDirection: "row", padding: 4, backgroundColor: COLORS.surface, borderRadius: 13, borderWidth: 1, borderColor: COLORS.border },
   modeOption: { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 9 },
-  modeOptionActive: { backgroundColor: COLORS.surfaceRaised },
+  modeOptionActive: { backgroundColor: COLORS.accentWash, borderWidth: 1, borderColor: "#72551C" },
+  pressedControl: { opacity: 0.82, transform: [{ scale: 0.97 }] },
   modeText: { color: COLORS.muted, fontSize: 11, fontWeight: "600" },
   modeTextActive: { color: COLORS.text },
   weekStrip: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: COLORS.border, paddingVertical: 12 },
   daysContent: { paddingHorizontal: 17, gap: 7 },
   dayItem: { width: 42, height: 66, alignItems: "center", justifyContent: "center", borderRadius: 14, gap: 5 },
-  dayItemActive: { backgroundColor: COLORS.accent },
+  dayItemActive: { backgroundColor: COLORS.accent, ...SHADOWS.floating },
   dayWeekday: { color: COLORS.muted, fontSize: 10, fontWeight: "600" },
   dayWeekdayActive: { color: "#72551C" },
   dayNumber: { color: COLORS.text, fontSize: 15, fontWeight: "700" },
@@ -492,28 +500,30 @@ const styles = StyleSheet.create({
   contentContainer: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 28 },
   sectionHeading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 18 },
   sectionTitle: { color: COLORS.text, fontSize: 18, fontWeight: "700", letterSpacing: -0.4 },
-  sectionCaption: { color: COLORS.muted, fontSize: 11, marginTop: 5 },
-  addButton: { height: 38, width: 38, borderRadius: 13, backgroundColor: COLORS.accent, alignItems: "center", justifyContent: "center" },
+  sectionCaption: { color: COLORS.muted, fontSize: 11, marginTop: 5, lineHeight: 16 },
+  captionItalic: { fontStyle: "italic", color: "#B7C0CF" },
+  attentionCount: { color: COLORS.accent, fontWeight: "800" },
+  addButton: { height: 42, width: 42, borderRadius: 15, backgroundColor: COLORS.accent, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#FFE09A" },
   addGlyph: { color: COLORS.background, fontSize: 25, fontWeight: "400", marginTop: -2 },
   timeline: { flexDirection: "row", gap: 13 },
   timeRail: { width: 43, justifyContent: "space-between", paddingTop: 3, paddingBottom: 5 },
   timeLabel: { color: COLORS.muted, fontSize: 9, fontWeight: "600", height: 55 },
   eventsColumn: { flex: 1, gap: 9, paddingBottom: 4 },
   timelineLine: { position: "absolute", left: 0, top: 0, bottom: 0, width: 1, backgroundColor: COLORS.border },
-  eventCard: { marginLeft: 10, borderLeftWidth: 3, borderRadius: 13, backgroundColor: COLORS.surface, paddingHorizontal: 13, paddingVertical: 12, borderTopWidth: 1, borderRightWidth: 1, borderBottomWidth: 1, borderTopColor: COLORS.border, borderRightColor: COLORS.border, borderBottomColor: COLORS.border },
+  eventCard: { marginLeft: 10, borderLeftWidth: 3, borderRadius: 15, backgroundColor: COLORS.surface, paddingHorizontal: 14, paddingVertical: 13, borderTopWidth: 1, borderRightWidth: 1, borderBottomWidth: 1, borderTopColor: COLORS.border, borderRightColor: COLORS.border, borderBottomColor: COLORS.border, ...SHADOWS.card },
   eventTopLine: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   eventTime: { color: COLORS.muted, fontSize: 10, fontWeight: "600" },
   eventTitle: { color: COLORS.text, fontSize: 13, fontWeight: "700", marginTop: 8 },
   eventSubtitle: { color: COLORS.muted, fontSize: 10, marginTop: 4 },
-  shieldPill: { paddingHorizontal: 7, paddingVertical: 4, borderRadius: 6, backgroundColor: "#322817" },
+  shieldPill: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 7, backgroundColor: COLORS.accentWash, borderWidth: 1, borderColor: "#72551C" },
   shieldText: { color: COLORS.accent, fontSize: 8, fontWeight: "800", letterSpacing: 0.7 },
-  emptyEvents: { marginLeft: 10, padding: 18, borderRadius: 14, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, gap: 7 },
+  emptyEvents: { marginLeft: 10, padding: 20, borderRadius: 17, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderStyle: "dashed", gap: 8, ...SHADOWS.card },
   emptyEventsTitle: { color: COLORS.text, fontSize: 13, fontWeight: "700" },
   emptyAdd: { alignSelf: "flex-start", marginTop: 4, paddingVertical: 8, paddingHorizontal: 11, borderRadius: 9, backgroundColor: COLORS.surfaceRaised },
   emptyAddText: { color: COLORS.accent, fontSize: 11, fontWeight: "700" },
   tasksSection: { marginTop: 28 },
   seeAll: { color: COLORS.accent, fontSize: 11, fontWeight: "700" },
-  tasksCard: { backgroundColor: COLORS.surface, borderRadius: 17, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 14 },
+  tasksCard: { backgroundColor: COLORS.surface, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 14, overflow: "hidden" },
   taskRow: { minHeight: 68, flexDirection: "row", alignItems: "center", gap: 11, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   checkbox: { width: 21, height: 21, borderRadius: 7, borderWidth: 1.5, borderColor: "#475267", alignItems: "center", justifyContent: "center" },
   checkboxDone: { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
@@ -525,7 +535,7 @@ const styles = StyleSheet.create({
   avatar: { width: 28, height: 28, borderRadius: 10, backgroundColor: COLORS.surfaceRaised, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: COLORS.border },
   avatarText: { color: COLORS.text, fontSize: 9, fontWeight: "800" },
   syncNote: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, marginTop: 22, marginBottom: 5 },
-  syncDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.accent },
+  syncDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: COLORS.success },
   syncText: { color: COLORS.muted, fontSize: 10 },
   bottomNav: { flexDirection: "row", paddingTop: 11, paddingBottom: 7, backgroundColor: COLORS.background, borderTopWidth: 1, borderTopColor: COLORS.border, justifyContent: "space-around" },
   navItem: { alignItems: "center", gap: 5, minWidth: 55 },
