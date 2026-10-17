@@ -3,6 +3,6 @@
     android:minWidth="180dp"
     android:minHeight="110dp"
     android:updatePeriodMillis="900000"
-    android:initialLayout="@android:layout/simple_list_item_1"
+    android:initialLayout="@layout/drcalender_widget_loading"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen" />
