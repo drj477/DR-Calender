@@ -120,7 +120,23 @@ export interface ChecklistItem {
   updatedAt: number;
 }
 
+export interface RecurrenceOverride {
+  startAt: number;
+  endAt: number;
+  title: string;
+  location: string | null;
+  isShielded: boolean;
+  isElastic: boolean;
+}
+
+export interface RecurrenceExceptions {
+  /** Original generated occurrence start timestamps used as stable exception keys. */
+  excludedStartsAt: number[];
+  overrides: Record<string, RecurrenceOverride>;
+}
+
 export interface TemporalMetadata {
+  recurrence?: RecurrenceExceptions;
   event?: EventMetadata;
   reminder?: ReminderMetadata;
   alarm?: AlarmMetadata;
