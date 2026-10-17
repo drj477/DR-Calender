@@ -49,7 +49,7 @@ public final class DRCalenderNativeModule: Module {
       let center = UNUserNotificationCenter.current()
       let keep = Set(keepIds)
       let pending = await center.pendingNotificationRequests()
-      let stale = pending.map(\\.identifier).filter { $0.hasPrefix("native-event-") && !keep.contains($0) }
+      let stale = pending.map(\.identifier).filter { $0.hasPrefix("native-event-") && !keep.contains($0) }
       center.removePendingNotificationRequests(withIdentifiers: stale)
       center.removeDeliveredNotifications(withIdentifiers: stale)
       return stale.count
