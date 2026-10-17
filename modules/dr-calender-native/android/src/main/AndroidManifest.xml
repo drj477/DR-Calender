@@ -1,0 +1,20 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+  <application>
+    <receiver
+      android:name="com.drj477.drcalender.nativebridge.CalendarAlarmReceiver"
+      android:enabled="true"
+      android:exported="false" />
+    <receiver
+      android:name="com.drj477.drcalender.widget.CalendarGlanceWidgetReceiver"
+      android:enabled="true"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/drcalender_widget_info" />
+    </receiver>
+  </application>
+</manifest>
