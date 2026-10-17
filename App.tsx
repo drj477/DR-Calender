@@ -1054,7 +1054,7 @@ function CalendarApp() {
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
       deletedAt: null,
-      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+      timeZone: draft.timeZone,
       metadata: {
         ...existing?.metadata,
         // Occurrence exception keys are anchored to generated start timestamps.
