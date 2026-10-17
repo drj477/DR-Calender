@@ -2,6 +2,7 @@ import React, { useMemo, useRef } from "react";
 import { Animated, PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { TemporalEntity } from "../temporal/types";
 import { calculateOverlappingLayout } from "../temporal/overlap";
+import { resizeTemporalRange } from "../temporal/drag";
 
 const COLORS = {
   surface: "#171C28",
@@ -49,7 +50,34 @@ function DraggableEvent({
   onMove: (event: TemporalEntity, startAt: number, endAt: number) => void;
 }) {
   const dragY = useRef(new Animated.Value(0)).current;
+  const startResizeY = useRef(new Animated.Value(0)).current;
+  const endResizeY = useRef(new Animated.Value(0)).current;
   const duration = Math.max(5 * 60_000, (event.endAt ?? (event.scheduledAt ?? 0) + 30 * 60_000) - (event.scheduledAt ?? 0));
+  const eventStart = event.scheduledAt ?? 0;
+  const eventEnd = event.endAt ?? eventStart + duration;
+  const dayStart = new Date(eventStart);
+  dayStart.setHours(START_HOUR, 0, 0, 0);
+  const dayEnd = new Date(eventStart);
+  dayEnd.setHours(END_HOUR, 0, 0, 0);
+  const makeResizeResponder = (edge: "start" | "end", animated: Animated.Value) => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: (_event, gesture) => Math.abs(gesture.dy) > 2,
+    onPanResponderGrant: () => animated.setValue(0),
+    onPanResponderMove: (_event, gesture) => animated.setValue(gesture.dy),
+    onPanResponderRelease: (_event, gesture) => {
+      Animated.spring(animated, { toValue: 0, useNativeDriver: false, damping: 20, stiffness: 220 }).start();
+      const proposedAt = (edge === "start" ? eventStart : eventEnd) + gesture.dy / MINUTE_HEIGHT * 60_000;
+      const next = resizeTemporalRange(
+        { startAt: eventStart, endAt: eventEnd },
+        edge,
+        proposedAt,
+        { snapMinutes: GRID_MINUTES, minimumDurationMinutes: 15, dayStartAt: dayStart.getTime(), dayEndAt: dayEnd.getTime() },
+      );
+      if (next.startAt !== eventStart || next.endAt !== eventEnd) onMove(event, next.startAt, next.endAt);
+    },
+  });
+  const startResizeResponder = useMemo(() => makeResizeResponder("start", startResizeY), [event, onMove]);
+  const endResizeResponder = useMemo(() => makeResizeResponder("end", endResizeY), [event, onMove]);
   const responder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => false,
     onMoveShouldSetPanResponder: (_event, gesture) => Math.abs(gesture.dy) > 7 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
@@ -86,11 +114,17 @@ function DraggableEvent({
         { transform: [{ translateY: dragY }] },
       ]}
     >
+      <View style={styles.resizeStart} {...startResizeResponder.panHandlers}>
+        <View style={styles.resizeGrip} />
+      </View>
       <Pressable onPress={onPress} style={styles.eventPressable} accessibilityRole="button" accessibilityLabel={`Edit ${event.title}`}>
         <Text numberOfLines={1} style={styles.eventTime}>{event.scheduledAt === null ? "" : clockLabel(event.scheduledAt)}{event.endAt ? ` – ${clockLabel(event.endAt)}` : ""}</Text>
         <Text numberOfLines={2} style={styles.eventTitle}>{event.title}</Text>
         {height > 48 && event.metadata?.event?.location ? <Text numberOfLines={1} style={styles.eventLocation}>{event.metadata.event.location}</Text> : null}
       </Pressable>
+      <View style={styles.resizeEnd} {...endResizeResponder.panHandlers}>
+        <View style={styles.resizeGrip} />
+      </View>
     </View>
   );
 }
@@ -160,7 +194,10 @@ const styles = StyleSheet.create({
   grid: { flex: 1, position: "relative", borderLeftWidth: 1, borderLeftColor: COLORS.border },
   gridLine: { position: "absolute", left: 0, right: 0, borderTopWidth: 1, borderTopColor: COLORS.border },
   eventBlock: { position: "absolute", borderLeftWidth: 3, borderRadius: 9, backgroundColor: COLORS.surface, borderTopWidth: 1, borderRightWidth: 1, borderBottomWidth: 1, borderTopColor: COLORS.border, borderRightColor: COLORS.border, borderBottomColor: COLORS.border, overflow: "hidden" },
-  eventPressable: { flex: 1, paddingHorizontal: 6, paddingVertical: 5, gap: 2 },
+  resizeStart: { height: 9, alignItems: "center", justifyContent: "center", zIndex: 2 },
+  resizeEnd: { height: 9, alignItems: "center", justifyContent: "center", zIndex: 2 },
+  resizeGrip: { width: 22, height: 3, borderRadius: 2, backgroundColor: COLORS.accent, opacity: 0.9 },
+  eventPressable: { flex: 1, paddingHorizontal: 6, paddingVertical: 1, gap: 2 },
   eventTime: { color: COLORS.muted, fontSize: 8, fontWeight: "700" },
   eventTitle: { color: COLORS.text, fontSize: 10, fontWeight: "700" },
   eventLocation: { color: COLORS.muted, fontSize: 8 },
