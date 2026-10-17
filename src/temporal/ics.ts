@@ -227,6 +227,10 @@ function partsInZone(timestamp: number, timeZone: string): Record<string, string
   const parts = new Intl.DateTimeFormat("en-GB", { timeZone, year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", second:"2-digit", hourCycle:"h23" }).formatToParts(new Date(timestamp));
   return Object.fromEntries(parts.filter(part => part.type !== "literal").map(part => [part.type, part.value]));
 }
+function safeTimeZone(timeZone: string | null | undefined): string {
+  if (!timeZone) return "UTC";
+  try { new Intl.DateTimeFormat("en-US", { timeZone }).format(0); return timeZone; } catch { return "UTC"; }
+}
 function formatICSDate(timestamp: number, timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"): string {
   const p = partsInZone(timestamp, timeZone);
   return p.year + p.month + p.day;
@@ -262,7 +266,7 @@ function buildEntityLines(entity: TemporalEntity, uid: string, sequence: number,
   const end = override?.endAt ?? entity.endAt;
   if (start === null || end === null || end <= start) return [];
   const allDay = override?.isAllDay ?? entity.metadata?.event?.kind === "all-day";
-  const timeZone = entity.timeZone || "UTC";
+  const timeZone = safeTimeZone(entity.timeZone);
   const title = override?.title ?? entity.title;
   const location = override?.location ?? entity.metadata?.event?.location;
   const lines = ["BEGIN:VEVENT", "UID:" + escapeICSText(uid), "SEQUENCE:" + Math.max(0,sequence), "DTSTAMP:" + formatICSUTC(Date.now())];
@@ -295,8 +299,8 @@ export function buildICSCalendar(entities: TemporalEntity[], calendarName = "DR-
     const exceptions = entity.metadata?.recurrence;
     const allDay = entity.metadata?.event?.kind === "all-day";
     if (exceptions?.excludedStartsAt.length) {
-      const dates = exceptions.excludedStartsAt.map(at => allDay ? formatICSDate(at,entity.timeZone) : formatICSLocal(at,entity.timeZone));
-      const prefix = allDay ? "EXDATE;VALUE=DATE:" : "EXDATE;TZID=" + entity.timeZone + ":";
+      const dates = exceptions.excludedStartsAt.map(at => allDay ? formatICSDate(at,safeTimeZone(entity.timeZone)) : formatICSLocal(at,safeTimeZone(entity.timeZone)));
+      const prefix = allDay ? "EXDATE;VALUE=DATE:" : "EXDATE;TZID=" + safeTimeZone(entity.timeZone) + ":";
       eventLines.splice(eventLines.length-1,0,prefix+dates.join(","));
     }
     lines.push(...eventLines);
