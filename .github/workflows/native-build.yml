@@ -65,6 +65,13 @@ jobs:
             echo "Expo prebuild did not generate an Xcode workspace."
             exit 1
           fi
-          xcodebuild -workspace "$WORKSPACE" -scheme DRCalender -sdk iphonesimulator \
+          SCHEME=$(xcodebuild -list -json -workspace "$WORKSPACE" | jq -r '.workspace.schemes[] | select(test("DR.?Calender"; "i"))' | head -n 1)
+          if [ -z "$SCHEME" ]; then
+            echo "Could not find the DR Calender app scheme in the generated Xcode workspace."
+            xcodebuild -list -workspace "$WORKSPACE"
+            exit 1
+          fi
+          echo "Building scheme: $SCHEME"
+          xcodebuild -workspace "$WORKSPACE" -scheme "$SCHEME" -sdk iphonesimulator \
             -configuration Debug -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO build
