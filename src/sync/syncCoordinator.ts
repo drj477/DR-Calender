@@ -16,7 +16,7 @@ export interface SyncTransport {
 }
 
 export interface SyncLocalStore {
-  listPendingMutations(limit: number): Promise<SyncMutation[]>;
+  listPendingMutations(limit: number, workspaceId?: string): Promise<SyncMutation[]>;
   acknowledgeMutation(mutationId: string): Promise<void>;
   recordMutationFailure(mutationId: string, error: string): Promise<void>;
   getCursor(workspaceId: string): Promise<string | null>;
