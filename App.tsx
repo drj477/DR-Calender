@@ -332,7 +332,30 @@ function CalendarApp() {
     }
   };
 
-  const deleteEvent = (event: TemporalEntity) => {
+  const deleteEvent = (event: TemporalEntity, scope: "occurrence" | "series" = "series", occurrenceStartAt: number | null = null) => {
+    if (scope === "occurrence" && occurrenceStartAt !== null) {
+      const current = event.metadata?.recurrence ?? { excludedStartsAt: [], overrides: {} };
+      const updated: TemporalEntity = {
+        ...event,
+        updatedAt: Date.now(),
+        syncVersion: event.syncVersion + 1,
+        metadata: {
+          ...event.metadata,
+          recurrence: {
+            ...current,
+            excludedStartsAt: Array.from(new Set([...current.excludedStartsAt, occurrenceStartAt])),
+            overrides: Object.fromEntries(Object.entries(current.overrides).filter(([key]) => key !== String(occurrenceStartAt))),
+          },
+        },
+      };
+      const mutationId = "event-occurrence-delete-" + event.id + "-" + occurrenceStartAt + "-" + updated.syncVersion;
+      useCalendarStore.getState().upsertEntity(updated, mutationId);
+      setEventEditorVisible(false);
+      setEditingEvent(null);
+      setEditingOccurrenceStartAt(null);
+      if (database) database.repository.upsert(updated, mutationId).catch(error => console.warn("Unable to persist occurrence deletion", error));
+      return;
+    }
     const mutationId = `event-delete-${event.id}-${event.syncVersion + 1}`;
     setEventEditorVisible(false);
     setEditingEvent(null);
@@ -428,6 +451,7 @@ function CalendarApp() {
                 // Occurrence-level editing is not supported yet. Resolve the source entity so
                 // tapping an instance opens the series without shifting its DTSTART.
                 const sourceEvent = eventSeries.find(item => item.id === event.id) ?? event;
+                setEditingOccurrenceStartAt(event.metadata?.recurrenceOccurrence?.startAt ?? null);
                 setEditingEvent(sourceEvent);
                 setEventEditorVisible(true);
               }}
@@ -471,7 +495,8 @@ function CalendarApp() {
         visible={eventEditorVisible}
         selectedDate={eventEditorDate}
         event={editingEvent}
-        onClose={() => { setEventEditorVisible(false); setEditingEvent(null); }}
+        occurrenceStartAt={editingOccurrenceStartAt}
+        onClose={() => { setEventEditorVisible(false); setEditingEvent(null); setEditingOccurrenceStartAt(null); }}
         onSave={saveEvent}
         onDelete={deleteEvent}
       />
