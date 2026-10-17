@@ -226,7 +226,7 @@ export class SQLiteTemporalRepository {
     });
   }
 
-  async listPendingMutations(limit = 100): Promise<SyncMutation[]> {
+  async listPendingMutations(limit = 100, workspaceId?: string): Promise<SyncMutation[]> {
     const rows = await this.db.getAllAsync<{
       mutation_id: string; workspace_id: string; entity_id: string;
       entity_type: SyncMutation["entityType"]; operation: SyncMutation["operation"];
@@ -234,8 +234,9 @@ export class SQLiteTemporalRepository {
     }>(
       `SELECT mutation_id, workspace_id, entity_id, entity_type, operation, payload_json,
               sync_version, created_at, retry_count
-       FROM sync_outbox ORDER BY created_at ASC, mutation_id ASC LIMIT ?`,
-      Math.max(1, Math.trunc(limit)),
+       FROM sync_outbox ${workspaceId ? "WHERE workspace_id = ?" : ""}
+       ORDER BY created_at ASC, mutation_id ASC LIMIT ?`,
+      ...(workspaceId ? [workspaceId, Math.max(1, Math.trunc(limit))] : [Math.max(1, Math.trunc(limit))]),
     );
     return rows.map(row => ({
       mutationId: row.mutation_id,
