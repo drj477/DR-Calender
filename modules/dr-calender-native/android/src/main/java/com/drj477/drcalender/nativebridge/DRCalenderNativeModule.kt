@@ -25,8 +25,8 @@ class DRCalenderNativeModule : Module() {
 
     AsyncFunction("requestExactAlarmPermission") {
       val context = requireNotNull(appContext.reactContext)
+      val manager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        val manager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         if (!manager.canScheduleExactAlarms()) {
           val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
             Uri.parse("package:${context.packageName}"))
@@ -55,6 +55,7 @@ class DRCalenderNativeModule : Module() {
       val pending = PendingIntent.getBroadcast(context, requestCode, intent,
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
       val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+        ?: throw IllegalStateException("Unable to create app launch intent for alarm UI.")
       val show = PendingIntent.getActivity(context, requestCode, launchIntent,
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
       manager.setAlarmClock(AlarmManager.AlarmClockInfo(trigger, show), pending)
