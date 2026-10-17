@@ -1,6 +1,7 @@
 import { openDatabaseAsync, type SQLiteDatabase } from "expo-sqlite";
 import { SQLiteTemporalRepository } from "./sqliteRepository";
 import type { TemporalEntity } from "../temporal/types";
+import { runSchemaMigrations } from "./schemaMigrations";
 
 const DATABASE_NAME = "dr-calender.db";
 export const DEFAULT_WORKSPACE_ID = "workspace-personal";
@@ -125,6 +126,7 @@ export function initializeLocalDatabase(): Promise<LocalCalendarDatabase> {
     const db = await openDatabaseAsync(DATABASE_NAME);
     await db.execAsync("PRAGMA journal_mode = WAL;");
     await db.execAsync(LOCAL_SCHEMA);
+    await runSchemaMigrations(db);
     const now = Date.now();
     await db.runAsync(
       `INSERT INTO workspaces (id, name, workspace_type, created_at, updated_at)
