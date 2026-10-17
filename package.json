@@ -3,14 +3,26 @@
   "version": "0.1.0",
   "private": true,
   "description": "Offline-first collaborative calendar and scheduling app",
-  "main": "src/index.ts",
+  "main": "expo/AppEntry",
   "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "expo": "~53.0.0",
+    "expo-sqlite": "~15.2.14",
+    "expo-status-bar": "~2.2.3",
+    "react": "19.0.0",
+    "react-native": "0.79.5",
+    "react-native-gesture-handler": "~2.24.0",
+    "react-native-reanimated": "~3.17.4",
+    "react-native-safe-area-context": "5.4.0",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
-    "typescript": "^5.8.3"
+    "@types/react": "~19.0.10",
+    "typescript": "~5.8.3"
   }
 }
