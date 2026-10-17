@@ -76,7 +76,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
   const [title, setTitle] = useState("");
   const [startClock, setStartClock] = useState("09:00");
   const [duration, setDuration] = useState("60");
-  const [location, setLocation] = useState("");
+  const [location, setLocation] = useState("");\n  const [timeZone, setTimeZone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
   const [shielded, setShielded] = useState(false);
   const [elastic, setElastic] = useState(false);
   const [allDay, setAllDay] = useState(false);
@@ -88,14 +88,14 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
 
   useEffect(() => {
     if (!visible) return;
-    setTitle(event?.title ?? "");
+    setTitle(event?.title ?? "");\n    const zone = event?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";\n    setTimeZone(zone);
     setScope(occurrenceStartAt !== null && event?.rrule ? "occurrence" : "series");
     const override = occurrenceStartAt !== null ? event?.metadata?.recurrence?.overrides[String(occurrenceStartAt)] : undefined;
     const start = override?.startAt ?? occurrenceStartAt ?? event?.scheduledAt ?? new Date(
       selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 9, 0,
     ).getTime();
     const end = override?.endAt ?? (event?.endAt !== null && event?.endAt !== undefined ? start + ((event.endAt - (event.scheduledAt ?? start)) || 60 * 60_000) : start + 60 * 60_000);
-    setStartClock(formatClock(new Date(start)));
+    setStartClock(formatClock(new Date(start), zone));
     setDuration(String(Math.max(5, Math.round((end - start) / 60_000))));
     setLocation(override?.location ?? event?.metadata?.event?.location ?? "");
     setShielded(override?.isShielded ?? event?.isShielded ?? false);
@@ -122,7 +122,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
       : override?.endAt ?? occurrenceStart + Math.max(5 * 60_000, (event.endAt ?? seriesStart + 60 * 60_000) - seriesStart);
 
     setTitle(nextScope === "series" ? event.title : override?.title ?? event.title);
-    setStartClock(formatClock(new Date(baseStart)));
+    setStartClock(formatClock(new Date(baseStart), event.timeZone || timeZone));
     setDuration(String(Math.max(5, Math.round((baseEnd - baseStart) / 60_000))));
     setLocation(nextScope === "series"
       ? event.metadata?.event?.location ?? ""
@@ -137,7 +137,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
   };
 
   const save = () => {
-    const cleanTitle = title.trim();
+    const cleanTitle = title.trim();\n    try { new Intl.DateTimeFormat("en-US", { timeZone }).format(new Date()); } catch { setError("Enter a valid IANA time zone, such as Asia/Kolkata or America/New_York."); return; }
     const timeMatch = /^(\d{1,2}):(\d{2})$/.exec(startClock.trim());
     const minutes = Number(duration);
     if (!cleanTitle) {
@@ -176,7 +176,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
       reminderMinutesBefore,
       rrule: ruleFromRecurrence(recurrence),
       scope: event?.rrule && occurrenceStartAt !== null ? scope : "series",
-      occurrenceStartAt: event?.rrule && occurrenceStartAt !== null ? occurrenceStartAt : null,
+      occurrenceStartAt: event?.rrule && occurrenceStartAt !== null ? occurrenceStartAt : null,\n      timeZone,
     });
   };
 
@@ -242,6 +242,10 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
               <TextInput value={duration} onChangeText={setDuration} placeholder="60" placeholderTextColor={palette.muted} keyboardType="number-pad" maxLength={4} style={styles.input} />
             </View>
           </View> : <View style={styles.column}><Text style={styles.label}>CALENDAR DAYS</Text><TextInput value={allDayDays} onChangeText={setAllDayDays} placeholder="1" placeholderTextColor={palette.muted} keyboardType="number-pad" maxLength={3} style={styles.input} /><Text style={styles.optionHint}>Ends at local midnight after the final day. Use 2 or more for multi-day events.</Text></View>}
+
+          <Text style={styles.label}>EVENT TIME ZONE (IANA)</Text>
+          <TextInput value={timeZone} onChangeText={setTimeZone} autoCapitalize="none" autoCorrect={false} placeholder="Asia/Kolkata" placeholderTextColor={palette.muted} style={styles.input} />
+          <Text style={styles.optionHint}>Event times and recurring occurrences are saved in this time zone. Use an IANA name such as Asia/Kolkata, Europe/London, or America/New_York.</Text>
 
           <Text style={styles.label}>LOCATION (OPTIONAL)</Text>
           <TextInput value={location} onChangeText={setLocation} placeholder="Add a room or address" placeholderTextColor={palette.muted} style={styles.input} />
