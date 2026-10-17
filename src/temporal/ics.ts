@@ -257,7 +257,104 @@ function formatICSLocal(timestamp: number, timeZone: string): string {
   return p.year + p.month + p.day + "T" + p.hour + p.minute + p.second;
 }
 /** Convert a floating ICS local date-time into epoch milliseconds in its TZID. */
-export function parseICSDateTime(value: string, timeZone: string | null = null): number {
+export type CustomZoneTransition = { at:number; local:number; offsetFrom:number; offsetTo:number };
+const customTimeZones = new Map<string, CustomZoneTransition[]>();
+function parseOffset(value:string|undefined):number|null {
+  if(!value)return null;
+  const match=/^([+-])(\\d{2})(\\d{2})(?:\\d{2})?$/.exec(value);
+  if(!match)return null;
+  const minutes=Number(match[2])*60+Number(match[3]);
+  return (match[1]==="-"?-1:1)*minutes;
+}
+function wallParts(value:string):{year:number;month:number;day:number;hour:number;minute:number;second:number}|null {
+  const match=/^(\\d{4})(\\d{2})(\\d{2})T(\\d{2})(\\d{2})(\\d{2})?$/.exec(value);
+  if(!match)return null;
+  return {year:Number(match[1]),month:Number(match[2]),day:Number(match[3]),hour:Number(match[4]),minute:Number(match[5]),second:Number(match[6]??0)};
+}
+function nthWeekday(year:number,month:number,weekday:number,ordinal:number):number {
+  if(ordinal>0)return 1+((weekday-new Date(Date.UTC(year,month-1,1)).getUTCDay()+7)%7)+(ordinal-1)*7;
+  const last=new Date(Date.UTC(year,month,0)).getUTCDate();
+  return last-((new Date(Date.UTC(year,month-1,last)).getUTCDay()-weekday+7)%7)+(ordinal+1)*7;
+}
+function loadCustomTimeZones(lines:string[]):void {
+  customTimeZones.clear();
+  let zoneId:string|null=null;
+  let observance:string[]|null=null;
+  const raw=new Map<string,CustomZoneTransition[]>();
+  const pushObservance=()=>{
+    if(!zoneId||!observance)return;
+    const props=observance.map(splitProperty).filter((item):item is NonNullable<typeof item>=>item!==null);
+    const get=(name:string)=>props.find(item=>item.name===name)?.value;
+    const startText=get("DTSTART"),from=parseOffset(get("TZOFFSETFROM")),to=parseOffset(get("TZOFFSETTO"));
+    const start= startText ? wallParts(startText) : null;
+    if(!start||from===null||to===null)return;
+    const rules=props.filter(item=>item.name==="RRULE").map(item=>item.value);
+    const transitions=raw.get(zoneId)??[];
+    const add=(year:number,month:number,day:number)=>{
+      const local=Date.UTC(year,month-1,day,start.hour,start.minute,start.second);
+      transitions.push({local,at:local-from*60_000,offsetFrom:from,offsetTo:to});
+    };
+    add(start.year,start.month,start.day);
+    for(const rule of rules){
+      const fields=Object.fromEntries(rule.split(";").map(piece=>{const i=piece.indexOf("=");return [piece.slice(0,i).toUpperCase(),piece.slice(i+1)]}));
+      if(fields.FREQ!=="YEARLY")continue;
+      const month=Number(fields.BYMONTH??start.month);
+      if(!Number.isInteger(month)||month<1||month>12)continue;
+      const weekdayRule=/^([+-]?\\d)?(SU|MO|TU|WE|TH|FR|SA)$/.exec(fields.BYDAY??"");
+      const weekdays:Record<string,number>={SU:0,MO:1,TU:2,WE:3,TH:4,FR:5,SA:6};
+      for(let year=Math.max(start.year+1,1970);year<=2100;year++){
+        let day:number;
+        if(fields.BYMONTHDAY){day=Number(fields.BYMONTHDAY);const last=new Date(Date.UTC(year,month,0)).getUTCDate();if(day<0)day=last+day+1;if(day<1||day>last)continue;}
+        else if(weekdayRule){day=nthWeekday(year,month,weekdays[weekdayRule[2]],Number(weekdayRule[1]??1));}
+        else day=start.day;
+        add(year,month,day);
+      }
+    }
+    raw.set(zoneId,transitions);
+  };
+  for(const line of lines){
+    const upper=line.toUpperCase();
+    if(upper==="BEGIN:VTIMEZONE"){zoneId=null;observance=null;continue;}
+    if(upper==="END:VTIMEZONE"){pushObservance();zoneId=null;observance=null;continue;}
+    if(!zoneId&&!observance){
+      const property=splitProperty(line);
+      if(property?.name==="TZID")zoneId=property.value;
+    }
+    if(upper==="BEGIN:STANDARD"||upper==="BEGIN:DAYLIGHT"){pushObservance();observance=[];continue;}
+    if(upper==="END:STANDARD"||upper==="END:DAYLIGHT"){pushObservance();observance=null;continue;}
+    if(observance)observance.push(line);
+  }
+  for(const [id,transitions] of raw)customTimeZones.set(id,transitions.sort((a,b)=>a.at-b.at));
+}
+function customZoneOffsetAt(epoch:number,transitions:CustomZoneTransition[]):number {
+  if(!transitions.length)return 0;
+  let offset=transitions[0].offsetFrom;
+  for(const transition of transitions){if(epoch>=transition.at)offset=transition.offsetTo;else break;}
+  return offset;
+}
+function parseCustomWallTime(value:string,timeZone:string):number|null {
+  const transitions=customTimeZones.get(timeZone);
+  const wall=wallParts(value.replace(/-/g,"").replace(/:/g,""));
+  if(!transitions||!wall)return null;
+  const target=Date.UTC(wall.year,wall.month-1,wall.day,wall.hour,wall.minute,wall.second);
+  const offsets=[...new Set(transitions.flatMap(item=>[item.offsetFrom,item.offsetTo]))];
+  const resolve=(local:number)=>{
+    const candidates=offsets.map(offset=>local-offset*60_000).filter(epoch=>customZoneOffsetAt(epoch,transitions)===offsetForCandidate(epoch,local,offset));
+    return candidates.filter(epoch=>{
+      const offset=customZoneOffsetAt(epoch,transitions);
+      return epoch+offset*60_000===local;
+    }).sort((a,b)=>a-b);
+  };
+  for(let minute=0;minute<=180;minute++){
+    const local=target+minute*60_000;
+    const candidates=resolve(local);
+    if(candidates.length)return candidates[0];
+  }
+  return null;
+}
+function offsetForCandidate(_epoch:number,_local:number,offset:number):number { return offset; }
+
+function parseICSDateTime(value: string, timeZone: string | null = null): number {
   if (/Z$|[+-]\d{2}:?\d{2}$/.test(value)) {
     const absolute = new Date(value).getTime();
     if (!Number.isFinite(absolute)) throw new Error("Invalid ICS date-time: " + value);
