@@ -68,4 +68,4 @@ Android alarm persistence/recovery source and iOS WidgetKit source exist, but so
 
 ## Validation policy
 
-The temporary CI workflow was removed. Its first run failed in setup before compilation because the repository has no npm lockfile. No physical-device validation or successful native build is claimed. Release readiness remains **not certified** until the checks above are completed.
+The temporary CI workflow was removed after both jobs failed during setup: `actions/setup-node` was configured with npm caching, but the repository has no `package-lock.json`, `npm-shrinkwrap.json`, or `yarn.lock`. Neither Android nor iOS compilation started. No physical-device validation or successful native build is claimed. Release readiness remains **not certified** until the checks above are completed.
