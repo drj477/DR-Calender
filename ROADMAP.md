@@ -54,25 +54,22 @@ The project will be built in substantial, user-facing phases. Implementation com
 ## Phase 6 — Native experience and widgets
 **Goal:** Make DR-Calender feel integrated with the operating system.
 
-- **Implemented in source:** Local Expo module under `modules/dr-calender-native`, configured for Android and Apple autolinking, plus a config plugin for Android exact-alarm permission and the iOS App Group entitlement.
-- **Implemented for Android:** AlarmManager `setAlarmClock` scheduling, exact-alarm permission request/status, native broadcast receiver, high-priority alarm notification, Glance home-screen widget, widget provider metadata, and explicit widget snapshot refresh.
-- **Implemented for iOS app integration:** Native Expo module schedules/cancels standard local notifications and publishes shared widget snapshots through the App Group, then requests WidgetKit timeline refresh.
-- **Implemented in the app:** Native tab exposes bridge/permission state and lets the user schedule/cancel a native alarm for upcoming events. Calendar/task changes publish the next task or event to the native widget snapshot bridge.
-- **Deep links:** Widget tap targets use the registered `drcalender://` scheme.
-- **Important platform boundary:** Android widget receiver and resources are declared in the local native module. The iOS WidgetKit extension target and its separate App Group entitlement still require Xcode/EAS native-target setup; iOS uses standard notifications, not critical alerts. Native modules require a rebuilt development/production app and are unavailable in Expo Go.
-- **Remaining:** Automatically reconcile native alarm IDs when events are edited/deleted, recurring-event native alarm expansion, Android boot/time-change rescheduling, native alarm receiver integration with app deep-link routing, and automatic iOS WidgetKit extension target generation. No tests/build/type checks have been run by request.
+- **Implemented in source:** Local Expo module under `modules/dr-calender-native`, config plugin, Android exact alarms and Glance widget, iOS notification bridge, App Group snapshot bridge, and a WidgetKit extension source file at `native/ios/CalendarWidget.swift`.
+- **Android recovery added:** Scheduled alarm IDs/times/content are persisted locally and an alarm restoration receiver is registered for reboot, wall-clock/time-zone changes, and exact-alarm permission changes.
+- **iOS boundary:** Widget source exists, but Xcode/EAS still needs a separate Widget Extension target with the matching App Group entitlement. iOS uses standard notifications; it does not expose Android-style exact-alarm permission or critical-alert access by default.
+- **Still required:** Native compilation, manifest/autolinking inspection, physical-device checks, automatic alarm reconciliation after edits/deletes, recurring native alarm expansion, and deep-link routing verification. Source implementation is not platform verification.
 
 ## Phase 7 — Hardening and release readiness
 **Goal:** Add safer recovery paths, data portability, and operational visibility before the dedicated validation pass.
 
-- **Implemented in source:** New Data Safety screen with read-only SQLite diagnostics for workspaces, entity records, pending/failed sync mutations, checklist rows, invalid time ranges, orphan checklist rows, and foreign-key violations.
-- **Implemented in source:** JSON local backup export for workspaces, memberships, temporal entities including tombstones, checklist items, ghost clusters, sync outbox, cursors, HLC clocks, and non-secret app settings.
-- **Implemented safeguards:** Backup excludes SecureStore authentication sessions and has a 2 MB in-app export guard; the UI warns that event/task content and pending sync payloads are sensitive and that export is not a restore operation.
-- **Implemented in source:** Root React error boundary with a local recovery screen and user-visible error detail. Error details are logged locally through the existing console path; no remote telemetry service was added.
-- **Implemented in source:** Workspace-scoped outbox batching in the sync coordinator so another workspace's queued mutations do not consume the active workspace batch.
-- **Implemented documentation:** Backup/privacy boundaries, diagnostics meaning, and release checks are documented.
-- **Remaining:** Validated transactional backup restore, file-based large exports, automated error reporting/diagnostics, schema migration versioning and rollback policy, full accessibility/performance audit, and server-policy review.
-- **Validation deferred:** No type checks, tests, builds, native compilation, or device validation have been run by request. Phase 7 source work is implemented, but release readiness is not certified until the dedicated validation pass and Supabase/native setup are completed.
+- **Implemented in source:** Read-only SQLite diagnostics for workspaces, entities, pending/failed sync mutations, checklist rows, invalid schedules, orphan checklist rows, and foreign-key violations.
+- **Implemented in source:** Versioned JSON backup format, export to a file/share flow for large datasets, and the original quick-share path guarded at 2 MB. SecureStore authentication sessions are excluded; backups can contain sensitive event/task content and pending sync payloads.
+- **Implemented in source:** Restore/import validates format and schema version, row/table shapes, workspace references, entity time ranges, and JSON payloads before replacement. Database replacement runs in one SQLite transaction and performs foreign-key checks before commit; restore requires explicit destructive confirmation and a restart.
+- **Implemented in source:** Versioned migration ledger, transactional migration execution, fail-closed initialization on migration error, and explicit rollback for the newest known reversible migration.
+- **Implemented in source:** Root React error boundary and workspace-scoped sync outbox batching.
+- **Security hardening added:** A follow-up Supabase migration revokes direct table access from mobile roles and tightens push RPC membership, batch, payload, title, timestamp, version, and mutation-actor checks. `SUPABASE_SECURITY_REVIEW.md` separates source review from required live-project verification.
+- **Remaining:** Native compile/device validation; apply and review the Supabase migrations on a configured staging project; validate restore failure cases with automated tests; design a backup strategy for incompatible future schemas; complete migration down scripts for non-reversible schema changes; full accessibility/performance audit; and production monitoring/retention policies.
+- **Validation deferred:** No type checks, tests, builds, native compilation, or device validation have been run by request. Phase 7 source work is not a release certification.
 
 ## Delivery rule
 
