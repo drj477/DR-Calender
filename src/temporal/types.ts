@@ -148,6 +148,8 @@ export interface TemporalMetadata {
   task?: {
     dueAt: number | null;
     assignee: AssigneeDTO;
+    reminderMinutesBefore?: number | null;
+    notificationId?: string | null;
   };
 }
 
