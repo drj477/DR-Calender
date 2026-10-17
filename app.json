@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "DR Calender",
+    "slug": "dr-calender",
+    "scheme": "drcalender",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#0C0F14"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.drj477.drcalender"
+    },
+    "android": {
+      "package": "com.drj477.drcalender",
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": [
+      "expo-sqlite"
+    ]
+  }
+}
