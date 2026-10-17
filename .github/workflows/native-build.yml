@@ -10,6 +10,19 @@ permissions:
   contents: read
 
 jobs:
+  typescript:
+    name: TypeScript integration check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Type-check application source
+        run: npm run typecheck
+
   android-native:
     name: Android native compile
     runs-on: ubuntu-latest
