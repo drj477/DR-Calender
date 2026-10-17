@@ -69,12 +69,18 @@ export function DataSafetyCenter({database,onRestored}:Props){
    {text:"Replace local data",style:"destructive",onPress:()=>{void (async()=>{
     setBusy("restore");setMessage("");
     try{
-     const result=await restoreBackupFromFile(database.db);
-     const refreshedDatabase=await refreshLocalDatabaseAfterRestore(database);
-     await onRestored(refreshedDatabase);
+     const result=await restoreBackupFromFile(database.db,async()=>{
+      const refreshedDatabase=await refreshLocalDatabaseAfterRestore(database);
+      await onRestored(refreshedDatabase);
+     });
      setDiagnostics(null);
      setMessage("Restore committed and integrity checks passed for "+result.rowCount+" rows. In-memory calendar/task state and the active workspace were reloaded immediately. Sync is available again.");
-    }catch(error){setMessage("Restore was not completed. The transaction should have rolled back; preserve the original database and backup before trying again. Details: "+safeError(error));}
+    }catch(error){
+     const detail=safeError(error);
+     setMessage(detail.includes("data was committed")
+      ? detail+" Restart the app if the views still look stale."
+      : "Restore was not completed. The database transaction should have rolled back; preserve the original database and backup before trying again. Details: "+detail);
+    }
     finally{setBusy(null);}
    })()}}
   ]);
