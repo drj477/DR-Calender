@@ -478,6 +478,8 @@ function CalendarApp() {
           attendeeUserIds: existing?.metadata?.event?.attendeeUserIds ?? [],
           travelBufferMinutes: existing?.metadata?.event?.travelBufferMinutes ?? null,
           cooldownBufferMinutes: existing?.metadata?.event?.cooldownBufferMinutes ?? null,
+          reminderMinutesBefore: draft.reminderMinutesBefore,
+          notificationIds: existing?.metadata?.event?.notificationIds ?? [],
         },
       },
     };
@@ -488,6 +490,12 @@ function CalendarApp() {
     setEditingOccurrenceStartAt(null);
     if (database) {
       database.repository.upsert(entity, mutationId).catch(error => console.warn("Unable to persist event", error));
+    }
+    if (permissionGranted && draft.scope !== "occurrence") {
+      scheduleEventNotifications(entity).then(async notificationIds => {
+        const updated = { ...entity, syncVersion: entity.syncVersion + 1, updatedAt: Date.now(), metadata: { ...entity.metadata, event: { ...entity.metadata?.event!, notificationIds } } };
+        await persistReminderUpdate(updated, "event-reminder-schedule-" + entity.id + "-" + updated.syncVersion);
+      }).catch(error => console.warn("Unable to schedule event reminders", error));
     }
   };
 
@@ -531,6 +539,7 @@ function CalendarApp() {
       if (database) database.repository.upsert(updated, mutationId).catch(error => console.warn("Unable to persist occurrence deletion", error));
       return;
     }
+    void cancelNotificationIds(event.metadata?.event?.notificationIds);
     const mutationId = `event-delete-${event.id}-${event.syncVersion + 1}`;
     setEventEditorVisible(false);
     setEditingEvent(null);
