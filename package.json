@@ -43,6 +43,7 @@
   },
   "overrides": {
     "@xmldom/xmldom": "0.9.12",
-    "postcss": "8.5.23"
+    "postcss": "8.5.23",
+    "image-size": "2.0.4"
   }
 }
