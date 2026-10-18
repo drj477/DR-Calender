@@ -6,12 +6,12 @@ const patches = [
   {
     file: "node_modules/@bacons/apple-targets/build/with-widget.js",
     from: "@expo/prebuild-config/build/plugins/icons/AssetContents",
-    to: "../../../../expo-asset/plugin/build/AssetContents",
+    to: "../../../expo-asset/plugin/build/AssetContents",
   },
   {
     file: "node_modules/@bacons/apple-targets/build/icon/withImageAsset.js",
     from: "@expo/prebuild-config/build/plugins/icons/AssetContents",
-    to: "../../../../../expo-asset/plugin/build/AssetContents",
+    to: "../../../../expo-asset/plugin/build/AssetContents",
   },
 ];
 
