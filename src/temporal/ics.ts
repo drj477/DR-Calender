@@ -310,7 +310,7 @@ function loadCustomTimeZones(lines:string[]):void {
       for(let year=Math.max(start.year+1,1970);year<=2100;year++){
         let day:number;
         if(fields.BYMONTHDAY){day=Number(fields.BYMONTHDAY);const last=new Date(Date.UTC(year,month,0)).getUTCDate();if(day<0)day=last+day+1;if(day<1||day>last)continue;}
-        else if(weekdayRule){day=nthWeekday(year,month,weekdays[weekdayRule[2]] ?? 0,Number(weekdayRule[1]??1));}
+        else if(weekdayRule){day=nthWeekday(year,month,weekdays[weekdayRule[2] ?? "SU"] ?? 0,Number(weekdayRule[1]??1));}
         else day=start.day;
         add(year,month,day);
       }
