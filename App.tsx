@@ -20,6 +20,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useCalendarStore } from "./src/store/calendarStore";
+import { useShallow } from "zustand/react/shallow";
 import { DEFAULT_WORKSPACE_ID, initializeLocalDatabase, makeTaskEntity, type LocalCalendarDatabase } from "./src/persistence/localDatabase";
 import { EventEditor, type EventDraft } from "./src/components/EventEditor";
 import { DayTimeline } from "./src/components/DayTimeline";
@@ -126,7 +127,7 @@ function EventCard({ event, index, onPress }: { event: TemporalEntity; index: nu
 function CalendarApp() {
   const [mode, setMode] = useState<ScreenMode>("Day");
   const [activeTab, setActiveTab] = useState<MainTab>("Calendar");
-  const sharingEntities = useCalendarStore(state => Object.values(state.entitiesById));
+  const sharingEntities = useCalendarStore(useShallow(state => Object.values(state.entitiesById)));
   const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null);
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const selectedDay = selectedDate.getDate();
@@ -137,7 +138,7 @@ function CalendarApp() {
   const [editingEvent, setEditingEvent] = useState<TemporalEntity | null>(null);
   const [editingOccurrenceStartAt, setEditingOccurrenceStartAt] = useState<number | null>(null);
   const pendingCount = useCalendarStore(state => state.pendingMutations.length);
-  const storedEntities = useCalendarStore(state => Object.values(state.entitiesById));
+  const storedEntities = useCalendarStore(useShallow(state => Object.values(state.entitiesById)));
 
   const [appForegroundRevision, setAppForegroundRevision] = useState(0);
   useEffect(() => {

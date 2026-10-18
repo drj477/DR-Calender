@@ -11,6 +11,7 @@ import androidx.glance.appwidget.GlanceAppWidgetManager
 import com.drj477.drcalender.widget.CalendarGlanceWidget
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import kotlinx.coroutines.runBlocking
 import java.util.Calendar
 
 class DRCalenderNativeModule : Module() {
@@ -143,8 +144,10 @@ class DRCalenderNativeModule : Module() {
         .putString("task_assignee", assignee)
         .putString("task_deep_link", deepLink)
         .apply()
-      GlanceAppWidgetManager(context).getGlanceIds(CalendarGlanceWidget::class.java).forEach { id ->
-        CalendarGlanceWidget().update(context, id)
+      runBlocking {
+        GlanceAppWidgetManager(context).getGlanceIds(CalendarGlanceWidget::class.java).forEach { id ->
+          CalendarGlanceWidget().update(context, id)
+        }
       }
       true
     }
