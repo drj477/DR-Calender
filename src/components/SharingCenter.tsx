@@ -114,7 +114,7 @@ export function SharingCenter({events,onImport,onRSVP,onAddAttendee}:Props) {
     const lines=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//DR-Calender//Temporal Engine//EN","METHOD:REQUEST","CALSCALE:GREGORIAN","BEGIN:VEVENT","UID:"+eventUID(selectedEvent),"SEQUENCE:"+selectedEvent.syncVersion,"DTSTAMP:"+utc(Date.now()),allDay?"DTSTART;VALUE=DATE:"+date(start):"DTSTART:"+utc(start),allDay?"DTEND;VALUE=DATE:"+date(end):"DTEND:"+utc(end),"SUMMARY:"+escapeICSText(selectedEvent.title),...(selectedEvent.metadata?.event?.location?["LOCATION:"+escapeICSText(selectedEvent.metadata.event.location)]:[]),"ORGANIZER:mailto:"+organizerEmail.trim()];
     for(const attendee of selectedEvent.metadata?.invite?.attendeeList??[])lines.push("ATTENDEE;RSVP=TRUE;PARTSTAT="+(attendee.rsvpStatus==="accepted"?"ACCEPTED":attendee.rsvpStatus==="declined"?"DECLINED":attendee.rsvpStatus==="tentative"?"TENTATIVE":"NEEDS-ACTION")+":mailto:"+attendee.email);
     lines.push("END:VEVENT","END:VCALENDAR");
-    await Share.share({title:"Event invitation",message:lines.join("\\r\\n")+"\\r\\n"});
+    await Share.share({title:"Event invitation",message:lines.join("\r\n")+"\r\n"});
   };
   return <ScrollView style={s.root} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
     <View style={s.hero}><Text style={s.kicker}>SHARE · IMPORT · EXPORT</Text><Text style={s.heading}>Calendar sharing</Text><Text style={s.subtitle}>Import calendar files, export recurrence-aware ICS, manage subscription URLs, and track attendee responses.</Text></View>
