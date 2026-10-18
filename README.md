@@ -2,6 +2,8 @@
 
 A premium, offline-first calendar and scheduling application for iOS and Android, built around shared temporal primitives, quick task capture, collaborative sync contracts, and native widget/alarm integration.
 
+**Run it on a device:** follow [RUN_THE_APP.md](RUN_THE_APP.md) for the Android native development build, first-launch checks, and optional Supabase setup. This project uses a custom native module and must not be validated only through Expo Go.
+
 ## Current implementation
 
 ### Mobile application
@@ -52,7 +54,7 @@ A premium, offline-first calendar and scheduling application for iOS and Android
 - Versioned schema migrations run transactionally and fail closed; the newest known reversible migration can be rolled back explicitly after exporting a backup.
 - Supabase hardening migration and source-level review checklist are in supabase/migrations/202610180002_phase7_security_hardening.sql and SUPABASE_SECURITY_REVIEW.md.
 - Android native alarms are persisted and have a reboot/time-change recovery receiver; iOS WidgetKit source exists but the Xcode/EAS extension target still needs configuration.
-- As requested, no test/build/typecheck/native-compilation/device-validation pass has been run. The project is not yet release-certified.
+- Latest recorded baseline verification: `npm ci`, `npm run typecheck`, and `npx expo export --platform all` passed. This verifies dependency installation, TypeScript, and JavaScript bundling only; it does **not** verify native compilation, device behavior, notifications, widgets, or live Supabase security. See [RELEASE_READINESS.md](RELEASE_READINESS.md).
 
 ## Project structure
 

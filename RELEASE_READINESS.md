@@ -34,9 +34,9 @@ This document records source implementation and outstanding validation. It is **
 
 ## Required before production
 
-- [ ] Run TypeScript checks and resolve all reported issues.
+- [x] Run `npm run typecheck` on the recorded baseline; it passed. Re-run after any source/dependency changes before a device build.
 - [ ] Add and run automated unit/integration tests, especially restore validation/rollback, migration recovery, recurrence, DST, sync idempotency, and workspace isolation.
-- [ ] Build Android and iOS native apps; verify local module autolinking, generated manifests, and native dependency resolution.
+- [ ] Run `npm run android:device` on a machine with Android Studio, Android SDK/platform tools, a compatible JDK, and an emulator or USB-debugging-enabled device; verify local module autolinking, generated manifests, and native dependency resolution. Run the iOS build only on macOS with Xcode/CocoaPods.
 - [ ] Verify Android exact-alarm permission, notification permission denial, reboot/time-change recovery, widget refresh, and alarm cancellation on physical devices.
 - [ ] Run a clean iOS prebuild on supported macOS tooling; add the Apple Developer Team ID, verify the generated WidgetKit target and signed App Group entitlement, then verify widget refresh/deep links on physical devices.
 - [ ] Apply all three Supabase migrations to a non-production project; verify effective grants, function owners/search paths, RLS behavior, workspace isolation, membership role matrix, invitation expiry/revocation/email binding, payload rejection, and idempotency.
@@ -76,4 +76,4 @@ Android alarm persistence/recovery source and iOS WidgetKit source exist, but so
 
 ## Validation policy
 
-The temporary CI workflow was removed after both jobs failed during setup: `actions/setup-node` was configured with npm caching, but the repository has no `package-lock.json`, `npm-shrinkwrap.json`, or `yarn.lock`. Neither Android nor iOS compilation started. No physical-device validation or successful native build is claimed. Release readiness remains **not certified** until the checks above are completed.
+Recorded baseline checks: `npm ci`, `npm run typecheck`, and `npx expo export --platform all` passed after the lockfile was added. These checks do not compile the native Android/iOS projects and do not establish runtime behavior. No GitHub Actions workflow is used. No successful native build, physical-device validation, or live Supabase audit is claimed. Release readiness remains **not certified** until the checks above are completed.
