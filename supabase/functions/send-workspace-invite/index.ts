@@ -8,6 +8,8 @@ const corsHeaders = {
   "Content-Type": "application/json",
 };
 
+const MAX_REQUEST_BYTES = 16 * 1024;
+
 function response(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), { status, headers: corsHeaders });
 }
@@ -15,6 +17,43 @@ function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, char => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
   })[char] ?? char);
+}
+
+async function readBoundedJson(request: Request): Promise<unknown> {
+  const declaredLength = request.headers.get("content-length");
+  if (declaredLength !== null) {
+    if (!/^\d+$/.test(declaredLength)) throw new Error("Invalid Content-Length header.");
+    if (Number(declaredLength) > MAX_REQUEST_BYTES) {
+      throw new RangeError("Request body exceeds the 16 KB limit.");
+    }
+  }
+
+  if (!request.body) throw new Error("Request body is required.");
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > MAX_REQUEST_BYTES) {
+        await reader.cancel();
+        throw new RangeError("Request body exceeds the 16 KB limit.");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return JSON.parse(new TextDecoder().decode(bytes));
 }
 
 Deno.serve(async request => {
@@ -32,7 +71,17 @@ Deno.serve(async request => {
   if (!authorization?.startsWith("Bearer ")) return response(401, { error: "Sign in before sending a workspace invitation." });
 
   let body: { workspaceId?: unknown; email?: unknown; role?: unknown };
-  try { body = await request.json(); } catch { return response(400, { error: "Invalid JSON body." }); }
+  try {
+    const parsed = await readBoundedJson(request);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return response(400, { error: "JSON body must be an object." });
+    }
+    body = parsed as { workspaceId?: unknown; email?: unknown; role?: unknown };
+  } catch (error) {
+    if (error instanceof RangeError) return response(413, { error: "Request body exceeds the 16 KB limit." });
+    return response(400, { error: "Invalid or missing JSON body." });
+  }
+
   const workspaceId = typeof body.workspaceId === "string" ? body.workspaceId.trim() : "";
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const role = body.role === "viewer" ? "viewer" : body.role === "editor" ? "editor" : "";
