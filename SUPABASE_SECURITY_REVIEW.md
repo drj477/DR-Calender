@@ -7,7 +7,7 @@ This is a source-level review of the SQL migrations in this repository. It is **
 ## Changes added
 
 - `202610180003_phase9_workspace_lifecycle.sql` adds authenticated, membership-checked RPCs for listing members/invitations, role changes, member removal, invitation creation/revocation, and acceptance tied to the signed-in email. Direct access to the invitation table is revoked.
-- Proposed `202610180005_phase11_invitation_rate_limits.sql` enforces per-inviter limits at the database write boundary: 10 invitation create/refresh attempts per rolling hour and 50 per rolling 24 hours. This migration is source-only until reviewed, merged, and applied; it does not replace IP-level or platform-level abuse controls.
+- Proposed `202610180005_phase11_invitation_rate_limits.sql` enforces per-inviter limits at the database write boundary: 10 invitation create/refresh attempts per rolling hour and 50 per rolling 24 hours. It records attempts in a separate restricted ledger so repeatedly refreshing the same workspace/email invitation cannot bypass the count. This migration is source-only until reviewed, merged, and applied; it does not replace IP-level or platform-level abuse controls.
 - `202610180002_phase7_security_hardening.sql` revokes direct table privileges from `anon` and `authenticated`; the mobile app is intended to use the authenticated RPC surface.
 - The hardened push RPC validates authentication, workspace membership and editor-level write role, batch shape/size, mutation identity, supported entity types/operations, title length, positive versions, and scheduled time ranges.
 - Reused mutation IDs are acknowledged only for the actor that originally submitted them; a different actor is rejected.
@@ -21,7 +21,7 @@ This is a source-level review of the SQL migrations in this repository. It is **
 3. **Sync conflict semantics are LWW/version based.** Authorization does not make the merge policy correct; stale writes, tombstones, and concurrent edits need dedicated tests.
 4. **Payload validation is not a complete domain schema.** Add bounds/validation for every metadata field and recurrence payload as the entity model evolves; reject malformed nested values and non-finite/out-of-range timestamps.
 5. **Invitation email delivery depends on trusted Edge Function secrets.** Configure `RESEND_API_KEY` and `INVITE_FROM_EMAIL` as Supabase Function secrets. The Edge Function forwards the signed-in user's JWT to membership-checked RPCs and never accepts a service-role key from the client. If provider delivery fails after invite creation, the app falls back to sharing the invitation ID. Role and membership changes remain subject to staging verification.
-6. **Rate limiting and abuse controls.** The proposed Phase 11 trigger limits invitation create/refresh attempts per inviter, including direct RPC calls. It is not yet deployed and does not provide IP-level limits or protect other RPCs from request flooding. Add platform/edge-level limits where appropriate.
+6. **Rate limiting and abuse controls.** The proposed Phase 11 trigger records invitation create/refresh attempts in a separate restricted ledger and limits them per inviter, including repeated refreshes of the same invite and direct RPC calls. It is not yet deployed and does not provide IP-level limits or protect other RPCs from request flooding. Add platform/edge-level limits where appropriate.
 7. **Privacy and retention.** Sync payloads contain event/task content. Define retention/deletion rules for mutation logs and account deletion, and review logs for accidental payload disclosure.
 8. **Operational controls.** Enable database backups/PITR as appropriate, monitor failed RPCs, rotate exposed keys, and separate staging/production projects.
 
@@ -34,7 +34,7 @@ This is a source-level review of the SQL migrations in this repository. It is **
 - Try null, object, empty, 101-item and oversized mutation batches; malformed JSON, mismatched workspace/entity IDs, invalid types/operations, negative versions, long titles and invalid time ranges.
 - Replay a mutation as its original actor (idempotent acknowledgement), then replay it as another workspace member (must fail).
 - Test duplicate entity IDs, stale versions, tombstones, cross-workspace payloads, and concurrent updates.
-- Test the invitation limits: 10 create/refresh attempts per inviter in one hour, 50 in 24 hours, and ensure acceptance/revocation still work at the cap. Test concurrent invite requests.
+- Test the invitation limits: 10 create/refresh attempts per inviter in one hour, 50 in 24 hours, repeated refreshes of the same workspace/email invite, and ensure acceptance/revocation still work at the cap. Test concurrent invite requests and verify ledger rows are inaccessible to anon/authenticated clients.
 - Inspect `pg_proc.prosecdef`, `proconfig`, ownership, grants and effective privileges after migration.
 - Verify backups/PITR restore in staging and review database/API logs for event titles or payload leakage.
 
