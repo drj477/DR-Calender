@@ -47,6 +47,15 @@ export function AccountCenter({ database, onSynced, onWorkspaceChanged }: Props)
     const items = await listRemoteWorkspaces(cfg);
     setWorkspaces(items);
   };
+  const reloadAccess = async () => {
+    if (!config || !database || !session) { setMembers([]); setInvites([]); return; }
+    const [nextMembers, nextInvites] = await Promise.all([
+      listRemoteWorkspaceMembers(config, database.workspaceId),
+      listRemoteWorkspaceInvites(config, database.workspaceId),
+    ]);
+    setMembers(nextMembers);
+    setInvites(nextInvites);
+  };
   useEffect(() => {
     if (config && session) reloadWorkspaces(config).catch(error => setMessage(error instanceof Error ? error.message : String(error)));
   }, [config, session?.user.id]);
@@ -66,8 +75,9 @@ export function AccountCenter({ database, onSynced, onWorkspaceChanged }: Props)
       if (!cfg.url || !cfg.anonKey) throw new Error("Configure your Supabase project URL and publishable/anon key first.");
       if (password.length < 8) throw new Error("Password must contain at least 8 characters.");
       const result = mode === "signin" ? await signIn(cfg, email, password) : await signUp(cfg, email, password);
-      if (mode === "signup" && !result.session) { setMessage("Account created. Confirm your email, then sign in."); return; }
-      const nextSession = mode === "signin" ? result as AuthSession : (result as { session: AuthSession }).session;
+      if (mode === "signup" && "session" in result && !result.session) { setMessage("Account created. Confirm your email, then sign in."); return; }
+      const nextSession = mode === "signin" ? result as AuthSession : (result as { session: AuthSession | null }).session;
+      if (!nextSession) throw new Error("Authentication did not return a session.");
       setSession(nextSession); setMessage(mode === "signup" ? "Account created and signed in." : "Signed in securely.");
       setPassword("");
     } catch (error) { setMessage(error instanceof Error ? error.message : String(error)); }
