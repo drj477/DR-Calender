@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import type { TemporalEntity } from "../temporal/types";
+import { BrandText } from "./BrandText";
 
 const C = { background: "#10141D", surface: "#171C28", raised: "#202838", border: "#30394B", text: "#F4F6FC", muted: "#9BA7BA", accent: "#FFC247", danger: "#FF9A63", wash: "#322817" };
 
@@ -47,42 +48,42 @@ export function ReminderCenter({ reminders, permissionGranted, onRequestPermissi
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.intro}>
-        <Text style={styles.kicker}>STAY A STEP AHEAD</Text>
-        <Text style={styles.heading}>Reminders</Text>
-        <Text style={styles.subheading}>A timely nudge, right when you need it.</Text>
+        <BrandText style={styles.kicker}>STAY A STEP AHEAD</BrandText>
+        <BrandText style={styles.heading}>Reminders</BrandText>
+        <BrandText style={styles.subheading}>A timely nudge, right when you need it.</BrandText>
       </View>
       {permissionGranted !== true ? (
         <Pressable onPress={onRequestPermission} style={styles.permissionCard} accessibilityRole="button">
-          <View style={styles.permissionCopy}><Text style={styles.cardTitle}>Enable notifications</Text><Text style={styles.hint}>{permissionGranted === false ? "Notifications are blocked in system settings. Enable them to receive reminders." : "Allow notifications to receive scheduled reminders and event alerts."}</Text></View>
-          <Text style={styles.action}>{permissionGranted === false ? "Settings" : "Enable →"}</Text>
+          <View style={styles.permissionCopy}><BrandText style={styles.cardTitle}>Enable notifications</BrandText><BrandText style={styles.hint}>{permissionGranted === false ? "Notifications are blocked in system settings. Enable them to receive reminders." : "Allow notifications to receive scheduled reminders and event alerts."}</BrandText></View>
+          <BrandText style={styles.action}>{permissionGranted === false ? "Settings" : "Enable →"}</BrandText>
         </Pressable>
       ) : (
-        <View style={styles.permissionStatus}><View style={styles.statusDot} /><Text style={styles.hint}>Notifications are enabled on this device.</Text></View>
+        <View style={styles.permissionStatus}><View style={styles.statusDot} /><BrandText style={styles.hint}>Notifications are enabled on this device.</BrandText></View>
       )}
       <View style={styles.formCard}>
-        <Text style={styles.cardTitle}>Create a reminder</Text>
+        <BrandText style={styles.cardTitle}>Create a reminder</BrandText>
         <TextInput value={title} onChangeText={setTitle} placeholder="What should you remember?" placeholderTextColor={C.muted} style={styles.titleInput} returnKeyType="done" />
         <View style={styles.row}>
-          <View style={styles.field}><Text style={styles.label}>DATE</Text><TextInput value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" placeholderTextColor={C.muted} style={styles.input} maxLength={10} /></View>
-          <View style={styles.field}><Text style={styles.label}>TIME (24H)</Text><TextInput value={time} onChangeText={setTime} placeholder="HH:MM" placeholderTextColor={C.muted} style={styles.input} maxLength={5} /></View>
+          <View style={styles.field}><BrandText style={styles.label}>DATE</BrandText><TextInput value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" placeholderTextColor={C.muted} style={styles.input} maxLength={10} /></View>
+          <View style={styles.field}><BrandText style={styles.label}>TIME (24H)</BrandText><TextInput value={time} onChangeText={setTime} placeholder="HH:MM" placeholderTextColor={C.muted} style={styles.input} maxLength={5} /></View>
         </View>
-        {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
-        <Pressable onPress={submit} style={styles.primaryButton} accessibilityRole="button"><Text style={styles.primaryText}>＋ Schedule reminder</Text></Pressable>
+        {error ? <BrandText accessibilityRole="alert" style={styles.error}>{error}</BrandText> : null}
+        <Pressable onPress={submit} style={styles.primaryButton} accessibilityRole="button"><BrandText style={styles.primaryText}>＋ Schedule reminder</BrandText></Pressable>
       </View>
-      <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Upcoming</Text><Text style={styles.count}>{upcoming.length}</Text></View>
+      <View style={styles.sectionHeader}><BrandText style={styles.sectionTitle}>Upcoming</BrandText><BrandText style={styles.count}>{upcoming.length}</BrandText></View>
       {upcoming.length ? upcoming.map(item => {
         const trigger = item.metadata?.reminder?.trigger;
         const at = reminderTime(item);
         return <View key={item.id} style={styles.reminderCard}>
-          <View style={styles.reminderMark}><Text style={styles.reminderMarkText}>◷</Text></View>
-          <View style={styles.reminderCopy}><Text style={styles.reminderTitle}>{item.title}</Text><Text style={styles.reminderDate}>{new Date(at).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</Text>
-            <View style={styles.actions}><Pressable onPress={() => onComplete(item)} style={styles.doneButton}><Text style={styles.doneText}>Done</Text></Pressable><Pressable onPress={() => onSnooze(item, 10)} style={styles.smallButton}><Text style={styles.smallButtonText}>Snooze 10m</Text></Pressable><Pressable onPress={() => onSnooze(item, 60)} style={styles.smallButton}><Text style={styles.smallButtonText}>Snooze 1h</Text></Pressable><Pressable onPress={() => onDelete(item)} style={styles.deleteButton}><Text style={styles.deleteText}>Delete</Text></Pressable></View>
+          <View style={styles.reminderMark}><BrandText style={styles.reminderMarkText}>◷</BrandText></View>
+          <View style={styles.reminderCopy}><BrandText style={styles.reminderTitle}>{item.title}</BrandText><BrandText style={styles.reminderDate}>{new Date(at).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</BrandText>
+            <View style={styles.actions}><Pressable onPress={() => onComplete(item)} style={styles.doneButton}><BrandText style={styles.doneText}>Done</BrandText></Pressable><Pressable onPress={() => onSnooze(item, 10)} style={styles.smallButton}><BrandText style={styles.smallButtonText}>Snooze 10m</BrandText></Pressable><Pressable onPress={() => onSnooze(item, 60)} style={styles.smallButton}><BrandText style={styles.smallButtonText}>Snooze 1h</BrandText></Pressable><Pressable onPress={() => onDelete(item)} style={styles.deleteButton}><BrandText style={styles.deleteText}>Delete</BrandText></Pressable></View>
           </View>
         </View>;
-      }) : <View style={styles.empty}><Text style={styles.emptyTitle}>Nothing on the reminder list</Text><Text style={styles.hint}>Create a reminder above and it will be saved on this device.</Text></View>}
-      {completed.length ? <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Completed</Text><Text style={styles.count}>{completed.length}</Text></View> : null}
-      {completed.map(item => <View key={item.id} style={[styles.reminderCard, styles.completedCard]}><View style={styles.reminderCopy}><Text style={styles.reminderTitle}>{item.title}</Text><Text style={styles.reminderDate}>Completed</Text></View><Pressable onPress={() => onDelete(item)}><Text style={styles.deleteText}>Remove</Text></Pressable></View>)}
-      <Text style={styles.footer}>Local-first reminders · Scheduled on this device</Text>
+      }) : <View style={styles.empty}><BrandText style={styles.emptyTitle}>Nothing on the reminder list</BrandText><BrandText style={styles.hint}>Create a reminder above and it will be saved on this device.</BrandText></View>}
+      {completed.length ? <View style={styles.sectionHeader}><BrandText style={styles.sectionTitle}>Completed</BrandText><BrandText style={styles.count}>{completed.length}</BrandText></View> : null}
+      {completed.map(item => <View key={item.id} style={[styles.reminderCard, styles.completedCard]}><View style={styles.reminderCopy}><BrandText style={styles.reminderTitle}>{item.title}</BrandText><BrandText style={styles.reminderDate}>Completed</BrandText></View><Pressable onPress={() => onDelete(item)}><BrandText style={styles.deleteText}>Remove</BrandText></Pressable></View>)}
+      <BrandText style={styles.footer}>Local-first reminders · Scheduled on this device</BrandText>
     </ScrollView>
   );
 }
