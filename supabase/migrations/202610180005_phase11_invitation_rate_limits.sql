@@ -51,7 +51,7 @@ begin
       and attempted_at < now() - interval '24 hours';
 
   select
-    count(*) filter (where attempted_at >= now() - interval '1 hour')::integer,
+    (count(*) filter (where attempted_at >= now() - interval '1 hour'))::integer,
     count(*)::integer
     into v_hour_count, v_day_count
     from public.dr_workspace_invite_attempts
