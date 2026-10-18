@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import type { ChecklistItem, TemporalEntity, TemporalPriority } from "../temporal/types";
+import { BrandText } from "./BrandText";
 
 const C = { bg: "#10141D", surface: "#171C28", raised: "#202838", border: "#30394B", text: "#F4F6FC", muted: "#9BA7BA", accent: "#FFC247", danger: "#FF9A63", green: "#72D6A1", wash: "#322817" };
 type Filter = "Inbox" | "Today" | "Upcoming" | "Overdue" | "Completed";
@@ -95,12 +96,12 @@ export function TaskCenter({ tasks, onSave, onToggle, onDelete, onPlanDay, onRol
 
   return <View style={s.root}>
     <View style={s.hero}>
-      <View style={{ flex: 1, gap: 5 }}><Text style={s.kicker}>MAKE ROOM FOR WHAT MATTERS</Text><Text style={s.heading}>Tasks</Text><Text style={s.subtitle}>{liveTasks.filter(t => !t.isCompleted).length} open · {counts.Overdue} overdue</Text></View>
-      <Pressable onPress={() => { setFilter("Today"); onPlanDay(); }} style={s.planButton} accessibilityRole="button"><Text style={s.planText}>✦ Plan my day</Text></Pressable>
+      <View style={{ flex: 1, gap: 5 }}><BrandText style={s.kicker}>MAKE ROOM FOR WHAT MATTERS</BrandText><BrandText style={s.heading}>Tasks</BrandText><BrandText style={s.subtitle}>{liveTasks.filter(t => !t.isCompleted).length} open · {counts.Overdue} overdue</BrandText></View>
+      <Pressable onPress={() => { setFilter("Today"); onPlanDay(); }} style={s.planButton} accessibilityRole="button"><BrandText style={s.planText}>✦ Plan my day</BrandText></Pressable>
     </View>
-    <View style={s.actions}><Pressable onPress={() => openEditor()} style={s.addButton} accessibilityRole="button"><Text style={s.addText}>＋ New task</Text></Pressable><Text style={s.helper}>Tasks save locally and enter the sync outbox.</Text></View>
+    <View style={s.actions}><Pressable onPress={() => openEditor()} style={s.addButton} accessibilityRole="button"><BrandText style={s.addText}>＋ New task</BrandText></Pressable><BrandText style={s.helper}>Tasks save locally and enter the sync outbox.</BrandText></View>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filters}>
-      {(["Inbox", "Today", "Upcoming", "Overdue", "Completed"] as Filter[]).map(item => <Pressable key={item} onPress={() => setFilter(item)} accessibilityRole="button" accessibilityState={{ selected: filter === item }} style={[s.filter, filter === item && s.filterActive]}><Text style={[s.filterText, filter === item && s.filterTextActive]}>{item}</Text><Text style={[s.filterCount, filter === item && s.filterTextActive]}>{counts[item]}</Text></Pressable>)}
+      {(["Inbox", "Today", "Upcoming", "Overdue", "Completed"] as Filter[]).map(item => <Pressable key={item} onPress={() => setFilter(item)} accessibilityRole="button" accessibilityState={{ selected: filter === item }} style={[s.filter, filter === item && s.filterActive]}><BrandText style={[s.filterText, filter === item && s.filterTextActive]}>{item}</BrandText><BrandText style={[s.filterCount, filter === item && s.filterTextActive]}>{counts[item]}</BrandText></Pressable>)}
     </ScrollView>
     <ScrollView style={s.list} contentContainerStyle={s.listContent} showsVerticalScrollIndicator={false}>
       {visible.length ? visible.map(task => {
@@ -108,29 +109,29 @@ export function TaskCenter({ tasks, onSave, onToggle, onDelete, onPlanDay, onRol
         const checklist = task.metadata?.task?.checklist ?? [];
         const done = checklist.filter(item => item.isCompleted).length;
         return <View key={task.id} style={s.card}>
-          <Pressable onPress={() => onToggle(task)} accessibilityRole="checkbox" accessibilityState={{ checked: task.isCompleted }} style={[s.check, task.isCompleted && s.checkDone]}><Text style={s.checkGlyph}>{task.isCompleted ? "✓" : ""}</Text></Pressable>
+          <Pressable onPress={() => onToggle(task)} accessibilityRole="checkbox" accessibilityState={{ checked: task.isCompleted }} style={[s.check, task.isCompleted && s.checkDone]}><BrandText style={s.checkGlyph}>{task.isCompleted ? "✓" : ""}</BrandText></Pressable>
           <View style={s.taskMain}>
-            <Pressable onPress={() => openEditor(task)} accessibilityRole="button"><Text style={[s.taskTitle, task.isCompleted && s.completed]}>{task.title}</Text></Pressable>
-            <View style={s.metaRow}><View style={[s.priorityPill, task.priority === "critical" || task.priority === "high" ? s.priorityHot : null]}><Text style={s.priorityText}>{priorityLabel[task.priority]}</Text></View><Text style={[s.dueText, overdue(task) && s.overdueText]}>{due === null ? "No due date" : overdue(task) ? "OVERDUE · " : ""}{due === null ? "" : new Date(due).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</Text>{checklist.length ? <Text style={s.checklistCount}>{done}/{checklist.length} steps</Text> : null}</View>
-            {checklist.length ? <View style={s.checklist}>{checklist.map(item => <Pressable key={item.id} onPress={() => toggleChecklistItem(task, item)} style={s.checklistRow} accessibilityRole="checkbox" accessibilityState={{ checked: item.isCompleted }}><Text style={[s.checklistMark, item.isCompleted && s.checklistMarkDone]}>{item.isCompleted ? "✓" : "○"}</Text><Text style={[s.checklistText, item.isCompleted && s.completed]}>{item.title}</Text></Pressable>)}</View> : null}
-            {overdue(task) ? <Pressable onPress={() => onRollover(task)} style={s.rollover}><Text style={s.rolloverText}>Move to today →</Text></Pressable> : null}
+            <Pressable onPress={() => openEditor(task)} accessibilityRole="button"><BrandText style={[s.taskTitle, task.isCompleted && s.completed]}>{task.title}</BrandText></Pressable>
+            <View style={s.metaRow}><View style={[s.priorityPill, task.priority === "critical" || task.priority === "high" ? s.priorityHot : null]}><BrandText style={s.priorityText}>{priorityLabel[task.priority]}</BrandText></View><BrandText style={[s.dueText, overdue(task) && s.overdueText]}>{due === null ? "No due date" : overdue(task) ? "OVERDUE · " : ""}{due === null ? "" : new Date(due).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</BrandText>{checklist.length ? <BrandText style={s.checklistCount}>{done}/{checklist.length} steps</BrandText> : null}</View>
+            {checklist.length ? <View style={s.checklist}>{checklist.map(item => <Pressable key={item.id} onPress={() => toggleChecklistItem(task, item)} style={s.checklistRow} accessibilityRole="checkbox" accessibilityState={{ checked: item.isCompleted }}><BrandText style={[s.checklistMark, item.isCompleted && s.checklistMarkDone]}>{item.isCompleted ? "✓" : "○"}</BrandText><BrandText style={[s.checklistText, item.isCompleted && s.completed]}>{item.title}</BrandText></Pressable>)}</View> : null}
+            {overdue(task) ? <Pressable onPress={() => onRollover(task)} style={s.rollover}><BrandText style={s.rolloverText}>Move to today →</BrandText></Pressable> : null}
           </View>
-          <Pressable onPress={() => openEditor(task)} accessibilityRole="button" accessibilityLabel={`Edit ${task.title}`} style={s.editButton}><Text style={s.editGlyph}>···</Text></Pressable>
-          <Pressable onPress={() => onDelete(task)} accessibilityRole="button" accessibilityLabel={`Delete ${task.title}`} style={s.deleteButton}><Text style={s.deleteGlyph}>×</Text></Pressable>
+          <Pressable onPress={() => openEditor(task)} accessibilityRole="button" accessibilityLabel={`Edit ${task.title}`} style={s.editButton}><BrandText style={s.editGlyph}>···</BrandText></Pressable>
+          <Pressable onPress={() => onDelete(task)} accessibilityRole="button" accessibilityLabel={`Delete ${task.title}`} style={s.deleteButton}><BrandText style={s.deleteGlyph}>×</BrandText></Pressable>
         </View>;
-      }) : <View style={s.empty}><Text style={s.emptyTitle}>{filter === "Completed" ? "Nothing completed yet" : filter === "Overdue" ? "You’re clear of overdue tasks" : "A little breathing room"}</Text><Text style={s.helper}>{filter === "Inbox" ? "Capture a task without a due date, then decide when it belongs." : "Tasks in this view will appear here."}</Text></View>}
+      }) : <View style={s.empty}><BrandText style={s.emptyTitle}>{filter === "Completed" ? "Nothing completed yet" : filter === "Overdue" ? "You’re clear of overdue tasks" : "A little breathing room"}</BrandText><BrandText style={s.helper}>{filter === "Inbox" ? "Capture a task without a due date, then decide when it belongs." : "Tasks in this view will appear here."}</BrandText></View>}
     </ScrollView>
     <Modal visible={editorOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setEditorOpen(false)}>
       <View style={s.modal}>
-        <View style={s.modalHeader}><Pressable onPress={() => setEditorOpen(false)}><Text style={s.cancel}>Cancel</Text></Pressable><Text style={s.modalTitle}>{editing ? "Edit task" : "New task"}</Text><Pressable onPress={save}><Text style={s.save}>Save</Text></Pressable></View>
+        <View style={s.modalHeader}><Pressable onPress={() => setEditorOpen(false)}><BrandText style={s.cancel}>Cancel</BrandText></Pressable><BrandText style={s.modalTitle}>{editing ? "Edit task" : "New task"}</BrandText><Pressable onPress={save}><BrandText style={s.save}>Save</BrandText></Pressable></View>
         <ScrollView contentContainerStyle={s.form} keyboardShouldPersistTaps="handled">
-          <Text style={s.label}>TASK</Text><TextInput value={title} onChangeText={setTitle} placeholder="What needs doing?" placeholderTextColor={C.muted} style={s.input} autoFocus={!editing} />
-          <Pressable onPress={() => setHasDue(value => !value)} style={s.dueToggle} accessibilityRole="checkbox" accessibilityState={{ checked: hasDue }}><Text style={s.formTitle}>Due date and time</Text><Text style={s.toggleValue}>{hasDue ? "On ✓" : "No due date"}</Text></Pressable>
-          {hasDue ? <View style={s.row}><View style={s.field}><Text style={s.label}>DATE</Text><TextInput value={date} onChangeText={setDate} style={s.input} placeholder="YYYY-MM-DD" placeholderTextColor={C.muted} /></View><View style={s.field}><Text style={s.label}>TIME (24H)</Text><TextInput value={time} onChangeText={setTime} style={s.input} placeholder="HH:MM" placeholderTextColor={C.muted} /></View></View> : null}
-          <Text style={s.label}>ESTIMATED WORK DURATION</Text><View style={s.priorityChoices}>{([15,30,45,60,90,120] as const).map(value => <Pressable key={value} onPress={() => setDurationMinutes(value)} style={[s.priorityChoice,durationMinutes===value&&s.priorityChoiceActive]}><Text style={[s.priorityText,durationMinutes===value&&s.prioritySelected]}>{value<60?value+" min":value/60+" hr"+(value===60?"":"s")}</Text></Pressable>)}</View>
-          <Text style={s.label}>PRIORITY</Text><View style={s.priorityChoices}>{(["low", "normal", "high", "critical"] as TemporalPriority[]).map(value => <Pressable key={value} onPress={() => setPriority(value)} style={[s.priorityChoice, priority === value && s.priorityChoiceActive]}><Text style={[s.priorityText, priority === value && s.prioritySelected]}>{priorityLabel[value]}</Text></Pressable>)}</View>
-          <Text style={s.label}>CHECKLIST</Text><Text style={s.helper}>One step per line. Completed steps are preserved when you edit a task.</Text><TextInput multiline value={checklistText} onChangeText={setChecklistText} placeholder={"Prepare notes\nReview details\nSend it"} placeholderTextColor={C.muted} style={[s.input, s.multiline]} />
-          {error ? <Text style={s.error}>{error}</Text> : null}
+          <BrandText style={s.label}>TASK</BrandText><TextInput value={title} onChangeText={setTitle} placeholder="What needs doing?" placeholderTextColor={C.muted} style={s.input} autoFocus={!editing} />
+          <Pressable onPress={() => setHasDue(value => !value)} style={s.dueToggle} accessibilityRole="checkbox" accessibilityState={{ checked: hasDue }}><BrandText style={s.formTitle}>Due date and time</BrandText><BrandText style={s.toggleValue}>{hasDue ? "On ✓" : "No due date"}</BrandText></Pressable>
+          {hasDue ? <View style={s.row}><View style={s.field}><BrandText style={s.label}>DATE</BrandText><TextInput value={date} onChangeText={setDate} style={s.input} placeholder="YYYY-MM-DD" placeholderTextColor={C.muted} /></View><View style={s.field}><BrandText style={s.label}>TIME (24H)</BrandText><TextInput value={time} onChangeText={setTime} style={s.input} placeholder="HH:MM" placeholderTextColor={C.muted} /></View></View> : null}
+          <BrandText style={s.label}>ESTIMATED WORK DURATION</BrandText><View style={s.priorityChoices}>{([15,30,45,60,90,120] as const).map(value => <Pressable key={value} onPress={() => setDurationMinutes(value)} style={[s.priorityChoice,durationMinutes===value&&s.priorityChoiceActive]}><BrandText style={[s.priorityText,durationMinutes===value&&s.prioritySelected]}>{value<60?value+" min":value/60+" hr"+(value===60?"":"s")}</BrandText></Pressable>)}</View>
+          <BrandText style={s.label}>PRIORITY</BrandText><View style={s.priorityChoices}>{(["low", "normal", "high", "critical"] as TemporalPriority[]).map(value => <Pressable key={value} onPress={() => setPriority(value)} style={[s.priorityChoice, priority === value && s.priorityChoiceActive]}><BrandText style={[s.priorityText, priority === value && s.prioritySelected]}>{priorityLabel[value]}</BrandText></Pressable>)}</View>
+          <BrandText style={s.label}>CHECKLIST</BrandText><BrandText style={s.helper}>One step per line. Completed steps are preserved when you edit a task.</BrandText><TextInput multiline value={checklistText} onChangeText={setChecklistText} placeholder={"Prepare notes\nReview details\nSend it"} placeholderTextColor={C.muted} style={[s.input, s.multiline]} />
+          {error ? <BrandText style={s.error}>{error}</BrandText> : null}
         </ScrollView>
       </View>
     </Modal>
