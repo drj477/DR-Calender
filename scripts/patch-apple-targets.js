@@ -17,7 +17,7 @@ const patches = [
     ],
   },
   {
-    file: "node_modules/@bacons/apple-targets/build/icon/withImageAsset.js",
+    file: "node_modules/@bacons/apple-targets/build/icon/with-image-asset.js",
     replacements: [
       [
         "@expo/prebuild-config/build/plugins/icons/AssetContents",
