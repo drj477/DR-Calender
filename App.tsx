@@ -562,7 +562,7 @@ function CalendarApp() {
         if (!entity) return;
         const taskMeta = entity.metadata?.task;
         if (completed) void cancelNotificationIds(taskMeta?.notificationId ? [taskMeta.notificationId] : []);
-        const updated = { ...entity, isCompleted: completed, updatedAt: Date.now(), syncVersion: entity.syncVersion + 1, metadata: { ...entity.metadata, task: taskMeta ? { ...taskMeta, notificationId: completed ? null : taskMeta.notificationId } : undefined } };
+        const updated = { ...entity, isCompleted: completed, updatedAt: Date.now(), syncVersion: entity.syncVersion + 1, metadata: { ...entity.metadata, ...(taskMeta ? { task: { ...taskMeta, notificationId: completed ? null : taskMeta.notificationId } } : {}) } };
         const mutationId = `task-toggle-${id}-${updated.syncVersion}`;
         return database.repository.upsert(updated, mutationId).then(async () => {
           useCalendarStore.getState().upsertEntity(updated, mutationId);
