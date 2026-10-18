@@ -140,6 +140,8 @@ export interface RecurrenceExceptions {
 }
 
 export interface TemporalMetadata {
+  /** Identifies a rendered recurrence instance without changing its source series. */
+  recurrenceOccurrence?: { seriesId: string; startAt: number; isRecurring: boolean };
   recurrence?: RecurrenceExceptions;
   event?: EventMetadata;
   reminder?: ReminderMetadata;
