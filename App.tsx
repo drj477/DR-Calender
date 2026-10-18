@@ -8,7 +8,6 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -41,6 +40,9 @@ import { isSupportedTimeZone, parseICSDateTime, type ParsedICSEvent } from "./sr
 import type { RSVPStatus } from "./src/temporal/types";
 import { cancelNotificationIds, requestNotificationPermission, scheduleEventNotifications, scheduleReminderNotification } from "./src/notifications/notificationService";
 import * as Notifications from "expo-notifications";
+import { useFonts } from "expo-font";
+import { Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold, Manrope_800ExtraBold } from "@expo-google-fonts/manrope";
+import { BrandText } from "./src/components/BrandText";
 
 type ScreenMode = "Day" | "Week" | "Month";
 type MainTab = "Calendar" | "Tasks" | "Reminders" | "Sharing" | "Native" | "Data" | "Spaces";
@@ -86,14 +88,14 @@ function TaskRow({ task, onToggle, onRemind }: { task: Task; onToggle: () => voi
   return (
     <Animated.View style={[styles.taskRow, animatedStyle]}>
       <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: task.completed }} onPress={toggle} style={[styles.checkbox, task.completed && styles.checkboxDone]}>
-        {task.completed ? <Text style={styles.checkGlyph}>✓</Text> : null}
+        {task.completed ? <BrandText style={styles.checkGlyph}>✓</BrandText> : null}
       </Pressable>
       <View style={styles.taskCopy}>
-        <Text style={[styles.taskTitle, task.completed && styles.completedText]}>{task.title}</Text>
-        <Text style={styles.taskDue}>{task.due}</Text>
+        <BrandText style={[styles.taskTitle, task.completed && styles.completedText]}>{task.title}</BrandText>
+        <BrandText style={styles.taskDue}>{task.due}</BrandText>
       </View>
-      <Pressable disabled={task.dueAt == null} onPress={onRemind} accessibilityRole="button" accessibilityLabel={task.hasReminder ? "Turn off task reminder" : "Set task reminder"} style={[styles.taskReminderButton, task.dueAt == null && styles.taskReminderDisabled]}><Text style={[styles.taskReminderGlyph, task.hasReminder && styles.taskReminderActive]}>{task.hasReminder ? "◉" : "◷"}</Text></Pressable>
-      <View style={styles.avatar}><Text style={styles.avatarText}>{task.assignee === "You" ? "DR" : task.assignee}</Text></View>
+      <Pressable disabled={task.dueAt == null} onPress={onRemind} accessibilityRole="button" accessibilityLabel={task.hasReminder ? "Turn off task reminder" : "Set task reminder"} style={[styles.taskReminderButton, task.dueAt == null && styles.taskReminderDisabled]}><BrandText style={[styles.taskReminderGlyph, task.hasReminder && styles.taskReminderActive]}>{task.hasReminder ? "◉" : "◷"}</BrandText></Pressable>
+      <View style={styles.avatar}><BrandText style={styles.avatarText}>{task.assignee === "You" ? "DR" : task.assignee}</BrandText></View>
     </Animated.View>
   );
 }
@@ -113,12 +115,12 @@ function EventCard({ event, index, onPress }: { event: TemporalEntity; index: nu
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`Edit ${event.title}`}>
       <Animated.View entering={FadeInDown.delay(index * 18).duration(180)} style={[styles.eventCard, { minHeight: 82, borderLeftColor: color }]}>
         <View style={styles.eventTopLine}>
-          <Text style={styles.eventTime}>{timeLabel}</Text>
-          {event.isShielded ? <View style={styles.shieldPill}><Text style={styles.shieldText}>SHIELDED</Text></View> : null}
-          {event.isElastic ? <View style={styles.shieldPill}><Text style={styles.shieldText}>FLEXIBLE</Text></View> : null}
+          <BrandText style={styles.eventTime}>{timeLabel}</BrandText>
+          {event.isShielded ? <View style={styles.shieldPill}><BrandText style={styles.shieldText}>SHIELDED</BrandText></View> : null}
+          {event.isElastic ? <View style={styles.shieldPill}><BrandText style={styles.shieldText}>FLEXIBLE</BrandText></View> : null}
         </View>
-        <Text style={styles.eventTitle}>{event.title}</Text>
-        <Text style={styles.eventSubtitle}>{location ?? "Tap to edit event"}</Text>
+        <BrandText style={styles.eventTitle}>{event.title}</BrandText>
+        <BrandText style={styles.eventSubtitle}>{location ?? "Tap to edit event"}</BrandText>
       </Animated.View>
     </Pressable>
   );
@@ -1155,12 +1157,12 @@ function CalendarApp() {
       <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
       <View style={styles.header}>
         <View>
-          <Text style={styles.eyebrow}>YOUR SPACE  ·  PLAN WITH INTENTION</Text>
-          <Text style={styles.brand}>Calender<Text style={styles.brandDot}>.</Text></Text>
+          <BrandText style={styles.eyebrow}>YOUR SPACE  ·  PLAN WITH INTENTION</BrandText>
+          <BrandText style={styles.brand}>Calender<BrandText style={styles.brandDot}>.</BrandText></BrandText>
         </View>
         <View style={styles.headerActions}>
-          <Pressable accessibilityLabel="Search" style={styles.iconButton}><Text style={styles.iconGlyph}>⌕</Text></Pressable>
-          <Pressable accessibilityLabel="Profile" style={styles.profileButton}><Text style={styles.profileText}>DR</Text></Pressable>
+          <Pressable accessibilityLabel="Search" style={styles.iconButton}><BrandText style={styles.iconGlyph}>⌕</BrandText></Pressable>
+          <Pressable accessibilityLabel="Profile" style={styles.profileButton}><BrandText style={styles.profileText}>DR</BrandText></Pressable>
         </View>
       </View>
 
@@ -1168,8 +1170,8 @@ function CalendarApp() {
       <View style={styles.modeBar}>
         <View style={styles.dateHeading}>
           <View>
-            <Text style={styles.monthLabel}>{monthLabel}</Text>
-            <Text style={styles.subLabel}>{selectedDate.toLocaleDateString(undefined, { weekday: "long", day: "numeric" })}</Text>
+            <BrandText style={styles.monthLabel}>{monthLabel}</BrandText>
+            <BrandText style={styles.subLabel}>{selectedDate.toLocaleDateString(undefined, { weekday: "long", day: "numeric" })}</BrandText>
           </View>
           <View style={styles.monthControls}>
             <Pressable
@@ -1178,7 +1180,7 @@ function CalendarApp() {
               accessibilityLabel="Previous month"
               style={styles.monthArrow}
             >
-              <Text style={styles.monthArrowGlyph}>‹</Text>
+              <BrandText style={styles.monthArrowGlyph}>‹</BrandText>
             </Pressable>
             <Pressable
               onPress={jumpToToday}
@@ -1186,7 +1188,7 @@ function CalendarApp() {
               accessibilityLabel="Go to today"
               style={styles.todayButton}
             >
-              <Text style={styles.todayButtonText}>Today</Text>
+              <BrandText style={styles.todayButtonText}>Today</BrandText>
             </Pressable>
             <Pressable
               onPress={() => shiftCalendarMonth(1)}
@@ -1194,14 +1196,14 @@ function CalendarApp() {
               accessibilityLabel="Next month"
               style={styles.monthArrow}
             >
-              <Text style={styles.monthArrowGlyph}>›</Text>
+              <BrandText style={styles.monthArrowGlyph}>›</BrandText>
             </Pressable>
           </View>
         </View>
         <View style={styles.modeSwitch}>
           {(["Day", "Week", "Month"] as ScreenMode[]).map(item => (
             <Pressable key={item} accessibilityRole="button" accessibilityState={{ selected: mode === item }} onPress={() => setMode(item)} style={({ pressed }) => [styles.modeOption, mode === item && styles.modeOptionActive, pressed && styles.pressedControl]}>
-              <Text style={[styles.modeText, mode === item && styles.modeTextActive]}>{item}</Text>
+              <BrandText style={[styles.modeText, mode === item && styles.modeTextActive]}>{item}</BrandText>
             </Pressable>
           ))}
         </View>
@@ -1211,8 +1213,8 @@ function CalendarApp() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.daysContent}>
           {days.map(({ day, weekday }) => (
             <Pressable key={day} accessibilityRole="button" accessibilityState={{ selected: selectedDay === day }} onPress={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), day))} style={({ pressed }) => [styles.dayItem, selectedDay === day && styles.dayItemActive, pressed && styles.pressedControl]}>
-              <Text style={[styles.dayWeekday, selectedDay === day && styles.dayWeekdayActive]}>{weekday}</Text>
-              <Text style={[styles.dayNumber, selectedDay === day && styles.dayNumberActive]}>{day}</Text>
+              <BrandText style={[styles.dayWeekday, selectedDay === day && styles.dayWeekdayActive]}>{weekday}</BrandText>
+              <BrandText style={[styles.dayNumber, selectedDay === day && styles.dayNumberActive]}>{day}</BrandText>
               {[5, 9, 14, 18, 23, 27].includes(day) ? <View style={[styles.dayDot, selectedDay === day && styles.dayDotActive]} /> : <View style={styles.dayDotPlaceholder} />}
             </Pressable>
           ))}
@@ -1221,8 +1223,8 @@ function CalendarApp() {
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.sectionHeading}>
-          <View><Text style={styles.sectionTitle}>{mode === "Day" ? "Today’s agenda" : `${mode} overview`}</Text><Text style={styles.sectionCaption}><Text style={styles.captionItalic}>A little structure,</Text> a lot more space.</Text></View>
-          <Pressable onPress={openNewEvent} style={({ pressed }) => [styles.addButton, SHADOWS.floating, pressed && styles.pressedControl]} accessibilityRole="button" accessibilityLabel="Create event"><Text style={styles.addGlyph}>＋</Text></Pressable>
+          <View><BrandText style={styles.sectionTitle}>{mode === "Day" ? "Today’s agenda" : `${mode} overview`}</BrandText><BrandText style={styles.sectionCaption}><BrandText style={styles.captionItalic}>A little structure,</BrandText> a lot more space.</BrandText></View>
+          <Pressable onPress={openNewEvent} style={({ pressed }) => [styles.addButton, SHADOWS.floating, pressed && styles.pressedControl]} accessibilityRole="button" accessibilityLabel="Create event"><BrandText style={styles.addGlyph}>＋</BrandText></Pressable>
         </View>
 
         {mode === "Day" ? (
@@ -1243,9 +1245,9 @@ function CalendarApp() {
             />
           ) : (
             <View style={styles.emptyEvents}>
-              <Text style={styles.emptyEventsTitle}>Nothing scheduled yet</Text>
-              <Text style={styles.sectionCaption}>Add an event to start shaping this day.</Text>
-              <Pressable onPress={openNewEvent} style={styles.emptyAdd}><Text style={styles.emptyAddText}>＋ Create event</Text></Pressable>
+              <BrandText style={styles.emptyEventsTitle}>Nothing scheduled yet</BrandText>
+              <BrandText style={styles.sectionCaption}>Add an event to start shaping this day.</BrandText>
+              <Pressable onPress={openNewEvent} style={styles.emptyAdd}><BrandText style={styles.emptyAddText}>＋ Create event</BrandText></Pressable>
             </View>
           )
         ) : (
@@ -1265,14 +1267,14 @@ function CalendarApp() {
 
         <View style={styles.tasksSection}>
           <View style={styles.sectionHeading}>
-            <View><Text style={styles.sectionTitle}>In the loop</Text><Text style={styles.sectionCaption}><Text style={styles.attentionCount}>{tasks.filter(task => !task.completed).length}</Text> tasks need your attention</Text></View>
-            <Pressable onPress={addQuickTask}><Text style={styles.seeAll}>＋ Add</Text></Pressable>
+            <View><BrandText style={styles.sectionTitle}>In the loop</BrandText><BrandText style={styles.sectionCaption}><BrandText style={styles.attentionCount}>{tasks.filter(task => !task.completed).length}</BrandText> tasks need your attention</BrandText></View>
+            <Pressable onPress={addQuickTask}><BrandText style={styles.seeAll}>＋ Add</BrandText></Pressable>
           </View>
           <View style={[styles.tasksCard, SHADOWS.card]}>
             {tasks.map(task => <TaskRow key={task.id} task={task} onToggle={() => toggleTask(task.id)} onRemind={() => toggleTaskReminder(task.id)} />)}
           </View>
         </View>
-        <View style={styles.syncNote}><View style={styles.syncDot} /><Text style={styles.syncText}>{pendingCount ? `${pendingCount} changes waiting to sync` : "Offline-first · Ready when you are"}</Text></View>
+        <View style={styles.syncNote}><View style={styles.syncDot} /><BrandText style={styles.syncText}>{pendingCount ? `${pendingCount} changes waiting to sync` : "Offline-first · Ready when you are"}</BrandText></View>
       </ScrollView></> : activeTab === "Tasks" ? <TaskCenter tasks={taskEntities} onSave={draft => { void saveTask(draft).catch(error => console.warn("Unable to save task", error)); }} onToggle={task => { void toggleTaskEntity(task).catch(error => console.warn("Unable to update task", error)); }} onDelete={task => { void deleteTaskEntity(task).catch(error => console.warn("Unable to delete task", error)); }} onPlanDay={() => { void planMyDay().catch(error => console.warn("Unable to plan day", error)); }} onRollover={task => { void rolloverTask(task).catch(error => console.warn("Unable to roll task forward", error)); }} /> : activeTab === "Reminders" ? <ReminderCenter reminders={reminders} permissionGranted={permissionGranted} onRequestPermission={handleRequestNotifications} onCreate={createReminder} onSnooze={snoozeReminder} onComplete={completeReminder} onDelete={deleteReminder} /> : activeTab === "Sharing" ? <SharingCenter events={sharingEntities} onImport={importICSItems} onRSVP={updateEventRSVP} onAddAttendee={addEventAttendee} /> : activeTab === "Native" ? <NativeExperienceCenter entities={sharingEntities} /> : activeTab === "Data" ? <DataSafetyCenter database={database} onRestored={refreshWorkspaceData} /> : <AccountCenter database={database} onSynced={refreshAfterSync} onWorkspaceChanged={refreshWorkspaceData} />}
 
       <EventEditor
@@ -1296,8 +1298,8 @@ function CalendarApp() {
           { glyph: "◉", label: "Spaces", active: false },
         ].map(item => (
           <Pressable key={item.label} onPress={() => setActiveTab(item.label as MainTab)} accessibilityRole="button" accessibilityState={{ selected: activeTab === item.label }} style={styles.navItem}>
-            <Text style={[styles.navGlyph, activeTab === item.label && styles.navGlyphActive]}>{item.glyph}</Text>
-            <Text style={[styles.navLabel, activeTab === item.label && styles.navLabelActive]}>{item.label}</Text>
+            <BrandText style={[styles.navGlyph, activeTab === item.label && styles.navGlyphActive]}>{item.glyph}</BrandText>
+            <BrandText style={[styles.navLabel, activeTab === item.label && styles.navLabelActive]}>{item.label}</BrandText>
           </Pressable>
         ))}
       </View>
@@ -1306,6 +1308,16 @@ function CalendarApp() {
 }
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    Manrope_400Regular,
+    Manrope_500Medium,
+    Manrope_600SemiBold,
+    Manrope_700Bold,
+    Manrope_800ExtraBold,
+  });
+
+  if (!fontsLoaded) return null;
+
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider><AppErrorBoundary><CalendarApp /></AppErrorBoundary></SafeAreaProvider>
