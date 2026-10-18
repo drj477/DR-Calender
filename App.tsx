@@ -562,7 +562,7 @@ function CalendarApp() {
         if (!entity) return;
         const taskMeta = entity.metadata?.task;
         if (completed) void cancelNotificationIds(taskMeta?.notificationId ? [taskMeta.notificationId] : []);
-        const updated = { ...entity, isCompleted: completed, updatedAt: Date.now(), syncVersion: entity.syncVersion + 1, metadata: { ...entity.metadata, ...(taskMeta ? { task: { ...taskMeta, notificationId: completed ? null : taskMeta.notificationId } } : {}) } };
+        const updated = { ...entity, isCompleted: completed, updatedAt: Date.now(), syncVersion: entity.syncVersion + 1, metadata: { ...entity.metadata, ...(taskMeta ? { task: { ...taskMeta, ...(completed ? { notificationId: null } : taskMeta.notificationId !== undefined ? { notificationId: taskMeta.notificationId } : {}) } } : {}) } };
         const mutationId = `task-toggle-${id}-${updated.syncVersion}`;
         return database.repository.upsert(updated, mutationId).then(async () => {
           useCalendarStore.getState().upsertEntity(updated, mutationId);
@@ -852,7 +852,7 @@ function CalendarApp() {
     const completed = !existing.isCompleted;
     const taskMeta = existing.metadata?.task;
     if (completed) await cancelNotificationIds(taskMeta?.notificationId ? [taskMeta.notificationId] : []);
-    const updated: TemporalEntity = { ...existing, isCompleted: completed, updatedAt: Date.now(), syncVersion: existing.syncVersion + 1, metadata: { ...existing.metadata, ...(taskMeta ? { task: { ...taskMeta, notificationId: completed ? null : taskMeta.notificationId } } : {}) } };
+    const updated: TemporalEntity = { ...existing, isCompleted: completed, updatedAt: Date.now(), syncVersion: existing.syncVersion + 1, metadata: { ...existing.metadata, ...(taskMeta ? { task: { ...taskMeta, ...(completed ? { notificationId: null } : taskMeta.notificationId !== undefined ? { notificationId: taskMeta.notificationId } : {}) } } : {}) } };
     await database.repository.upsert(updated, "task-complete-" + updated.id + "-" + updated.syncVersion);
     useCalendarStore.getState().upsertEntity(updated, "task-complete-" + updated.id + "-" + updated.syncVersion);
     setTasks(current => current.map(item => item.id === updated.id ? { ...item, completed, hasReminder: taskMeta?.reminderMinutesBefore != null } : item));
