@@ -33,7 +33,7 @@ import { SharingCenter } from "./src/components/SharingCenter";
 import { NativeExperienceCenter } from "./src/components/NativeExperienceCenter";
 import { publishNativeWidgetSnapshot } from "./src/native/nativeExperience";
 import { reconcileNativeEventAlarms } from "./src/native/alarmReconciliation";
-import { cancelNativeAlarm, isExactAlarmAllowed, isNativeBridgeAvailable } from "./src/native/nativeExperience";
+import { cancelAllManualNativeAlarms, cancelNativeAlarm, isExactAlarmAllowed, isNativeBridgeAvailable } from "./src/native/nativeExperience";
 import { DataSafetyCenter } from "./src/components/DataSafetyCenter";
 import { AppErrorBoundary } from "./src/components/AppErrorBoundary";
 import { isSupportedTimeZone, parseICSDateTime, type ParsedICSEvent } from "./src/temporal/ics";
@@ -236,8 +236,9 @@ function CalendarApp() {
           const meta = entity.metadata.task;
           const dueAt = meta.dueAt ?? entity.scheduledAt;
           if (dueAt !== null) {
-            const at = dueAt - meta.reminderMinutesBefore * 60_000 > Date.now()
-              ? dueAt - meta.reminderMinutesBefore * 60_000 : dueAt;
+            const reminderMinutesBefore = meta.reminderMinutesBefore ?? 0;
+            const at = dueAt - reminderMinutesBefore * 60_000 > Date.now()
+              ? dueAt - reminderMinutesBefore * 60_000 : dueAt;
             if (at > Date.now()) {
               const notificationId = await scheduleReminderNotification(entity, at);
               if (notificationId) updated = { ...entity, updatedAt: Date.now(), syncVersion: entity.syncVersion + 1,
@@ -625,7 +626,7 @@ function CalendarApp() {
     const entities = [...sourceEntities];
     const now = Date.now();
     for (let index = 0; index < entities.length; index += 1) {
-      const entity = entities[index];
+      const entity = entities[index]!;
       let updated: TemporalEntity | null = null;
       if (entity.itemType === "reminder" && entity.metadata?.reminder) {
         const meta = entity.metadata.reminder;
@@ -851,7 +852,7 @@ function CalendarApp() {
     const completed = !existing.isCompleted;
     const taskMeta = existing.metadata?.task;
     if (completed) await cancelNotificationIds(taskMeta?.notificationId ? [taskMeta.notificationId] : []);
-    const updated: TemporalEntity = { ...existing, isCompleted: completed, updatedAt: Date.now(), syncVersion: existing.syncVersion + 1, metadata: { ...existing.metadata, task: taskMeta ? { ...taskMeta, notificationId: completed ? null : taskMeta.notificationId } : undefined } };
+    const updated: TemporalEntity = { ...existing, isCompleted: completed, updatedAt: Date.now(), syncVersion: existing.syncVersion + 1, metadata: { ...existing.metadata, ...(taskMeta ? { task: { ...taskMeta, notificationId: completed ? null : taskMeta.notificationId } } : {}) } };
     await database.repository.upsert(updated, "task-complete-" + updated.id + "-" + updated.syncVersion);
     useCalendarStore.getState().upsertEntity(updated, "task-complete-" + updated.id + "-" + updated.syncVersion);
     setTasks(current => current.map(item => item.id === updated.id ? { ...item, completed, hasReminder: taskMeta?.reminderMinutesBefore != null } : item));
@@ -878,7 +879,7 @@ function CalendarApp() {
   const rolloverTask = async (task: TemporalEntity) => {
     const today = new Date();
     const dueAt = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 17, 0).getTime();
-    await saveTask({ id: task.id, title: task.title, dueAt, priority: task.priority, checklist: task.metadata?.task?.checklist ?? [] });
+    await saveTask({ id: task.id, title: task.title, dueAt, durationMinutes: task.metadata?.task?.durationMinutes ?? (task.endAt !== null && task.scheduledAt !== null ? Math.max(15, Math.round((task.endAt - task.scheduledAt) / 60_000)) : 30), priority: task.priority, checklist: task.metadata?.task?.checklist ?? [] });
   };
 
   const planMyDay = async () => {
@@ -1001,7 +1002,7 @@ function CalendarApp() {
   const completeReminder = async (reminder: TemporalEntity) => {
     await cancelNotificationIds(reminder.metadata?.reminder?.notificationId ? [reminder.metadata.reminder.notificationId] : []);
     const current = reminder.metadata?.reminder;
-    const updated = { ...reminder, isCompleted: true, updatedAt: Date.now(), syncVersion: reminder.syncVersion + 1, metadata: { ...reminder.metadata, reminder: current ? { ...current, notificationId: null } : undefined } };
+    const updated = { ...reminder, isCompleted: true, updatedAt: Date.now(), syncVersion: reminder.syncVersion + 1, metadata: { ...reminder.metadata, ...(current ? { reminder: { ...current, notificationId: null } } : {}) } };
     await persistReminderUpdate(updated, "reminder-complete-" + reminder.id + "-" + updated.syncVersion);
   };
 
@@ -1061,10 +1062,7 @@ function CalendarApp() {
         ...existing?.metadata,
         // Occurrence exception keys are anchored to generated start timestamps.
         // If the series schedule changes, discard exceptions tied to the old schedule.
-        ...((existing && (
-          existing.rrule !== draft.rrule ||
-          existing.scheduledAt !== draft.startAt
-        )) ? { recurrence: undefined } : {}),
+        ...((existing && (existing.rrule !== draft.rrule || existing.scheduledAt !== draft.startAt)) ? { recurrence: { excludedStartsAt: [], overrides: {} } } : {}),
         event: {
           kind: draft.isAllDay ? "all-day" : "standard",
           commitment: draft.isElastic ? "elastic" : "hard",
