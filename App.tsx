@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, {
-  FadeInDown,
+  FadeIn,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -113,7 +113,7 @@ function EventCard({ event, index, onPress }: { event: TemporalEntity; index: nu
   const location = event.metadata?.event?.location;
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`Edit ${event.title}`}>
-      <Animated.View entering={FadeInDown.delay(index * 18).duration(180)} style={[styles.eventCard, { minHeight: 82, borderLeftColor: color }]}>
+      <Animated.View entering={FadeIn.delay(index * 18).duration(180)} style={[styles.eventCard, { minHeight: 82, borderLeftColor: color }]}>
         <View style={styles.eventTopLine}>
           <BrandText style={styles.eventTime}>{timeLabel}</BrandText>
           {event.isShielded ? <View style={styles.shieldPill}><BrandText style={styles.shieldText}>SHIELDED</BrandText></View> : null}
