@@ -32,20 +32,23 @@ if (!fs.existsSync(assetContentsPath + ".js") && !fs.existsSync(assetContentsPat
   process.exit(0);
 }
 
+const moduleSpecifierPattern =
+  /(["'])(?:@expo\/prebuild-config\/build\/plugins\/icons\/AssetContents|(?:\.\.\/)+expo-asset\/plugin\/build\/AssetContents)\1/g;
+
 for (const filePath of walk(targetsRoot)) {
-  let source = fs.readFileSync(filePath, "utf8");
-  const oldModule = "@expo/prebuild-config/build/plugins/icons/AssetContents";
-  if (!source.includes(oldModule) && !source.includes("expo-asset/plugin/build/AssetContents")) {
+  const source = fs.readFileSync(filePath, "utf8");
+  if (!moduleSpecifierPattern.test(source)) {
+    moduleSpecifierPattern.lastIndex = 0;
     continue;
   }
+  moduleSpecifierPattern.lastIndex = 0;
 
   const relativeModule = path.relative(path.dirname(filePath), assetContentsPath).split(path.sep).join("/");
   const normalizedRelativeModule = relativeModule.startsWith(".") ? relativeModule : "./" + relativeModule;
-  const nextSource = source
-    .replaceAll(oldModule, normalizedRelativeModule)
-    .replaceAll("../../../../expo-asset/plugin/build/AssetContents", normalizedRelativeModule)
-    .replaceAll("../../../../../expo-asset/plugin/build/AssetContents", normalizedRelativeModule)
-    .replaceAll("../../../expo-asset/plugin/build/AssetContents", normalizedRelativeModule);
+  const nextSource = source.replace(
+    moduleSpecifierPattern,
+    (_match, quote) => quote + normalizedRelativeModule + quote
+  );
 
   if (nextSource !== source) {
     fs.writeFileSync(filePath, nextSource);
