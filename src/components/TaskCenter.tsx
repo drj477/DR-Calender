@@ -85,7 +85,7 @@ export function TaskCenter({ tasks, onSave, onToggle, onDelete, onPlanDay, onRol
       const match = existing.find(item => item.title === line);
       return match ?? { id: `check-${Date.now()}-${index}`, title: line, isCompleted: false, assignedUserId: null, updatedAt: Date.now() };
     });
-    onSave({ id: editing?.id, title: title.trim(), dueAt, durationMinutes, priority, checklist });
+    onSave({ ...(editing ? { id: editing.id } : {}), title: title.trim(), dueAt, durationMinutes, priority, checklist });
     setEditorOpen(false);
   };
   const toggleChecklistItem = (task: TemporalEntity, item: ChecklistItem) => {
