@@ -77,10 +77,10 @@ function zonedEpoch(year:number,month:number,day:number,hour:number,minute:numbe
   };
   const target=Date.UTC(year,month-1,day,hour,minute);
   const exact=resolve(target);
-  if(exact.length)return exact[0];
+  if(exact.length)return exact[0]!;
   for(let offset=1;offset<=180;offset++){
     const candidates=resolve(target+offset*60_000);
-    if(candidates.length)return candidates[0];
+    if(candidates.length)return candidates[0]!;
   }
   throw new RangeError("Could not resolve this local time in the selected time zone.");
 }
