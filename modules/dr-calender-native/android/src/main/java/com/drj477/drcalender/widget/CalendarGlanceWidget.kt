@@ -5,6 +5,8 @@ import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.action.clickable
@@ -16,14 +18,12 @@ import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
 import androidx.glance.layout.Spacer
-import androidx.glance.layout.defaultWeight
 import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
-import androidx.glance.unit.dp
-import androidx.glance.unit.sp
 
 class CalendarGlanceWidget : GlanceAppWidget() {
   override suspend fun provideGlance(context: Context, id: GlanceId) {
@@ -40,10 +40,10 @@ class CalendarGlanceWidget : GlanceAppWidget() {
         horizontalAlignment = Alignment.Horizontal.Start
       ) {
         Text("DR CALENDER · UP NEXT", style = TextStyle(color = ColorProvider(Color.rgb(255, 194, 71)), fontSize = 10.sp))
-        Spacer(GlanceModifier.padding(4.dp))
+        Spacer(GlanceModifier.height(8.dp))
         Text(title, style = TextStyle(color = ColorProvider(Color.WHITE), fontSize = 16.sp))
         Text(due, style = TextStyle(color = ColorProvider(Color.LTGRAY), fontSize = 11.sp))
-        Spacer(GlanceModifier.defaultWeight())
+        Spacer(GlanceModifier.height(8.dp))
         Text("Assigned to " + assignee, style = TextStyle(color = ColorProvider(Color.LTGRAY), fontSize = 10.sp))
       }
     }
