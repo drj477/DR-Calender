@@ -117,8 +117,8 @@ function DraggableEvent({
         {
           top,
           height,
-          left,
-          width,
+          left: left as `${number}%`,
+          width: width as `${number}%`,
           borderLeftColor: color,
         },
         { transform: [{ translateY: dragY }] },
