@@ -255,11 +255,11 @@ function safeTimeZone(timeZone: string | null | undefined): string {
 }
 function formatICSDate(timestamp: number, timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"): string {
   const p = partsInZone(timestamp, timeZone);
-  return p.year + p.month + p.day;
+  return (p.year ?? "") + (p.month ?? "") + (p.day ?? "");
 }
 function formatICSLocal(timestamp: number, timeZone: string): string {
   const p = partsInZone(timestamp, timeZone);
-  return p.year + p.month + p.day + "T" + p.hour + p.minute + p.second;
+  return (p.year ?? "") + (p.month ?? "") + (p.day ?? "") + "T" + (p.hour ?? "") + (p.minute ?? "") + (p.second ?? "");
 }
 /** Convert a floating ICS local date-time into epoch milliseconds in its TZID. */
 export type CustomZoneTransition = { at:number; local:number; offsetFrom:number; offsetTo:number };
@@ -310,7 +310,7 @@ function loadCustomTimeZones(lines:string[]):void {
       for(let year=Math.max(start.year+1,1970);year<=2100;year++){
         let day:number;
         if(fields.BYMONTHDAY){day=Number(fields.BYMONTHDAY);const last=new Date(Date.UTC(year,month,0)).getUTCDate();if(day<0)day=last+day+1;if(day<1||day>last)continue;}
-        else if(weekdayRule){day=nthWeekday(year,month,weekdays[weekdayRule[2]],Number(weekdayRule[1]??1));}
+        else if(weekdayRule){day=nthWeekday(year,month,weekdays[weekdayRule[2]] ?? 0,Number(weekdayRule[1]??1));}
         else day=start.day;
         add(year,month,day);
       }
@@ -333,7 +333,7 @@ function loadCustomTimeZones(lines:string[]):void {
 }
 function customZoneOffsetAt(epoch:number,transitions:CustomZoneTransition[]):number {
   if(!transitions.length)return 0;
-  let offset=transitions[0].offsetFrom;
+  let offset=transitions[0]?.offsetFrom ?? 0;
   for(const transition of transitions){if(epoch>=transition.at)offset=transition.offsetTo;else break;}
   return offset;
 }
@@ -353,11 +353,11 @@ function parseCustomWallTime(value:string,timeZone:string):number|null {
   for(let minute=0;minute<=180;minute++){
     const local=target+minute*60_000;
     const candidates=resolve(local);
-    if(candidates.length)return candidates[0];
+    if(candidates.length)return candidates[0] ?? null;
   }
   return null;
 }
-function parseICSDateTime(value: string, timeZone: string | null = null): number {
+export function parseICSDateTime(value: string, timeZone: string | null = null): number {
   if (/Z$|[+-]\d{2}:?\d{2}$/.test(value)) {
     const absolute = new Date(value).getTime();
     if (!Number.isFinite(absolute)) throw new Error("Invalid ICS date-time: " + value);
@@ -396,7 +396,7 @@ function buildEntityLines(entity: TemporalEntity, uid: string, sequence: number,
   const timeZone = safeTimeZone(entity.timeZone);
   const title = override?.title ?? entity.title;
   const location = override?.location ?? entity.metadata?.event?.location;
-  const lines = ["BEGIN:VEVENT", "UID:" + escapeICSText(uid), "SEQUENCE:" + Math.max(0,sequence), "DTSTAMP:" + formatICSUTC(Date.now())];
+  const lines = ["BEGIN:VEVENT", "UID:" + escapeICSText(uid), "SEQUENCE:" + Math.max(0,sequence), "DTSTAMP:" + formatUTC(new Date(Date.now()))];
   if (recurrenceId !== undefined) lines.push(allDay ? "RECURRENCE-ID;VALUE=DATE:" + formatICSDate(recurrenceId,timeZone) : "RECURRENCE-ID;TZID=" + timeZone + ":" + formatICSLocal(recurrenceId,timeZone));
   if (allDay) {
     lines.push("DTSTART;VALUE=DATE:" + formatICSDate(start,timeZone), "DTEND;VALUE=DATE:" + formatICSDate(end,timeZone));
