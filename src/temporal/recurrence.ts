@@ -122,7 +122,7 @@ export function expandRecurrence(
     // month lacks that day, it is skipped; we do not clamp to month-end.
     const matchesDay = frequency === "MONTHLY" && !byDay && !byMonthDay
       ? cursor.getUTCDate() === startWall.day
-      : (!byDay || byDay.includes(weekday)) &&
+      : (!byDay || byDay.includes(weekday ?? "")) &&
         (!byMonthDay || byMonthDay.includes(cursor.getUTCDate()));
 
     if (matchesFrequency && matchesDay) {
@@ -220,13 +220,13 @@ function wallClockToEpoch(wall: WallClockParts, timeZone: string): number {
   const candidates=exactCandidates(targetUtc);
   // In a fall-back fold, choose the earlier instant so repeated local wall times
   // remain deterministic across platforms.
-  if(candidates.length)return candidates[0];
+  if(candidates.length)return candidates[0]!;
   // A spring-forward gap has no exact instant. Advance the requested wall clock
   // minute-by-minute to the first valid local time after the gap.
   for(let minute=1;minute<=180;minute++){
     const shifted=targetUtc+minute*60_000;
     const resolved=exactCandidates(shifted);
-    if(resolved.length)return resolved[0];
+    if(resolved.length)return resolved[0]!;
   }
   throw new RangeError(`Could not resolve local time in ${timeZone}`);
 }
