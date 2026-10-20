@@ -45,7 +45,7 @@ import { useFonts } from "expo-font";
 import { Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold, Manrope_800ExtraBold } from "@expo-google-fonts/manrope";
 import { BrandText } from "./src/components/BrandText";
 import { getValidSession, loadSupabaseConfig } from "./src/sync/authService";
-import { publishEventToGoogleCalendar } from "./src/sync/googleCalendarWrite";
+import { deleteEventFromGoogleCalendar, publishEventToGoogleCalendar } from "./src/sync/googleCalendarWrite";
 
 type ScreenMode = "Day" | "Week" | "Month";
 type MainTab = "Calendar" | "Tasks" | "Reminders" | "Sharing" | "Native" | "Data" | "Spaces";
@@ -1178,6 +1178,24 @@ function CalendarApp() {
       return;
     }
     void cancelNotificationIds(event.metadata?.event?.notificationIds);
+    const googleEventId = event.metadata?.googleCalendar?.eventId;
+    if (googleEventId) {
+      // Delete remotely in the background; a Google failure must not prevent
+      // the user from deleting the event from the local calendar.
+      void (async () => {
+        try {
+          const config = await loadSupabaseConfig();
+          if (!config) throw new Error("Supabase is not configured. The event was deleted locally, but not from Google Calendar.");
+          const session = await getValidSession(config);
+          if (!session) throw new Error("Sign in again with Google to delete this event from Google Calendar.");
+          await deleteEventFromGoogleCalendar(googleEventId, session);
+          Alert.alert("Google Calendar", "The event was deleted from Google Calendar too.");
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Unknown Google Calendar error.";
+          Alert.alert("Deleted locally", `The event was removed from DR Calender, but Google Calendar could not be updated. ${message}`);
+        }
+      })();
+    }
     const mutationId = `event-delete-${event.id}-${event.syncVersion + 1}`;
     setEventEditorVisible(false);
     setEditingEvent(null);
