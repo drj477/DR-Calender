@@ -164,7 +164,7 @@ export function DayTimeline({ date, events, onEventPress, onEventMove }: DayTime
             const hour = START_HOUR + index;
             const timestamp = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour).getTime();
             return (
-              <View key={hour} style={[styles.hourLabel, { top: index * HOUR_HEIGHT }]}>
+              <View key={hour} style={[styles.hourLabel, { top: index * HOUR_HEIGHT, marginTop: index === 0 ? 2 : -7 }]}>
                 <Text style={styles.hourText}>{new Date(timestamp).toLocaleTimeString([], { hour: "numeric", hour12: true }).replace(" ", "").toUpperCase()}</Text>
               </View>
             );
