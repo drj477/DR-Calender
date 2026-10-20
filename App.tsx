@@ -1094,7 +1094,7 @@ function CalendarApp() {
     if (draft.scope !== "occurrence") {
       refreshEventNotifications(entity).catch(error => console.warn("Unable to schedule event reminders", error));
     }
-    if (draft.publishToGoogleCalendar) {
+    // Linked Google events stay synchronized when edited locally; the toggle is only needed to publish a new/unlinked event.\n    if (draft.publishToGoogleCalendar || Boolean(existing?.metadata?.googleCalendar?.eventId)) {
       void (async () => {
         try {
           const config = await loadSupabaseConfig();
