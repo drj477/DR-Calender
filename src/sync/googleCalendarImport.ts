@@ -1,6 +1,6 @@
 import type { AuthSession } from "./authService";
 import type { LocalCalendarDatabase } from "../persistence/localDatabase";
-import type { TemporalEntity } from "../temporal/types";
+import type { TemporalEntity, TemporalMetadata } from "../temporal/types";
 
 type GoogleCalendarEvent = {
   id: string;
@@ -125,7 +125,7 @@ export async function importPrimaryGoogleCalendar(
           originalEndDate: item.end?.date ?? null,
           providerUpdatedAt: item.updated ?? null,
         },
-      } as TemporalEntity["metadata"],
+      } satisfies TemporalMetadata,
     };
     await database.repository.upsert(entity, `google-calendar-import-${item.id}-${entity.syncVersion}`);
     imported += 1;
