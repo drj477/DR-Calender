@@ -1,6 +1,7 @@
 import "react-native-gesture-handler";
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   AppState,
   Linking,
   Platform,
@@ -43,7 +44,6 @@ import * as Notifications from "expo-notifications";
 import { useFonts } from "expo-font";
 import { Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold, Manrope_800ExtraBold } from "@expo-google-fonts/manrope";
 import { BrandText } from "./src/components/BrandText";
-import { Alert } from "react-native";
 import { getValidSession, loadSupabaseConfig } from "./src/sync/authService";
 import { publishEventToGoogleCalendar } from "./src/sync/googleCalendarWrite";
 
