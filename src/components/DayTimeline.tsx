@@ -16,8 +16,8 @@ const COLORS = {
 
 const EVENT_SHADOW = { shadowColor: "#000000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.28, shadowRadius: 8, elevation: 4 };
 
-const START_HOUR = 6;
-const END_HOUR = 22;
+const START_HOUR = 0;
+const END_HOUR = 24;
 const HOUR_HEIGHT = 64;
 const MINUTE_HEIGHT = HOUR_HEIGHT / 60;
 const GRID_MINUTES = 15;
