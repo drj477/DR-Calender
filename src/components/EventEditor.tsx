@@ -116,7 +116,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
   const [recurrence, setRecurrence] = useState("none");
   const [scope, setScope] = useState<"occurrence" | "series">("series");
   const [error, setError] = useState("");
-  const [publishToGoogleCalendar, setPublishToGoogleCalendar] = useState(false);
+  const [publishToGoogleCalendar, setPublishToGoogleCalendar] = useState(true);
 
   useEffect(() => {
     if (!visible) return;
@@ -140,7 +140,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
     setAllDayDays(String(Math.max(1, Math.round(((existingEnd ?? start + 86400000) - new Date(new Date(start).getFullYear(), new Date(start).getMonth(), new Date(start).getDate()).getTime()) / 86400000))));
     if (override?.title) setTitle(override.title);
     setRecurrence(event?.rrule ? recurrenceFromRule(event.rrule) : "none");
-    setPublishToGoogleCalendar(false);
+    setPublishToGoogleCalendar(true);
     setError("");
   }, [visible, selectedDate, event, occurrenceStartAt]);
 
