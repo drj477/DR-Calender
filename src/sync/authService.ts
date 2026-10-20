@@ -65,7 +65,7 @@ export async function signInWithOAuth(config: SupabaseConfig, provider: "google"
   const challenge = digest.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
   const authorizeUrl = new URL(`${normalizeUrl(config.url)}/auth/v1/authorize`);
   authorizeUrl.searchParams.set("provider", provider);
-  if (provider === "google") authorizeUrl.searchParams.set("scopes", "https://www.googleapis.com/auth/calendar.readonly");
+  if (provider === "google") authorizeUrl.searchParams.set("scopes", "https://www.googleapis.com/auth/calendar.events");
   authorizeUrl.searchParams.set("redirect_to", redirectTo);
   authorizeUrl.searchParams.set("code_challenge", challenge);
   authorizeUrl.searchParams.set("code_challenge_method", "s256");
