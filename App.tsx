@@ -46,6 +46,7 @@ import { Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700
 import { BrandText } from "./src/components/BrandText";
 import { getValidSession, loadSupabaseConfig } from "./src/sync/authService";
 import { syncGoogleCalendarChanges } from "./src/sync/googleCalendarImport";
+import { registerGoogleCalendarBackgroundSync } from "./src/sync/googleCalendarBackgroundTask";
 import { deleteEventFromGoogleCalendar, publishEventToGoogleCalendar } from "./src/sync/googleCalendarWrite";
 
 type ScreenMode = "Day" | "Week" | "Month";
@@ -147,6 +148,10 @@ function CalendarApp() {
   const storedEntities = useCalendarStore(useShallow(state => Object.values(state.entitiesById)));
 
   const [appForegroundRevision, setAppForegroundRevision] = useState(0);
+  useEffect(() => {
+    void registerGoogleCalendarBackgroundSync().catch(error => console.warn("Unable to register Google Calendar background sync", error));
+  }, []);
+
   // Keep Google Calendar changes flowing into the app while it is open.
   // Mobile OSes suspend JavaScript while the app is backgrounded, so sync again
   // immediately on foreground and poll once per minute while active.
