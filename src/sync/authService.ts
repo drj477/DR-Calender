@@ -89,7 +89,12 @@ export async function signUp(config: SupabaseConfig, email: string, password: st
 }
 export async function refreshSession(config: SupabaseConfig, session: AuthSession): Promise<AuthSession> {
   const payload = await requestAuth(config, "token?grant_type=refresh_token", { refresh_token: session.refreshToken });
-  return saveSession(toSession(payload));
+  const refreshed = toSession(payload);
+  // Supabase refresh responses generally omit provider_token. Preserve the
+  // Google token so a routine Supabase refresh does not erase it from storage.
+  // Google tokens can still expire independently and then require Google re-auth.
+  if (!refreshed.providerToken && session.providerToken) refreshed.providerToken = session.providerToken;
+  return saveSession(refreshed);
 }
 export async function getValidSession(config: SupabaseConfig): Promise<AuthSession | null> {
   const session = await loadSession();
