@@ -45,6 +45,7 @@ import { useFonts } from "expo-font";
 import { Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold, Manrope_800ExtraBold } from "@expo-google-fonts/manrope";
 import { BrandText } from "./src/components/BrandText";
 import { getValidSession, loadSupabaseConfig } from "./src/sync/authService";
+import { syncGoogleCalendarChanges } from "./src/sync/googleCalendarImport";
 import { deleteEventFromGoogleCalendar, publishEventToGoogleCalendar } from "./src/sync/googleCalendarWrite";
 
 type ScreenMode = "Day" | "Week" | "Month";
@@ -146,6 +147,49 @@ function CalendarApp() {
   const storedEntities = useCalendarStore(useShallow(state => Object.values(state.entitiesById)));
 
   const [appForegroundRevision, setAppForegroundRevision] = useState(0);
+  // Keep Google Calendar changes flowing into the app while it is open.
+  // Mobile OSes suspend JavaScript while the app is backgrounded, so sync again
+  // immediately on foreground and poll once per minute while active.
+  useEffect(() => {
+    if (!database || !calendarHydrated) return;
+    let disposed = false;
+    let syncing = false;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const syncOnce = async () => {
+      if (disposed || syncing || AppState.currentState !== "active") return;
+      syncing = true;
+      try {
+        const config = await loadSupabaseConfig();
+        if (!config) return;
+        const session = await getValidSession(config);
+        if (!session?.providerToken) return;
+        await syncGoogleCalendarChanges(database, session);
+      } catch (error) {
+        // Keep automatic sync quiet; manual sync still displays actionable errors.
+        console.warn("Automatic Google Calendar sync failed", error);
+      } finally {
+        syncing = false;
+      }
+    };
+    const startForegroundSync = () => {
+      if (timer) clearInterval(timer);
+      timer = null;
+      if (AppState.currentState !== "active") return;
+      void syncOnce();
+      timer = setInterval(() => { void syncOnce(); }, 60_000);
+    };
+    startForegroundSync();
+    const subscription = AppState.addEventListener("change", state => {
+      if (state === "active") startForegroundSync();
+      else if (timer) { clearInterval(timer); timer = null; }
+    });
+    return () => {
+      disposed = true;
+      subscription.remove();
+      if (timer) clearInterval(timer);
+    };
+  }, [database, calendarHydrated]);
+
   useEffect(() => {
     const subscription = AppState.addEventListener("change", state => {
       if (state === "active") setAppForegroundRevision(value => value + 1);
