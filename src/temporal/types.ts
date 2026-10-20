@@ -139,6 +139,16 @@ export interface RecurrenceExceptions {
   overrides: Record<string, RecurrenceOverride>;
 }
 
+export interface GoogleCalendarMetadata {
+  source: "google";
+  eventId: string;
+  htmlLink: string | null;
+  description: string | null;
+  originalStartDate: string | null;
+  originalEndDate: string | null;
+  providerUpdatedAt: string | null;
+}
+
 export interface TemporalMetadata {
   /** Identifies a rendered recurrence instance without changing its source series. */
   recurrenceOccurrence?: { seriesId: string; startAt: number; isRecurring: boolean };
@@ -147,6 +157,7 @@ export interface TemporalMetadata {
   reminder?: ReminderMetadata;
   alarm?: AlarmMetadata;
   invite?: InviteMetadata;
+  googleCalendar?: GoogleCalendarMetadata;
   task?: {
     dueAt: number | null;
     /** Planned work duration used by daily scheduling, in minutes. */
