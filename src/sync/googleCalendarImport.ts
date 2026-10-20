@@ -17,7 +17,7 @@ type GoogleCalendarEvent = {
 type GoogleEventsResponse = {
   items?: GoogleCalendarEvent[];
   nextPageToken?: string;
-  error?: { message?: string };
+  error?: { message?: string; status?: string; errors?: Array<{ reason?: string; message?: string }> };
 };
 
 const GOOGLE_EVENTS_URL = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
@@ -54,10 +54,15 @@ async function fetchGoogleEvents(accessToken: string): Promise<GoogleCalendarEve
     });
     const payload = await response.json().catch(() => ({})) as GoogleEventsResponse;
     if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
-        throw new Error("Google Calendar access was not granted or has expired. Sign out and sign in with Google again to grant calendar read access.");
+      const reason = payload.error?.errors?.map(item => item.reason).filter(Boolean).join(", ");
+      const detail = [payload.error?.message, reason ? `Reason: ${reason}` : undefined].filter(Boolean).join(" — ");
+      if (response.status === 401) {
+        throw new Error(`Google Calendar rejected the access token (401). Sign out and sign in with Google again. ${detail}`.trim());
       }
-      throw new Error(payload.error?.message ?? `Google Calendar request failed (${response.status}).`);
+      if (response.status === 403) {
+        throw new Error(`Google Calendar denied this request (403). Check that Calendar read-only access was granted and the Google Calendar API is enabled for the OAuth project's Google Cloud project. ${detail}`.trim());
+      }
+      throw new Error(detail || `Google Calendar request failed (${response.status}).`);
     }
     events.push(...(payload.items ?? []));
     pageToken = payload.nextPageToken;
