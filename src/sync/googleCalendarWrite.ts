@@ -44,3 +44,22 @@ export async function publishEventToGoogleCalendar(entity: TemporalEntity, sessi
   }
   return { eventId: payload.id, htmlLink: payload.htmlLink ?? null };
 }
+
+/** Delete a linked event from the signed-in user's primary Google Calendar. */
+export async function deleteEventFromGoogleCalendar(eventId: string, session: AuthSession): Promise<void> {
+  if (!session.providerToken) {
+    throw new Error("Your Google Calendar access is missing or expired. Sign out and sign in with Google again, approving Calendar event access.");
+  }
+  const response = await fetch(`${EVENTS_URL}/${encodeURIComponent(eventId)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${session.providerToken}` },
+  });
+  // Google Calendar returns 204 on success. Treat 404 as already deleted.
+  if (response.ok || response.status === 404 || response.status === 410) return;
+  const payload = await response.json().catch(() => ({})) as GoogleEventResponse;
+  const detail = payload.error?.message ?? `Google Calendar delete failed (${response.status}).`;
+  if (response.status === 401) throw new Error("Google Calendar access expired. Sign out and sign in with Google again, then retry.");
+  if (response.status === 403) throw new Error(`Google Calendar denied event delete access. Confirm Calendar event access was approved. ${detail}`);
+  throw new Error(detail);
+}
+
