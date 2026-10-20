@@ -43,6 +43,9 @@ import * as Notifications from "expo-notifications";
 import { useFonts } from "expo-font";
 import { Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold, Manrope_800ExtraBold } from "@expo-google-fonts/manrope";
 import { BrandText } from "./src/components/BrandText";
+import { Alert } from "react-native";
+import { getValidSession, loadSupabaseConfig } from "./src/sync/authService";
+import { publishEventToGoogleCalendar } from "./src/sync/googleCalendarWrite";
 
 type ScreenMode = "Day" | "Week" | "Month";
 type MainTab = "Calendar" | "Tasks" | "Reminders" | "Sharing" | "Native" | "Data" | "Spaces";
@@ -1090,6 +1093,41 @@ function CalendarApp() {
     }
     if (draft.scope !== "occurrence") {
       refreshEventNotifications(entity).catch(error => console.warn("Unable to schedule event reminders", error));
+    }
+    if (draft.publishToGoogleCalendar) {
+      void (async () => {
+        try {
+          const config = await loadSupabaseConfig();
+          if (!config) throw new Error("Configure your Supabase connection and sign in first.");
+          const session = await getValidSession(config);
+          if (!session) throw new Error("Your session expired. Sign in again and approve Google Calendar event access.");
+          const result = await publishEventToGoogleCalendar(entity, session);
+          const updated: TemporalEntity = {
+            ...entity,
+            updatedAt: Date.now(),
+            syncVersion: entity.syncVersion + 1,
+            metadata: {
+              ...entity.metadata,
+              googleCalendar: {
+                source: "google",
+                eventId: result.eventId,
+                htmlLink: result.htmlLink,
+                description: entity.metadata?.googleCalendar?.description ?? null,
+                originalStartDate: entity.metadata?.googleCalendar?.originalStartDate ?? null,
+                originalEndDate: entity.metadata?.googleCalendar?.originalEndDate ?? null,
+                providerUpdatedAt: new Date().toISOString(),
+              },
+            },
+          };
+          const linkMutationId = "event-google-link-" + updated.id + "-" + updated.syncVersion;
+          useCalendarStore.getState().upsertEntity(updated, linkMutationId);
+          if (database) await database.repository.upsert(updated, linkMutationId);
+          Alert.alert("Google Calendar", "Event saved to your primary Google Calendar.");
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Unknown Google Calendar error.";
+          Alert.alert("Saved locally", "The event is safe in DR-Calender, but Google Calendar publishing failed: " + message);
+        }
+      })();
     }
   };
 
