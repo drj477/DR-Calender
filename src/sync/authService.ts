@@ -7,6 +7,7 @@ export interface SupabaseConfig { url: string; anonKey: string }
 export interface AuthSession {
   accessToken: string;
   refreshToken: string;
+  providerToken?: string;
   expiresAt: number;
   user: { id: string; email: string | null };
 }
@@ -54,7 +55,7 @@ async function requestAuth(config: SupabaseConfig, path: string, body: unknown, 
 }
 function toSession(payload: any): AuthSession {
   if (!payload.access_token || !payload.refresh_token || !payload.user?.id) throw new Error("The authentication server returned an incomplete session.");
-  return { accessToken: payload.access_token, refreshToken: payload.refresh_token, expiresAt: Date.now() + Number(payload.expires_in ?? 3600) * 1000, user: { id: payload.user.id, email: payload.user.email ?? null } };
+  return { accessToken: payload.access_token, refreshToken: payload.refresh_token, ...(payload.provider_token ? { providerToken: payload.provider_token } : {}), expiresAt: Date.now() + Number(payload.expires_in ?? 3600) * 1000, user: { id: payload.user.id, email: payload.user.email ?? null } };
 }
 export async function signInWithOAuth(config: SupabaseConfig, provider: "google" | "apple"): Promise<AuthSession> {
   const redirectTo = Linking.createURL("auth/callback");
@@ -64,6 +65,7 @@ export async function signInWithOAuth(config: SupabaseConfig, provider: "google"
   const challenge = digest.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
   const authorizeUrl = new URL(`${normalizeUrl(config.url)}/auth/v1/authorize`);
   authorizeUrl.searchParams.set("provider", provider);
+  if (provider === "google") authorizeUrl.searchParams.set("scopes", "https://www.googleapis.com/auth/calendar.readonly");
   authorizeUrl.searchParams.set("redirect_to", redirectTo);
   authorizeUrl.searchParams.set("code_challenge", challenge);
   authorizeUrl.searchParams.set("code_challenge_method", "s256");
