@@ -40,6 +40,7 @@ export interface EventDraft {
   scope: "occurrence" | "series";
   occurrenceStartAt: number | null;
   timeZone: string;
+  publishToGoogleCalendar: boolean;
 }
 
 interface EventEditorProps {
@@ -115,6 +116,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
   const [recurrence, setRecurrence] = useState("none");
   const [scope, setScope] = useState<"occurrence" | "series">("series");
   const [error, setError] = useState("");
+  const [publishToGoogleCalendar, setPublishToGoogleCalendar] = useState(true);
 
   useEffect(() => {
     if (!visible) return;
@@ -138,6 +140,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
     setAllDayDays(String(Math.max(1, Math.round(((existingEnd ?? start + 86400000) - new Date(new Date(start).getFullYear(), new Date(start).getMonth(), new Date(start).getDate()).getTime()) / 86400000))));
     if (override?.title) setTitle(override.title);
     setRecurrence(event?.rrule ? recurrenceFromRule(event.rrule) : "none");
+    setPublishToGoogleCalendar(true);
     setError("");
   }, [visible, selectedDate, event, occurrenceStartAt]);
 
@@ -217,6 +220,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
       scope: event?.rrule && occurrenceStartAt !== null ? scope : "series",
       occurrenceStartAt: event?.rrule && occurrenceStartAt !== null ? occurrenceStartAt : null,
       timeZone,
+      publishToGoogleCalendar,
     });
   };
 
@@ -339,6 +343,11 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
             </View>
             <Text style={styles.optionHint}>Recurring events schedule notifications for upcoming occurrences over the next 14 days.</Text>
           </> : null}
+
+          <Pressable onPress={() => setPublishToGoogleCalendar(value => !value)} accessibilityRole="checkbox" accessibilityState={{ checked: publishToGoogleCalendar }} style={styles.optionRow}>
+            <View style={styles.optionCopy}><Text style={styles.optionTitle}>Also save to Google Calendar</Text><Text style={styles.optionHint}>Creates or updates this event in your primary Google Calendar. Requires Google sign-in with Calendar write permission.</Text></View>
+            <View style={[styles.toggle, publishToGoogleCalendar && styles.toggleOn]}><View style={[styles.toggleThumb, publishToGoogleCalendar && styles.toggleThumbOn]} /></View>
+          </Pressable>
 
           <Text style={styles.label}>EVENT BEHAVIOUR</Text>
           <Pressable onPress={() => setShielded(value => !value)} style={styles.optionRow}>

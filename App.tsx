@@ -1,6 +1,7 @@
 import "react-native-gesture-handler";
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   AppState,
   Linking,
   Platform,
@@ -43,6 +44,10 @@ import * as Notifications from "expo-notifications";
 import { useFonts } from "expo-font";
 import { Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold, Manrope_800ExtraBold } from "@expo-google-fonts/manrope";
 import { BrandText } from "./src/components/BrandText";
+import { getValidSession, loadSupabaseConfig } from "./src/sync/authService";
+import { syncGoogleCalendarChanges } from "./src/sync/googleCalendarImport";
+import { registerGoogleCalendarBackgroundSync } from "./src/sync/googleCalendarBackgroundTask";
+import { deleteEventFromGoogleCalendar, publishEventToGoogleCalendar } from "./src/sync/googleCalendarWrite";
 
 type ScreenMode = "Day" | "Week" | "Month";
 type MainTab = "Calendar" | "Tasks" | "Reminders" | "Sharing" | "Native" | "Data" | "Spaces";
@@ -143,6 +148,53 @@ function CalendarApp() {
   const storedEntities = useCalendarStore(useShallow(state => Object.values(state.entitiesById)));
 
   const [appForegroundRevision, setAppForegroundRevision] = useState(0);
+  useEffect(() => {
+    void registerGoogleCalendarBackgroundSync().catch(error => console.warn("Unable to register Google Calendar background sync", error));
+  }, []);
+
+  // Keep Google Calendar changes flowing into the app while it is open.
+  // Mobile OSes suspend JavaScript while the app is backgrounded, so sync again
+  // immediately on foreground and poll once per minute while active.
+  useEffect(() => {
+    if (!database || !calendarHydrated) return;
+    let disposed = false;
+    let syncing = false;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const syncOnce = async () => {
+      if (disposed || syncing || AppState.currentState !== "active") return;
+      syncing = true;
+      try {
+        const config = await loadSupabaseConfig();
+        if (!config) return;
+        const session = await getValidSession(config);
+        if (!session?.providerToken) return;
+        await syncGoogleCalendarChanges(database, session);
+      } catch (error) {
+        // Keep automatic sync quiet; manual sync still displays actionable errors.
+        console.warn("Automatic Google Calendar sync failed", error);
+      } finally {
+        syncing = false;
+      }
+    };
+    const startForegroundSync = () => {
+      if (timer) clearInterval(timer);
+      timer = null;
+      if (AppState.currentState !== "active") return;
+      void syncOnce();
+      timer = setInterval(() => { void syncOnce(); }, 60_000);
+    };
+    startForegroundSync();
+    const subscription = AppState.addEventListener("change", state => {
+      if (state === "active") startForegroundSync();
+      else if (timer) { clearInterval(timer); timer = null; }
+    });
+    return () => {
+      disposed = true;
+      subscription.remove();
+      if (timer) clearInterval(timer);
+    };
+  }, [database, calendarHydrated]);
+
   useEffect(() => {
     const subscription = AppState.addEventListener("change", state => {
       if (state === "active") setAppForegroundRevision(value => value + 1);
@@ -1091,6 +1143,42 @@ function CalendarApp() {
     if (draft.scope !== "occurrence") {
       refreshEventNotifications(entity).catch(error => console.warn("Unable to schedule event reminders", error));
     }
+    // Linked Google events stay synchronized when edited locally; the toggle is only needed to publish a new/unlinked event.
+    if (draft.publishToGoogleCalendar || Boolean(existing?.metadata?.googleCalendar?.eventId)) {
+      void (async () => {
+        try {
+          const config = await loadSupabaseConfig();
+          if (!config) throw new Error("Configure your Supabase connection and sign in first.");
+          const session = await getValidSession(config);
+          if (!session) throw new Error("Your session expired. Sign in again and approve Google Calendar event access.");
+          const result = await publishEventToGoogleCalendar(entity, session);
+          const updated: TemporalEntity = {
+            ...entity,
+            updatedAt: Date.now(),
+            syncVersion: entity.syncVersion + 1,
+            metadata: {
+              ...entity.metadata,
+              googleCalendar: {
+                source: "google",
+                eventId: result.eventId,
+                htmlLink: result.htmlLink,
+                description: entity.metadata?.googleCalendar?.description ?? null,
+                originalStartDate: entity.metadata?.googleCalendar?.originalStartDate ?? null,
+                originalEndDate: entity.metadata?.googleCalendar?.originalEndDate ?? null,
+                providerUpdatedAt: new Date().toISOString(),
+              },
+            },
+          };
+          const linkMutationId = "event-google-link-" + updated.id + "-" + updated.syncVersion;
+          useCalendarStore.getState().upsertEntity(updated, linkMutationId);
+          if (database) await database.repository.upsert(updated, linkMutationId);
+          Alert.alert("Google Calendar", "Event saved to your primary Google Calendar.");
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Unknown Google Calendar error.";
+          Alert.alert("Saved locally", "The event is safe in DR-Calender, but Google Calendar publishing failed: " + message);
+        }
+      })();
+    }
   };
 
   const moveEvent = (event: TemporalEntity, nextStartAt: number, nextEndAt: number) => {
@@ -1140,6 +1228,24 @@ function CalendarApp() {
       return;
     }
     void cancelNotificationIds(event.metadata?.event?.notificationIds);
+    const googleEventId = event.metadata?.googleCalendar?.eventId;
+    if (googleEventId) {
+      // Delete remotely in the background; a Google failure must not prevent
+      // the user from deleting the event from the local calendar.
+      void (async () => {
+        try {
+          const config = await loadSupabaseConfig();
+          if (!config) throw new Error("Supabase is not configured. The event was deleted locally, but not from Google Calendar.");
+          const session = await getValidSession(config);
+          if (!session) throw new Error("Sign in again with Google to delete this event from Google Calendar.");
+          await deleteEventFromGoogleCalendar(googleEventId, session);
+          Alert.alert("Google Calendar", "The event was deleted from Google Calendar too.");
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Unknown Google Calendar error.";
+          Alert.alert("Deleted locally", `The event was removed from DR Calender, but Google Calendar could not be updated. ${message}`);
+        }
+      })();
+    }
     const mutationId = `event-delete-${event.id}-${event.syncVersion + 1}`;
     setEventEditorVisible(false);
     setEditingEvent(null);
