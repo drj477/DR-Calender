@@ -110,7 +110,7 @@ function DraggableEvent({
 
   const color = event.isShielded ? COLORS.accent : event.isElastic ? COLORS.coral : COLORS.lavender;
   return (
-    <View
+    <Animated.View
       {...(!event.rrule ? responder.panHandlers : {})}
       style={[
         styles.eventBlock,
@@ -139,7 +139,7 @@ function DraggableEvent({
           <View style={styles.resizeGrip} />
         </View>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }
 

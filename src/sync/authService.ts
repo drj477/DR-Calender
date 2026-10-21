@@ -1,4 +1,7 @@
 import * as SecureStore from "expo-secure-store";
+import * as Crypto from "expo-crypto";
+import * as Linking from "expo-linking";
+import * as WebBrowser from "expo-web-browser";
 
 export interface SupabaseConfig { url: string; anonKey: string }
 export interface AuthSession {
@@ -53,6 +56,26 @@ function toSession(payload: any): AuthSession {
   if (!payload.access_token || !payload.refresh_token || !payload.user?.id) throw new Error("The authentication server returned an incomplete session.");
   return { accessToken: payload.access_token, refreshToken: payload.refresh_token, expiresAt: Date.now() + Number(payload.expires_in ?? 3600) * 1000, user: { id: payload.user.id, email: payload.user.email ?? null } };
 }
+export async function signInWithOAuth(config: SupabaseConfig, provider: "google" | "apple"): Promise<AuthSession> {
+  const redirectTo = Linking.createURL("auth/callback");
+  const random = await Crypto.getRandomBytesAsync(32);
+  const verifier = Array.from(random, byte => byte.toString(16).padStart(2, "0")).join("");
+  const digest = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, verifier, { encoding: Crypto.CryptoEncoding.BASE64 });
+  const challenge = digest.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  const authorizeUrl = new URL(`${normalizeUrl(config.url)}/auth/v1/authorize`);
+  authorizeUrl.searchParams.set("provider", provider);
+  authorizeUrl.searchParams.set("redirect_to", redirectTo);
+  authorizeUrl.searchParams.set("code_challenge", challenge);
+  authorizeUrl.searchParams.set("code_challenge_method", "s256");
+  const result = await WebBrowser.openAuthSessionAsync(authorizeUrl.toString(), redirectTo);
+  if (result.type !== "success" || !result.url) throw new Error("Sign-in was cancelled or did not return to DR Calender.");
+  const callback = new URL(result.url);
+  const code = callback.searchParams.get("code");
+  if (!code) throw new Error(callback.searchParams.get("error_description") ?? callback.searchParams.get("error") ?? "The identity provider did not return an authorization code.");
+  const payload = await requestAuth(config, "token?grant_type=pkce", { auth_code: code, code_verifier: verifier });
+  return saveSession(toSession(payload));
+}
+
 export async function signIn(config: SupabaseConfig, email: string, password: string): Promise<AuthSession> {
   const payload = await requestAuth(config, "token?grant_type=password", { email: email.trim().toLowerCase(), password });
   return saveSession(toSession(payload));

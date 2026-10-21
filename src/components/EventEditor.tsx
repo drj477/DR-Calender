@@ -221,7 +221,7 @@ export function EventEditor({ visible, selectedDate, event, occurrenceStartAt = 
   };
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal visible={visible} animationType="none" presentationStyle={Platform.OS === "ios" ? "pageSheet" : "fullScreen"} onRequestClose={onClose}>
       <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <View style={styles.header}>
           <Pressable onPress={onClose} accessibilityRole="button" hitSlop={8}><Text style={styles.cancel}>Cancel</Text></Pressable>
