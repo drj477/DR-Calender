@@ -159,3 +159,11 @@ The calendar UI uses a midnight-navy and warm-amber palette inspired by the supp
 - Added saved public HTTPS calendar subscriptions with manual refresh, event counts, last refresh/error status, and UID-based updates. Removing a subscription does not delete previously imported events.
 - Workspace permissions remain enforced at workspace level by the Phase 4 server RPC. An event's attendee list does not independently authorize access to workspace data.
 - Boundaries: feeds must be publicly reachable over HTTPS; no native file picker or direct .ics attachment creation; no authenticated feeds, per-event ACLs, complete VTIMEZONE generation, or push refresh yet. Tests, builds and TypeScript checks remain intentionally unrun.
+
+## Community and security
+
+- Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+- Report suspected vulnerabilities privately as described in [SECURITY.md](SECURITY.md); do not publish exploit details in public issues.
+- Review [RELEASE_READINESS.md](RELEASE_READINESS.md) for the current validation status and known production gaps.
+
+The project is under active development. Source implementation, automated checks, native-device validation, and production readiness are tracked separately; see the release-readiness document before relying on any feature in a production environment.
